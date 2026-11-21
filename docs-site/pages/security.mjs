@@ -18,14 +18,14 @@ export default [
 <p><b>Don't take our word for it:</b> switch off your internet and use the app (it all works), or turn on <a href="#offline-mode">Offline mode</a> so it never goes online by itself. See <a href="#check-yourself">Check it yourself</a>.</p></div>
 
 <section id="your-data-stays">
-<h2>Your data stays on your computer</h2>
+<h2>Your data stays on your device — with real AES-256-GCM Vault Encryption</h2>
 <ul>
-  <li><strong>Saved as files on your PC.</strong> Every invoice, client, product, payment and setting is a file in the <code>_system\\data</code> folder inside the app's folder. Saved invoice PDFs go in the <b>Saved Invoices</b> folder next to it.</li>
-  <li><strong>No account, no login, no signup.</strong> The app never asks for an email address or a password to use it.</li>
-  <li><strong>No cloud server.</strong> We do not run a server that holds your books. There is nothing of yours on our side to leak or to lose.</li>
-  <li><strong>Google Drive only if you set it up.</strong> If you choose to connect your own Google Drive (Settings → Data &amp; Backups → Google Drive), copies of your invoice PDFs and backups go to <i>your</i> Drive. Nothing goes there until you do. See <a href="settings.html#google-drive">Google Drive</a>.</li>
+  <li><strong>100% Local-First Storage.</strong> In Web / PWA mode, your books live in your browser's persistent <code>IndexedDB</code> storage on your own device; in Desktop server mode, they live in the local <code>data/</code> folder on your PC (bound strictly to <code>127.0.0.1</code>).</li>
+  <li><strong>Real WebCrypto AES-256-GCM Encryption Vault.</strong> When you enable the App PIN &amp; Encrypted Vault in <b>Settings → Privacy &amp; Security</b>, your books are encrypted at rest using browser-native <b>AES-256-GCM</b> with a key derived via <b>PBKDF2-SHA256 (310,000 iterations)</b>, paired with optional <b>WebAuthn Fingerprint / Passkey unlock</b>, <b>Multi-Staff Role PINs</b> (Owner, Billing Staff, CA / Accountant), and a downloadable <b>24-character offline Recovery Key</b>.</li>
+  <li><strong>Encrypted <code>.fgsb</code> Backups.</strong> Exported backup archives can be password-encrypted with AES-256-GCM so copies on USB pen drives or cloud folders stay protected too. (In unencrypted Desktop folder mode without Vault PIN enabled, local JSON files follow your Windows/macOS user-account permissions.)</li>
+  <li><strong>No account, no login server, no cloud database of ours.</strong> Bharat GST Free Billing never asks for an email or phone number to start, and we operate zero servers that receive your business data.</li>
+  <li><strong>Google Drive only if you connect your own account.</strong> If you choose to connect Google Drive (Settings → Data &amp; Backups → Google Drive), copies of invoice PDFs and backups go directly to <i>your</i> Drive. See <a href="settings.html#google-drive">Google Drive</a>.</li>
 </ul>
-<p>One honest limit: the data files are not encrypted. Anyone who can sign in to your Windows or Mac account can open that folder, the same as your other documents. Protect the computer with its own password, and see <a href="#what-you-should-do">What you should do</a>.</p>
 </section>
 
 <section id="no-internet-needed">
@@ -85,7 +85,7 @@ export default [
 <ul>
   <li><strong>It stays free, forever.</strong> There will be no paid version, no locked features, no ads and no tracking. And because the code is open source under the MIT licence, the app you have today can always be used, copied and kept by anyone, even if we stopped working on it. Nobody can take it away or start charging you for it.</li>
   <li><strong>It costs very little to keep going.</strong> The app runs on your computer, so there are no servers and no cloud bills for us to pay.</li>
-  <li><strong>How we earn.</strong> Bharat GST Free Billing is made Created by Abhishek Agrahari, a small software company in India. We earn from paid work for businesses that want it (custom features, setup and moving data in, support plans) and from people who choose to support the project. See <a href="support.html">Support &amp; About</a>.</li>
+  <li><strong>Maintained with Daily Continuous Auto-Updates.</strong> Bharat GST Free Billing is created and maintained by <b>Abhishek Agrahari</b> for businesses across India, shipping continuous improvements and safe idle auto-updates while keeping every single feature 100% free forever. See <a href="support.html">About &amp; Support</a>.</li>
   <li><strong>Tracking you would gain us nothing.</strong> We do not sell ads or data, so there is nothing to collect. Collecting your data would also break the one promise the app is built on.</li>
   <li><strong>The code is public</strong>, so this can be checked, not just believed.</li>
 </ul>

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
 import { Home, FileText, Settings, Plus, Users, Package, BarChart3, Wallet, RefreshCw, Receipt, BookOpen, Moon, Sun, Download, X, ShoppingCart, ChevronDown, Building2, Pencil, HelpCircle, Search, Command, Bell, Calculator, Menu, Heart, Banknote } from 'lucide-react';
 import { getAllProfilesWithHidden, saveProfile, getEnabledModules, getMenuOrder, getMenuHidden, getMenuDots, onMenuChanged, getAllBills, getAllProducts, getAllRecurring, getStockAlertSettings, runUpdateNow, getLockStatus, visibleProfiles, hasHiddenProfiles, openHiddenCompanies, hideCompaniesAgain, isOpenedHidden, exportAllData, getBackupsList, DATA_SAVED_EVENT } from './store';
 import { isModuleEnabled, localToday, DOCS_URL } from './utils';
+import { APP_VERSION } from './utils/problemLog';
 import NotificationCenter from './components/NotificationCenter';
 import {
   readNotifPrefs,
@@ -1037,8 +1038,20 @@ function App() {
         </div>
         {/* v1.10.86 (maintainer) - the promise sits under the app name in the
             menu, on every screen size (it was in the top bar). */}
-        <div className="sidebar-free-row">
-          <span className="topbar-free" title="Free forever: no paid version, no locked features, no ads, no tracking. Works on this computer, even offline.">Free forever</span>
+        <div className="sidebar-free-row" style={{ gap: '0.35rem', flexWrap: 'wrap' }}>
+          <span className="topbar-free" title="Free forever: no paid version, no locked features, no ads, no tracking. Works on this device, even offline.">Free forever</span>
+          <button
+            type="button"
+            onClick={() => { setCurrentView('settings'); setTimeout(() => document.getElementById('section-updates')?.scrollIntoView({ behavior: 'smooth' }), 120); }}
+            title="Daily Continuous Auto-Update Active — click to open App & Updates"
+            style={{
+              fontSize: '0.64rem', fontWeight: 700, padding: '0.18rem 0.5rem', borderRadius: 999,
+              border: '1px solid rgba(59,130,246,0.45)', background: 'rgba(59,130,246,0.14)',
+              color: '#93c5fd', cursor: 'pointer', whiteSpace: 'nowrap',
+            }}
+          >
+            v{APP_VERSION} · Daily Auto-Update
+          </button>
         </div>
 
         <div className="profile-switcher" ref={profileMenuRef} style={{ position: 'relative' }}>

@@ -1,18 +1,22 @@
-import { Heart, Share2, BookOpen, ShieldCheck, FileText, Calculator, Printer, Package, Globe } from 'lucide-react';
+import { Heart, Share2, BookOpen, ShieldCheck, FileText, Calculator, Printer, Package, Globe, Mic, RefreshCw, Stethoscope } from 'lucide-react';
 import WhatsNew from './WhatsNew';
 import ProblemLog from './ProblemLog';
 import HelpButton from './HelpButton';
 import PageHeader from './PageHeader';
 import { SafePrivateSection } from './SafePrivateNote';
 import { docsLink } from '../utils';
+import { APP_VERSION } from '../utils/problemLog';
 
 const HIGHLIGHTS = [
-  { icon: FileText, title: 'Complete GST Invoicing', text: 'Tax Invoice, Proforma, Quotation, Credit Note, Bill of Supply, Composition Bill & Delivery Challan.' },
-  { icon: Calculator, title: 'GSTR-1, GSTR-3B & GSTR-2B', text: 'Portal-ready JSON exports, GSTR-2B ITC reconciliation, HSN summary, e-Way Bill JSON & TDS/TCS (26Q/27EQ).' },
-  { icon: Printer, title: 'A4, A5 & Thermal Printing', text: '58mm / 80mm POS thermal receipts, A4/A5 PDF templates, UPI payment QR codes & WhatsApp sharing.' },
-  { icon: Package, title: 'Inventory, Purchases & Cash Book', text: 'Stock tracking, barcodes, purchase bills with OCR, debit notes, expense tracker & P&L reports.' },
-  { icon: Globe, title: 'Multi-Currency & Multi-GSTIN', text: 'Invoice in 22 currencies (INR, USD, EUR, GBP, AED, SGD…) and switch between multiple businesses.' },
-  { icon: ShieldCheck, title: 'AES-256-GCM Encrypted & Offline', text: 'No subscription, no ads, no locked features. Encrypted .fgsb backups, multi-staff PIN access & auto-repair.' },
+  { icon: Mic, title: 'Bharat AI Voice Billing™', text: 'Speak or type naturally in Hinglish, Hindi (हिंदी) or English to auto-fill Clients, Products, HSN, Rates & GST 100% offline.' },
+  { icon: FileText, title: 'All 10 GST Document Types', text: 'Tax Invoice, Proforma, Quotation, Credit Note, Debit Note, Bill of Supply, Composition, Sales Order, PO & Delivery Challan.' },
+  { icon: Stethoscope, title: 'CA Pre-Filing GST Auditor', text: '0–100% GSTR-1 Portal Readiness Score checking GSTIN Mod-36 checksums, HSN/SAC rules, POS match & Rule 46 numbering.' },
+  { icon: Calculator, title: 'GSTR-1/3B/2B, e-Invoice & Tax', text: 'Portal JSON/CSV exports, GSTR-2B reconciliation, e-Invoice IRP JSON, e-Way Bill, TDS/TCS (26Q/27EQ) & Income Tax (Old vs New).' },
+  { icon: Printer, title: '5 Layouts, 5 Languages & POS', text: '58mm/80mm thermal receipts, A4/A5 templates, 8 colour designs, English/Hindi/Tamil/Marathi/Bengali bills & UPI QR.' },
+  { icon: Package, title: 'Stock, Barcodes, OCR & Tally Import', text: 'Multi-unit stock (Box=12 Pcs), IMEI/Batch, Manufacturing BOM, offline Bill OCR, Cash Book, Bank Matching & Vyapar/Tally import.' },
+  { icon: Globe, title: '9 Industry Presets & 22 Currencies', text: 'Pharmacy, Mobile/IMEI, Jewellery, Kirana, Transport, Textiles, Hardware & Export LUT/SEZ billing across 23 countries.' },
+  { icon: ShieldCheck, title: 'AES-256-GCM Vault & Staff Roles', text: 'WebCrypto AES-256-GCM + PBKDF2 (310,000 rounds), Fingerprint Passkey, Multi-Staff PINs, Edit History, Trash & Google Drive sync.' },
+  { icon: RefreshCw, title: 'Daily Continuous Auto-Updates', text: `Live background sync (v${APP_VERSION}) delivers daily GST rule updates & improvements safely when idle — zero data loss.` },
 ];
 
 export default function SupportView() {

@@ -10,7 +10,7 @@ const DIST = path.join(ROOT, 'dist');
 const DOCS_OUT = path.join(ROOT, 'docs-site', 'out', 'docs');
 const PUBLIC_GUIDE = path.join(ROOT, 'public', 'user-guide');
 const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
-const SITE_ORIGIN = 'https://abhishekagrahari307-max.github.io/Bharat-ai-Voice';
+const SITE_ORIGIN = 'https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing';
 const TODAY = new Date().toISOString().slice(0, 10);
 
 if (!fs.existsSync(path.join(DIST, 'index.html'))) {
@@ -47,6 +47,9 @@ for (const entry of fs.readdirSync(DIST, { withFileTypes: true })) {
 // Generate fresh version.json (in both public/ and published root)
 const versionPayload = JSON.stringify({
   version: pkg.version,
+  channel: 'daily',
+  autoUpdate: true,
+  releaseDate: TODAY,
   buildTime: new Date().toISOString(),
   minSupportedSchema: 1,
 }, null, 2) + '\n';
