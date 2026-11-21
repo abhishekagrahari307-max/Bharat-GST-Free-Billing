@@ -80,7 +80,7 @@
         <p class="nav-heading">Help</p>
         <ul><li><a href="shortcuts.html">Getting around</a></li><li><a href="troubleshooting.html">Troubleshooting</a></li><li><a href="terminal.html">Using the Terminal</a></li><li><a href="limitations.html">What it does not do</a></li><li><a href="glossary.html">Glossary</a></li><li><a href="support.html">About &amp; Support</a></li></ul>
       </div>
-    <p class="sidebar-foot">Guide for version 2.7.0 · Created by Abhishek Agrahari</p>
+    <p class="sidebar-foot">Guide for version 3.0.0 · Created by Abhishek Agrahari</p>
   </nav>
   <div class="scrim" hidden></div>
   <main id="main" class="doc">
@@ -434,6 +434,27 @@
 <div class="note tip"><strong>Something wrong?</strong><p>The <span class="ui">By cost centre</span> tab is missing: turn on <b>Cost centres</b> in <a href="settings.html#features">Settings, Features</a> and save, then open Reports again. Most of the money is in <b>Untagged</b>: tag the older invoices from the Dashboard (step 4 above) and the purchase bills and expenses from their forms.</p></div>
 </section>
 
+<section id="double-entry">
+<h2><a class="anchor" href="#double-entry" aria-label="Link to this section">#</a>Trial Balance &amp; Double-Entry Vouchers (F4–F7)</h2>
+<p>Every Sales Invoice, Credit Note, Purchase Bill, Debit Note and Expense automatically posts balanced Debit and Credit ledger lines in the background—so shopkeepers never have to learn accounting jargon, while Chartered Accountants get a complete, mathematically balanced <b>Trial Balance</b> (`Debit === Credit`).</p>
+<ul>
+  <li><b>Contra (F4)</b>: Record cash deposits into bank, ATM cash withdrawals, or bank-to-bank transfers.</li>
+  <li><b>Payment (F5)</b>: Record supplier settlements, tax challans, drawings, or asset purchases.</li>
+  <li><b>Receipt (F6)</b>: Record owner capital introduced, business loans received, or miscellaneous receipts.</li>
+  <li><b>Journal Voucher (F7)</b>: Record non-cash CA adjustments such as depreciation, opening balances, provisions, and GST set-off entries.</li>
+</ul>
+</section>
+
+<section id="balance-sheet">
+<h2><a class="anchor" href="#balance-sheet" aria-label="Link to this section">#</a>Schedule III Balance Sheet</h2>
+<p>Automatically compiles your <b>Equity &amp; Liabilities</b> (Owner&apos;s Capital, Drawings, Surplus/Deficit Net Profit from P&amp;L, Loans, Sundry Creditors, Output GST Payable) against <b>Assets</b> (Fixed Assets, Closing Inventory valued at cost, Sundry Debtors, Cash-in-Hand, Bank Balances, and Input Tax Credit Receivable) with 1-click Print, PDF, Excel, and CSV export.</p>
+</section>
+
+<section id="ca-desk">
+<h2><a class="anchor" href="#ca-desk" aria-label="Link to this section">#</a>Tamper-Proof SHA-256 Audit Chain &amp; CA Desk (<code>.bharatca</code>)</h2>
+<p>Chains every voucher from Genesis (<code>0000…0000</code>) to HEAD using cryptographic <b>SHA-256</b> digests (MCA Rule 3(1) audit-trail ready) and lets you export or inspect an optional <b>AES-256-GCM encrypted <code>.bharatca</code> CA Workpaper Package</b> containing your Trial Balance, Balance Sheet, GST Readiness Score, and Audit Proof.</p>
+</section>
+
     </div>
     <nav class="pager" aria-label="Previous and next page">
       <a class="prev" href="gst-returns.html"><span>Previous</span>GST returns</a>
@@ -445,7 +466,7 @@
   </main>
   <aside class="toc" aria-label="On this page">
     <p class="toc-heading">On this page</p>
-    <ul><li><a href="#tabs">The report tabs</a></li><li><a href="#included">What the reports include</a></li><li><a href="#period">Choosing the period and currency</a></li><li><a href="#export">Printing and downloading a report</a></li><li><a href="#profit-loss">Profit &amp; Loss</a></li><li><a href="#outstanding">Outstanding &amp; Aging</a></li><li><a href="#party-outstanding">Party Outstanding</a></li><li><a href="#clients">Client Analytics</a></li><li><a href="#products">Product Performance</a></li><li><a href="#stock">Stock</a></li><li><a href="#tds-tcs">TDS &amp; TCS</a></li><li><a href="#cost-centres">By cost centre</a></li></ul>
+    <ul><li><a href="#tabs">The report tabs</a></li><li><a href="#included">What the reports include</a></li><li><a href="#period">Choosing the period and currency</a></li><li><a href="#export">Printing and downloading a report</a></li><li><a href="#profit-loss">Profit &amp; Loss</a></li><li><a href="#outstanding">Outstanding &amp; Aging</a></li><li><a href="#party-outstanding">Party Outstanding</a></li><li><a href="#clients">Client Analytics</a></li><li><a href="#products">Product Performance</a></li><li><a href="#stock">Stock</a></li><li><a href="#tds-tcs">TDS &amp; TCS</a></li><li><a href="#cost-centres">By cost centre</a></li><li><a href="#double-entry">Trial Balance &amp; Double-Entry Vouchers (F4–F7)</a></li><li><a href="#balance-sheet">Schedule III Balance Sheet</a></li><li><a href="#ca-desk">Tamper-Proof SHA-256 Audit Chain &amp; CA Desk ( .bharatca )</a></li></ul>
   </aside>
 </div>
 <script src="assets/search-index.js" defer></script>

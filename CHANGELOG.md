@@ -5,6 +5,18 @@ Bharat GST Free Billing follows a **Daily Continuous Release & Safe Auto-Update*
 
 ---
 
+## [3.0.0] - 2026-11-21
+
+**Full Double-Entry CA Accounting (`F4–F7`, Trial Balance, Schedule III Balance Sheet), Tamper-Proof SHA-256 Audit Chain, `.bharatca` CA Desk & Multi-OS Desktop Installers.**
+
+### Added
+- **Full Double-Entry Accounting Engine (`src/utils/doubleEntry.js` + `AccountingDesk.jsx`)**: Automatic balanced Debit/Credit ledger postings from Sales Invoices, Credit Notes, Purchase Bills, Debit Notes & Expenses (`Debit === Credit` to ₹0.00) + Tally-style `F4 Contra`, `F5 Payment`, `F6 Receipt` & `F7 Journal Vouchers`, live **Trial Balance**, and **Schedule III Balance Sheet** (with Closing Inventory Valuation & Net Profit bridge) inside *Reports*.
+- **Tamper-Proof SHA-256 Hash-Chained Audit Trail (`src/utils/hashChain.js`)**: Chains every voucher from Genesis (`0000…0000`) to HEAD with cryptographic SHA-256 digests (MCA Rule 3(1) ready) and 1-click verification.
+- **`.bharatca` Encrypted CA Workpaper Desk**: Export and inspect optional **AES-256-GCM + PBKDF2-SHA256 (310,000 rounds)** encrypted `.bharatca` workpaper bundles containing Trial Balance, Balance Sheet, GST Readiness Score, Vouchers & SHA-256 Audit Proof.
+- **Pre-Built Multi-OS Desktop Installers & Docker**: Added `Dockerfile`, `docker-compose.yml`, and automated GitHub Actions release workflow (`.github/workflows/release-installers.yml`) building Windows Setup `.exe`, Linux `.deb` & `.AppImage`, macOS App Bundle, Universal Portable ZIP, and Offline User Guide ZIP on Node.js 22 LTS.
+
+---
+
 ## [2.7.0] - 2026-11-21
 
 **Real-Time PC Hard-Drive Live Mirroring, Non-Evictable Storage Lock & Pre-Rendered Technical Specification (`llms.txt`).**

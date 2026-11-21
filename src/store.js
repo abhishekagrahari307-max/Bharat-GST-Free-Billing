@@ -70,8 +70,18 @@ async function apiFetch(url, options = {}) {
   }
   return res.json();
 }
-const DATA_SAVED_PATHS = /\/api\/(bills|products|recurring|purchases|receipts|stock-adjustments|productions|import|trash)\b/;
+const DATA_SAVED_PATHS = /\/api\/(bills|products|recurring|purchases|receipts|stock-adjustments|productions|import|trash|meta\/journalVouchers)\b/;
 export const DATA_SAVED_EVENT = 'fgsb:data-saved';
+
+// ---- Double-Entry Journal Vouchers (v3.0.0; stored in meta for universal PWA + Hard-Drive + Server sync) ----
+export const getJournalVouchers = async () => {
+  const res = await apiFetch(`${API}/meta/journalVouchers`);
+  return Array.isArray(res?.value) ? res.value : [];
+};
+export const saveJournalVouchers = async (vouchers) => {
+  const list = Array.isArray(vouchers) ? vouchers : [];
+  return apiFetch(`${API}/meta/journalVouchers`, { method: 'POST', body: JSON.stringify({ value: list }) });
+};
 
 // ---- Close the books + edit history (v1.10.85; checked by the server) ----
 export const getPeriodLock = () => apiFetch(`${API}/period-lock`);

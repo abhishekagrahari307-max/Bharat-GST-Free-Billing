@@ -1,17 +1,28 @@
-# Bharat GST Free Billing (v2.7.0 — Daily Continuous Auto-Update Edition)
+# Bharat GST Free Billing (v3.0.0 — Full Double-Entry CA Suite, SHA-256 Audit & Multi-OS Edition)
 
-> 100% Free, Open-Source (MIT), Hybrid Offline PWA + Direct PC Hard-Drive Live Sync + Local Node.js Desktop GST Billing, AI Voice Invoicing, Inventory, Accounting & Tax Return Suite for India and 22 International Currencies. Created & maintained by Abhishek Agrahari.
+> 100% Free, Open-Source (MIT), Hybrid Offline PWA + Direct PC Hard-Drive Live Sync + Multi-OS Desktop Installers (`.exe`, `.deb`, `.AppImage`, `macOS`, `Docker`) + Full Double-Entry Accounting (`F4–F7` Vouchers, Trial Balance, Schedule III Balance Sheet), SHA-256 Hash-Chained Audit Trail, `.bharatca` CA Desk & AI Voice GST Billing Suite. Created & maintained by Abhishek Agrahari.
 
 - Live Application (Instant Offline PWA & Web): https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/
 - Complete Self-Hosted Documentation (35 Pages): https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/user-guide/
-- Public Open-Source Repository (MIT License): https://github.com/abhishekagrahari307-max/Bharat-GST-Free-Billing
-- Latest Release: v2.7.0 (2026-11-21) — Daily Continuous Safe Auto-Update Channel (`version.json` + Service Worker + Desktop Updater)
+- Public Open-Source Repository & Multi-OS Releases (MIT License): https://github.com/abhishekagrahari307-max/Bharat-GST-Free-Billing
+- Latest Release: v3.0.0 (2026-11-21) — Full Double-Entry Accounting, SHA-256 Audit Chain, `.bharatca` CA Desk & Automated `.exe`/`.deb`/`.AppImage`/`macOS`/`Docker` Installers
+
+---
+
+## 0. Full Double-Entry Accounting, SHA-256 Audit Trail & CA Desk (`v3.0.0`)
+
+- **Automatic Double-Entry Ledger Engine (`src/utils/doubleEntry.js` + `src/components/AccountingDesk.jsx`)**: Every Sales Invoice, Credit Note, Purchase Bill, Debit Note, and Expense automatically generates mathematically balanced Debit & Credit postings (`Debit === Credit` to ₹0.00).
+- **Tally-Style `F4–F7` Vouchers**: Keyboard-driven **`F4 Contra`** (Cash ↔ Bank), **`F5 Payment`**, **`F6 Receipt`** (Owner Capital, Loans, Misc), and **`F7 Journal Vouchers (JV)`** (Depreciation, Opening Balances, Provisions, GST Set-off).
+- **Live Trial Balance & Schedule III Balance Sheet**: Real-time Trial Balance + two-sided Indian **Schedule III Balance Sheet** integrating Closing Inventory Valuation at cost and Current Period Net Profit/Loss (`Assets === Equity + Liabilities`).
+- **Tamper-Proof SHA-256 Hash-Chained Audit Trail (`src/utils/hashChain.js`)**: Every voucher is cryptographically chained from Genesis (`0000…0000`) to HEAD via SHA-256 digests (MCA Rule 3(1) audit-trail ready) with 1-click verification.
+- **CA–Client `.bharatca` Workpaper Desk**: 1-click export & inspection of optional **AES-256-GCM + PBKDF2-SHA256 (310,000 rounds) encrypted `.bharatca` CA Workpaper Packages** containing Trial Balance, Balance Sheet, GST Readiness Score, Vouchers, and SHA-256 Audit Proof.
+- **Pre-Built Multi-OS Installers & Docker**: Automated GitHub Actions release pipeline (`.github/workflows/release-installers.yml`) building **Windows Setup `.exe`**, **Linux `.deb` & `.AppImage`**, **macOS App Bundle**, **Universal Portable ZIP**, plus **`Dockerfile` & `docker-compose.yml`**.
 
 ---
 
 ## 1. Hybrid Tri-Mode Architecture & Hard-Drive Data Safety
 
-Unlike ordinary browser-only SPAs or desktop-only localhost apps, **Bharat GST Free Billing v2.7.0** combines BOTH worlds in one unified codebase:
+Unlike ordinary browser-only SPAs or desktop-only localhost apps, **Bharat GST Free Billing v3.0.0** combines BOTH worlds in one unified codebase:
 
 1. **Mode 1 — Zero-Install Cross-Platform Offline PWA (`browserApi.js` + Workbox Service Worker)**:
    - Runs directly on Android, iOS, Windows, macOS, Linux, and Chromebook with zero `.exe` or Node.js installation required.

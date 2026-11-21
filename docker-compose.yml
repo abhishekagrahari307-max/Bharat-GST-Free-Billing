@@ -1,0 +1,12 @@
+services:
+  bharat-gst-billing:
+    build: .
+    container_name: bharat-gst-free-billing
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./bharat-gst-data:/app/data
+    environment:
+      - NODE_ENV=production
+      - PORT=3000

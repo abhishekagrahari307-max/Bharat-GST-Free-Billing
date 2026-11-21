@@ -353,6 +353,27 @@ export default [
 </ul>
 <div class="note tip"><strong>Something wrong?</strong><p>The ${ui('By cost centre')} tab is missing: turn on <b>Cost centres</b> in <a href="settings.html#features">Settings, Features</a> and save, then open Reports again. Most of the money is in <b>Untagged</b>: tag the older invoices from the Dashboard (step 4 above) and the purchase bills and expenses from their forms.</p></div>
 </section>
+
+<section id="double-entry">
+<h2>Trial Balance &amp; Double-Entry Vouchers (F4–F7)</h2>
+<p>Every Sales Invoice, Credit Note, Purchase Bill, Debit Note and Expense automatically posts balanced Debit and Credit ledger lines in the background—so shopkeepers never have to learn accounting jargon, while Chartered Accountants get a complete, mathematically balanced <b>Trial Balance</b> (` + '`Debit === Credit`' + `).</p>
+<ul>
+  <li><b>Contra (F4)</b>: Record cash deposits into bank, ATM cash withdrawals, or bank-to-bank transfers.</li>
+  <li><b>Payment (F5)</b>: Record supplier settlements, tax challans, drawings, or asset purchases.</li>
+  <li><b>Receipt (F6)</b>: Record owner capital introduced, business loans received, or miscellaneous receipts.</li>
+  <li><b>Journal Voucher (F7)</b>: Record non-cash CA adjustments such as depreciation, opening balances, provisions, and GST set-off entries.</li>
+</ul>
+</section>
+
+<section id="balance-sheet">
+<h2>Schedule III Balance Sheet</h2>
+<p>Automatically compiles your <b>Equity &amp; Liabilities</b> (Owner&apos;s Capital, Drawings, Surplus/Deficit Net Profit from P&amp;L, Loans, Sundry Creditors, Output GST Payable) against <b>Assets</b> (Fixed Assets, Closing Inventory valued at cost, Sundry Debtors, Cash-in-Hand, Bank Balances, and Input Tax Credit Receivable) with 1-click Print, PDF, Excel, and CSV export.</p>
+</section>
+
+<section id="ca-desk">
+<h2>Tamper-Proof SHA-256 Audit Chain &amp; CA Desk (<code>.bharatca</code>)</h2>
+<p>Chains every voucher from Genesis (<code>0000…0000</code>) to HEAD using cryptographic <b>SHA-256</b> digests (MCA Rule 3(1) audit-trail ready) and lets you export or inspect an optional <b>AES-256-GCM encrypted <code>.bharatca</code> CA Workpaper Package</b> containing your Trial Balance, Balance Sheet, GST Readiness Score, and Audit Proof.</p>
+</section>
 `,
 },
 ];

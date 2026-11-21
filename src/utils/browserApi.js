@@ -284,7 +284,15 @@ function extractApiPath(input) {
   }
 }
 
-const BHARAT_CHANGELOG_MD = `## [2.7.0] - 2026-11-21
+const BHARAT_CHANGELOG_MD = `## [3.0.0] - 2026-11-21
+**Full Double-Entry CA Accounting (F4-F7, Trial Balance, Schedule III Balance Sheet), SHA-256 Audit Chain, .bharatca CA Desk & Multi-OS Installers.**
+
+### Added
+- **Full Double-Entry Accounting Engine**: Automatic double-entry ledger derivation from Sales, Credit Notes, Purchases, Debit Notes & Expenses (Debit === Credit) + manual Tally-style F4 Contra, F5 Payment, F6 Receipt & F7 Journal Vouchers, live Trial Balance, and Schedule III Balance Sheet inside Reports.
+- **Tamper-Proof SHA-256 Hash-Chained Audit Trail & .bharatca CA Desk**: Cryptographic SHA-256 block chain from Genesis to HEAD (MCA Rule 3(1) ready) with 1-click verification + optional AES-256-GCM encrypted \`.bharatca\` CA Workpaper Package export & inspector.
+- **Pre-Built Multi-OS Desktop Installers & Docker**: Automated CI/CD release pipeline building Windows Setup \`.exe\`, Linux \`.deb\` & \`.AppImage\`, macOS App Bundle, Universal Portable ZIP, \`Dockerfile\` & \`docker-compose.yml\`.
+
+## [2.7.0] - 2026-11-21
 **Real-Time PC Hard-Drive Live Mirroring, Persistent Storage Lock & Pre-Rendered Architecture Spec.**
 
 ### Added

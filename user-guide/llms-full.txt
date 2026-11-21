@@ -1,4 +1,4 @@
-# Bharat GST Free Billing: complete documentation (version 2.7.0)
+# Bharat GST Free Billing: complete documentation (version 3.0.0)
 
 Source: https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/user-guide/
 
@@ -6266,6 +6266,23 @@ Abhishek Agrahari adds two cost centres, **Branch: Ludhiana** (code LDH) and **P
 - Turning the feature off hides the boxes, filters and this tab. The tags stay on your documents, and come back when you turn it on again.
 
 **Something wrong?**The By cost centre tab is missing: turn on **Cost centres** in [Settings, Features](https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/user-guide/settings.html#features) and save, then open Reports again. Most of the money is in **Untagged**: tag the older invoices from the Dashboard (step 4 above) and the purchase bills and expenses from their forms.
+
+## Trial Balance & Double-Entry Vouchers (F4–F7)
+
+Every Sales Invoice, Credit Note, Purchase Bill, Debit Note and Expense automatically posts balanced Debit and Credit ledger lines in the background—so shopkeepers never have to learn accounting jargon, while Chartered Accountants get a complete, mathematically balanced **Trial Balance** (`Debit === Credit`).
+
+- **Contra (F4)**: Record cash deposits into bank, ATM cash withdrawals, or bank-to-bank transfers.
+- **Payment (F5)**: Record supplier settlements, tax challans, drawings, or asset purchases.
+- **Receipt (F6)**: Record owner capital introduced, business loans received, or miscellaneous receipts.
+- **Journal Voucher (F7)**: Record non-cash CA adjustments such as depreciation, opening balances, provisions, and GST set-off entries.
+
+## Schedule III Balance Sheet
+
+Automatically compiles your **Equity & Liabilities** (Owner&apos;s Capital, Drawings, Surplus/Deficit Net Profit from P&L, Loans, Sundry Creditors, Output GST Payable) against **Assets** (Fixed Assets, Closing Inventory valued at cost, Sundry Debtors, Cash-in-Hand, Bank Balances, and Input Tax Credit Receivable) with 1-click Print, PDF, Excel, and CSV export.
+
+## Tamper-Proof SHA-256 Audit Chain & CA Desk ( .bharatca )
+
+Chains every voucher from Genesis (0000…0000) to HEAD using cryptographic **SHA-256** digests (MCA Rule 3(1) audit-trail ready) and lets you export or inspect an optional AES-256-GCM encrypted .bharatca CA Workpaper Package containing your Trial Balance, Balance Sheet, GST Readiness Score, and Audit Proof.
 
 ---
 

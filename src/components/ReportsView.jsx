@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, Wallet, BarChart3, Clock, Search, X, Users, Package, Boxes, Building2, Percent } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, BarChart3, Clock, Search, X, Users, Package, Boxes, Building2, Percent, BookOpen, Landmark, ShieldCheck } from 'lucide-react';
 import { getAllBills, getAllExpenses, getAllProducts, getProfile, getAllPurchases } from '../store';
 import { costOfGoodsSold, costOfGoodsSoldIn } from '../utils/products';
 import { formatCurrency, getFYOptions, belongsToProfile, isCancelledBill, salesSign, countsAsSales, parseLocalDate, amountDue } from '../utils';
@@ -14,6 +14,7 @@ import { billsInInr, baseCurrencyOf, billRate } from '../utils/fx';
 import CostCentreReport from './CostCentreReport';
 import { costCentresOn } from './useCostCentres';
 import TdsTcsReport from './TdsTcsReport';
+import AccountingDesk from './AccountingDesk';
 import { productSales, categoryOptions, brandOptions, serialTrail } from '../utils/stock';
 
 const MONTHS = [
@@ -32,6 +33,9 @@ const ALL_INR = 'ALL_INR';
 // The ? at the end of the tab row opens the guide at the tab on screen.
 const TAB_HELP = {
   pl: ['Profit & Loss', 'reports#profit-loss'],
+  doubleentry: ['Double-Entry & Trial Balance', 'reports#double-entry'],
+  balancesheet: ['Schedule III Balance Sheet', 'reports#balance-sheet'],
+  cadesk: ['SHA-256 Audit & CA Desk', 'reports#ca-desk'],
   aging: ['Outstanding & Aging', 'reports#outstanding'],
   party: ['Party Outstanding', 'reports#party-outstanding'],
   clients: ['Client Analytics', 'reports#clients'],
@@ -261,6 +265,18 @@ export default function ReportsView() {
           onClick={() => setActiveTab('pl')}>
           <BarChart3 size={16} /> Profit & Loss
         </button>
+        <button className={`btn ${activeTab === 'doubleentry' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setActiveTab('doubleentry')}>
+          <BookOpen size={16} /> Trial Balance &amp; JV (F4–F7)
+        </button>
+        <button className={`btn ${activeTab === 'balancesheet' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setActiveTab('balancesheet')}>
+          <Landmark size={16} /> Balance Sheet
+        </button>
+        <button className={`btn ${activeTab === 'cadesk' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setActiveTab('cadesk')}>
+          <ShieldCheck size={16} /> Audit Chain &amp; CA Desk
+        </button>
         <button className={`btn ${activeTab === 'aging' ? 'btn-primary' : 'btn-secondary'}`}
           onClick={() => setActiveTab('aging')}>
           <Clock size={16} /> Outstanding & Aging
@@ -296,7 +312,7 @@ export default function ReportsView() {
 
       {/* v1.10.74 - Period + Currency Selector, shared by P&L, Client Analytics
           and Product Performance (they all read the same period/currency). */}
-      {activeTab !== 'aging' && activeTab !== 'party' && activeTab !== 'stock' && activeTab !== 'tds' && (
+      {activeTab !== 'aging' && activeTab !== 'party' && activeTab !== 'stock' && activeTab !== 'tds' && activeTab !== 'doubleentry' && activeTab !== 'balancesheet' && activeTab !== 'cadesk' && (
           <div className="glass-panel" style={{ padding: '1.25rem', marginBottom: '1.5rem' }}>
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
               <div className="form-group" style={{ margin: 0 }}>
@@ -836,6 +852,18 @@ export default function ReportsView() {
           </div>
         );
       })()}
+
+      {(activeTab === 'doubleentry' || activeTab === 'balancesheet' || activeTab === 'cadesk') && (
+        <AccountingDesk
+          mode={activeTab}
+          bills={bills.filter((b) => belongsToProfile(b, ownerProfile))}
+          purchases={purchases.filter((p) => belongsToProfile(p, ownerProfile))}
+          expenses={expenses.filter((e) => belongsToProfile(e, ownerProfile))}
+          products={products}
+          ownerProfile={ownerProfile}
+          periodLabel={filterMode === 'fy' ? (fyFilter || 'Current-FY') : `${monthFilter || 'All'}-${yearFilter || currentYear}`}
+        />
+      )}
     </div>
   );
 }
