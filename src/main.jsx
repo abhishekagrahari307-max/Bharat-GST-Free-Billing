@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { registerSW } from 'virtual:pwa-register'
+import { installBrowserApiFallback } from './utils/browserApi'
 import App from './App.jsx'
 import AppLockGate from './components/AppLock.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
@@ -17,6 +18,8 @@ import '@fontsource/inter/500.css'
 import '@fontsource/inter/600.css'
 import '@fontsource/inter/700.css'
 import './index.css'
+
+installBrowserApiFallback();
 
 // v1.10.83 - the app's code loaded: tell public/boot-guard.js, and let it
 // try again next time something goes wrong.

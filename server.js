@@ -2621,7 +2621,7 @@ function sendPhoneIndex(req, res) {
 app.use((req, res, next) => ((WEB_MODE || req.socket.encrypted) && req.method === 'GET' && (req.path === '/' || req.path === '/index.html') && fs.existsSync(indexPath)
   ? sendPhoneIndex(req, res) : next()));
 const docsOutPath = path.join(__dirname, 'docs-site', 'out', 'docs');
-app.use('/docs', express.static(docsOutPath, { fallthrough: true }));
+app.use(['/docs', '/user-guide'], express.static(docsOutPath, { fallthrough: true }));
 app.use(express.static(distPath, { fallthrough: true })); // fallthrough = ok if dist doesn't exist
 
 // ============================================================
@@ -3076,7 +3076,7 @@ app.get('{*path}', (req, res) => {
   // asked for by a page from before an update) is a 404, not the app's page:
   // the page sent as "JavaScript" broke the app with a blank screen, and the
   // offline cache could keep that page under the code file's name.
-  if (req.path.startsWith('/assets/') || req.path.startsWith('/docs/') || /\.(m?js|css|map|wasm|json|png|svg|ico|woff2?)$/i.test(req.path)) {
+  if (req.path.startsWith('/assets/') || req.path.startsWith('/docs/') || req.path.startsWith('/user-guide/') || /\.(m?js|css|map|wasm|json|png|svg|ico|woff2?)$/i.test(req.path)) {
     return res.status(404).type('text/plain').send('Not found');
   }
   if (fs.existsSync(indexPath)) {

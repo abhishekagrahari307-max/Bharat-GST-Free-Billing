@@ -706,8 +706,8 @@ console.log('\n[V73] Customize options, order details, Quotation, docs links');
   eq(INVOICE_TYPES.quotation.prefix, 'QUO', 'Quotations number as QUO');
   eq(salesSign({ invoiceType: 'quotation', totalAmount: 100 }), 0, 'A quotation is not a sale');
 
-  eq(docsLink('invoices#toolbar'), '/docs/invoices.html#toolbar', 'Help links go to the docs section');
-  eq(docsLink('index'), '/docs/', 'The docs home link');
+  eq(docsLink('invoices#toolbar'), './user-guide/invoices.html#toolbar', 'Help links go to the docs section');
+  eq(docsLink('index'), './user-guide/', 'The docs home link');
   eq(TCS_SECTIONS.some((t) => t.code === '206C(1H)'), false, '206C(1H) (omitted from 1 April 2025) is not offered on new invoices');
 }
 

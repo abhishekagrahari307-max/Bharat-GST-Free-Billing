@@ -2,13 +2,13 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <script src="/boot-guard.js"></script>
+    <script src="./boot-guard.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <meta http-equiv="Content-Security-Policy" content="
       default-src 'self';
-      script-src  'self' 'wasm-unsafe-eval' https://accounts.google.com https://apis.google.com;
-      worker-src  'self' blob:;
+      script-src  'self' 'wasm-unsafe-eval' https://accounts.google.com https://apis.google.com https://cdn.jsdelivr.net;
+      worker-src  'self' blob: https://cdn.jsdelivr.net;
       style-src   'self' 'unsafe-inline' http: https:;
       font-src    'self' http: https: data:;
       img-src     'self' data: blob: https://*.googleusercontent.com;
@@ -24,33 +24,33 @@
     <meta name="keywords" content="Bharat GST Free Billing, Bharat GST Billing, GST invoice generator, free billing software India, free GST software, GST billing app, offline invoice maker, tax invoice generator, proforma invoice, bill of supply, credit note, delivery challan, e-way bill generator, CGST SGST IGST calculator, GSTR-1 filing, GSTR-1 JSON export, GSTR-3B filing, GSTR-3B JSON export, GSTR-2B reconciliation, ITC reconciliation tool, HSN code invoice, SAC code service, TDS on invoice, TCS on invoice, Form 26Q TDS, Form 27EQ TCS, small business billing, freelancer invoice, UPI QR invoice, payment tracking software, expense tracker GST, profit loss report, recurring invoice software, receipt voucher generator, multi business GSTIN switcher, PWA invoicing app" />
     <meta name="author" content="Bharat GST Free Billing" />
     <meta name="robots" content="index, follow" />
-    <link rel="canonical" href="https://github.com/abhishekagrahari307-max/Bharat-ai-Voice" />
+    <link rel="canonical" href="https://abhishekagrahari307-max.github.io/Bharat-ai-Voice/" />
 
     <!-- Open Graph / Social -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Bharat GST Free Billing" />
     <meta property="og:title" content="Bharat GST Free Billing — Free GST Invoice Generator, GSTR-1/3B/2B, UPI QR & Inventory" />
     <meta property="og:description" content="Free GST billing & invoicing platform for Indian businesses. Tax invoices, GSTR-1 / GSTR-3B JSON exports, GSTR-2B reconciliation, e-Way Bill, TDS/TCS reports, UPI QR, inventory, thermal & PDF printing. No signup, free forever." />
-    <meta property="og:image" content="/og-preview.png" />
-    <meta property="og:url" content="https://github.com/abhishekagrahari307-max/Bharat-ai-Voice" />
+    <meta property="og:image" content="./icons/icon-512.png" />
+    <meta property="og:url" content="https://abhishekagrahari307-max.github.io/Bharat-ai-Voice/" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Bharat GST Free Billing — Free GST Invoicing, GSTR-1/2B/3B, TDS/TCS & Multi-Currency" />
     <meta name="twitter:description" content="Free GST invoice generator for Bharat. GSTR-1/2B/3B, e-Way Bill, TDS/TCS reports, UPI QR, inventory & thermal receipt printing. Free forever." />
-    <meta property="twitter:image" content="/og-preview.png" />
+    <meta name="twitter:image" content="./icons/icon-512.png" />
 
     <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-180.png" />
-    <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.png" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-180.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="./icons/icon-192.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Bharat GST" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 
     <!-- PWA Manifest -->
-    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="manifest" href="./manifest.webmanifest" />
 
     <!-- Theme -->
     <meta name="theme-color" content="#1e40af" />
@@ -85,6 +85,6 @@
     </noscript>
 
     <div id="root"></div>
-    <script type="module" src="/main.jsx"></script>
+    <script type="module" src="./main.jsx"></script>
   </body>
 </html>
