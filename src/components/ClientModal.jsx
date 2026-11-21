@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { getCountryConfig, getStatesForCountry, validateTaxId, detectCountryFromBrowser, getCountriesForRegion, PAPER_SIZES, decodeGstin, COUNTRIES, localToday } from '../utils';
+import { getCountryConfig, getStatesForCountry, detectCountryFromBrowser, getCountriesForRegion, PAPER_SIZES, decodeGstin, COUNTRIES, localToday } from '../utils';
+import { validateClientDetails, validateGstinForCountry } from '../utils/profileValidation';
 import { fyStartDate, openingFields } from '../utils/clientLedger';
 import { getRegionMode, activePriceLevels } from '../store';
 import { PriceLevelSelect } from './PriceLevelFields';
+import { toast } from './Toast';
 import HelpButton from './HelpButton';
 
 // v1.10.86 (#214) - businessKey: the business an opening balance typed here is with.
@@ -32,6 +34,7 @@ export default function ClientModal({ show, onClose, onSave, client, isEditing, 
   };
   const [form, setForm] = useState({ ...emptyForm });
   const [taxIdWarning, setTaxIdWarning] = useState('');
+  const [errors, setErrors] = useState({});
 
   useEffect(() => {
     if (show && client) {
@@ -55,6 +58,7 @@ export default function ClientModal({ show, onClose, onSave, client, isEditing, 
       setForm({ ...emptyForm });
     }
     setTaxIdWarning('');
+    setErrors({});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [show, client]);
 
@@ -71,27 +75,32 @@ export default function ClientModal({ show, onClose, onSave, client, isEditing, 
   // catch a typo here, offline. The state drives place of supply, so a wrong
   // one silently swaps CGST + SGST for IGST on every invoice to this client.
   const handleTaxIdBlur = () => {
-    const result = validateTaxId(form.country, form.gstin);
-    setTaxIdWarning(result.ok ? '' : result.message);
+    const msg = validateGstinForCountry(form.country || 'India', form.gstin, form.state);
+    setTaxIdWarning(msg);
+    setErrors(prev => ({ ...prev, gstin: msg }));
     if (form.country !== 'India') return;
     const decoded = decodeGstin(form.gstin);
-    if (!decoded) return;
-    if (!decoded.checksumOk) {
-      setTaxIdWarning('This GSTIN fails its own checksum — check for a typo.');
-      return;
-    }
-    if (!decoded.state) return;
+    if (!decoded || !decoded.checksumOk || !decoded.state) return;
     if (!form.state?.trim()) {
       setForm(prev => ({ ...prev, state: decoded.state }));
-    } else if (form.state.trim().toLowerCase() !== decoded.state.toLowerCase()) {
-      setTaxIdWarning(`This GSTIN is registered in ${decoded.state}, but the state says ${form.state}.`);
     }
   };
 
   const handleSave = () => {
-    if (!form.name.trim()) return;
+    const check = validateClientDetails(form);
+    if (!check.ok) {
+      setErrors(check.errors);
+      toast(check.firstError, 'error');
+      return;
+    }
+    setErrors({});
     const limit = Number(form.creditLimit);
-    onSave({ ...form, creditLimit: Number.isFinite(limit) && limit > 0 ? Math.round(limit * 100) / 100 : '', ...openingFields(form, businessKey, localToday()) });
+    onSave({
+      ...form,
+      gstin: (form.gstin || '').trim().toUpperCase(),
+      creditLimit: Number.isFinite(limit) && limit > 0 ? Math.round(limit * 100) / 100 : '',
+      ...openingFields(form, businessKey, localToday()),
+    });
   };
   const levels = activePriceLevels();
 
@@ -105,15 +114,25 @@ export default function ClientModal({ show, onClose, onSave, client, isEditing, 
         <div className="grid grid-cols-2 gap-4">
           <div className="form-group" style={{ gridColumn: 'span 2' }}>
             <label className="form-label">Client / Business Name *</label>
-            <input type="text" className="form-input" value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} placeholder="e.g. Acme Corp" />
+            <input type="text" className="form-input"
+              style={errors.name ? { borderColor: '#dc2626' } : undefined}
+              value={form.name}
+              onChange={e => { setForm(prev => ({ ...prev, name: e.target.value })); setErrors(er => ({ ...er, name: '' })); }}
+              placeholder="e.g. Acme Corp" />
+            {errors.name && <small style={{ color: '#dc2626', fontSize: '0.72rem', display: 'block', marginTop: '0.2rem' }}>⚠ {errors.name}</small>}
           </div>
           <div className="form-group" style={{ gridColumn: 'span 2' }}>
             <label className="form-label">Address</label>
-            <input type="text" className="form-input" value={form.address} onChange={e => setForm(prev => ({ ...prev, address: e.target.value }))} placeholder="Street address, locality" />
+            <input type="text" className="form-input"
+              style={errors.address ? { borderColor: '#dc2626' } : undefined}
+              value={form.address}
+              onChange={e => { setForm(prev => ({ ...prev, address: e.target.value })); setErrors(er => ({ ...er, address: '' })); }}
+              placeholder="Street address, locality" />
+            {errors.address && <small style={{ color: '#dc2626', fontSize: '0.72rem', display: 'block', marginTop: '0.2rem' }}>⚠ {errors.address}</small>}
           </div>
           <div className="form-group">
             <label className="form-label">Country</label>
-            <select className="form-input" value={form.country} onChange={e => setForm(prev => ({ ...prev, country: e.target.value, state: '' }))}>
+            <select className="form-input" value={form.country} onChange={e => { setForm(prev => ({ ...prev, country: e.target.value, state: '' })); setErrors({}); setTaxIdWarning(''); }}>
               {(() => {
                 const visible = getCountriesForRegion(getRegionMode());
                 const out = [];
@@ -126,40 +145,86 @@ export default function ClientModal({ show, onClose, onSave, client, isEditing, 
           </div>
           <div className="form-group">
             <label className="form-label">City</label>
-            <input type="text" className="form-input" value={form.city} onChange={e => setForm(prev => ({ ...prev, city: e.target.value }))} placeholder={abroad ? 'City' : 'e.g. Mumbai'} />
+            <input type="text" className="form-input"
+              style={errors.city ? { borderColor: '#dc2626' } : undefined}
+              value={form.city}
+              onChange={e => { setForm(prev => ({ ...prev, city: e.target.value })); setErrors(er => ({ ...er, city: '' })); }}
+              placeholder={abroad ? 'City' : 'e.g. Mumbai'} />
+            {errors.city && <small style={{ color: '#dc2626', fontSize: '0.72rem', display: 'block', marginTop: '0.2rem' }}>⚠ {errors.city}</small>}
           </div>
           <div className="form-group">
             <label className="form-label">{cc.postalLabel}</label>
-            <input type="text" className="form-input" value={form.pin} onChange={e => setForm(prev => ({ ...prev, pin: e.target.value }))} placeholder={cc.postalLabel} />
+            <input type="text" className="form-input"
+              style={errors.pin ? { borderColor: '#dc2626' } : undefined}
+              value={form.pin}
+              onChange={e => {
+                const v = (form.country || 'India') === 'India' ? e.target.value.replace(/[^\d]/g, '').slice(0, 6) : e.target.value;
+                setForm(prev => ({ ...prev, pin: v }));
+                setErrors(er => ({ ...er, pin: '' }));
+              }}
+              placeholder={cc.postalLabel} />
+            {errors.pin && <small style={{ color: '#dc2626', fontSize: '0.72rem', display: 'block', marginTop: '0.2rem' }}>⚠ {errors.pin}</small>}
           </div>
           <div className="form-group">
             <label className="form-label">{cc.stateLabel}{abroad ? ' (optional)' : ''}</label>
             {stateOptions.length > 0 ? (
-              <select className="form-input" value={form.state} onChange={e => setForm(prev => ({ ...prev, state: e.target.value }))}>
+              <select className="form-input"
+                style={errors.state ? { borderColor: '#dc2626' } : undefined}
+                value={form.state}
+                onChange={e => { setForm(prev => ({ ...prev, state: e.target.value })); setErrors(er => ({ ...er, state: '', gstin: '' })); }}>
                 <option value="">Select {cc.stateLabel}</option>
                 {stateOptions.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             ) : (
-              <input type="text" className="form-input" value={form.state} onChange={e => setForm(prev => ({ ...prev, state: e.target.value }))} placeholder={cc.stateLabel} />
+              <input type="text" className="form-input"
+                style={errors.state ? { borderColor: '#dc2626' } : undefined}
+                value={form.state}
+                onChange={e => { setForm(prev => ({ ...prev, state: e.target.value })); setErrors(er => ({ ...er, state: '', gstin: '' })); }}
+                placeholder={cc.stateLabel} />
             )}
+            {errors.state && <small style={{ color: '#dc2626', fontSize: '0.72rem', display: 'block', marginTop: '0.2rem' }}>⚠ {errors.state}</small>}
           </div>
           <div className="form-group">
             <label className="form-label">{abroad ? `${cc.taxIdLabel} (optional)` : cc.taxIdLabel}</label>
             <input type="text" className="form-input"
-              style={taxIdWarning ? { borderColor: '#f59e0b' } : undefined}
+              style={errors.gstin ? { borderColor: '#dc2626' } : taxIdWarning ? { borderColor: '#f59e0b' } : undefined}
               value={form.gstin}
-              onChange={e => { setForm(prev => ({ ...prev, gstin: e.target.value.toUpperCase() })); if (taxIdWarning) setTaxIdWarning(''); }}
+              onChange={e => {
+                const v = e.target.value.toUpperCase().replace(/\s+/g, '');
+                const decoded = form.country === 'India' ? decodeGstin(v) : null;
+                setForm(prev => ({
+                  ...prev,
+                  gstin: v,
+                  ...(decoded?.checksumOk && decoded?.state && !prev.state?.trim() ? { state: decoded.state } : {}),
+                }));
+                if (taxIdWarning) setTaxIdWarning('');
+                setErrors(er => ({ ...er, gstin: '' }));
+              }}
               onBlur={handleTaxIdBlur}
-              placeholder={cc.taxIdPlaceholder} maxLength={20} />
-            {taxIdWarning && <small style={{ color: '#d97706', fontSize: '0.7rem', display: 'block', marginTop: '0.2rem' }}>⚠ {taxIdWarning}</small>}
+              placeholder={cc.taxIdPlaceholder} maxLength={form.country === 'India' ? 15 : 20} />
+            {(errors.gstin || taxIdWarning) && (
+              <small style={{ color: errors.gstin ? '#dc2626' : '#d97706', fontSize: '0.72rem', display: 'block', marginTop: '0.2rem' }}>
+                ⚠ {errors.gstin || taxIdWarning}
+              </small>
+            )}
           </div>
           <div className="form-group">
             <label className="form-label">Email</label>
-            <input type="email" className="form-input" value={form.email} onChange={e => setForm(prev => ({ ...prev, email: e.target.value }))} placeholder="client@example.com" />
+            <input type="email" className="form-input"
+              style={errors.email ? { borderColor: '#dc2626' } : undefined}
+              value={form.email}
+              onChange={e => { setForm(prev => ({ ...prev, email: e.target.value })); setErrors(er => ({ ...er, email: '' })); }}
+              placeholder="client@example.com" />
+            {errors.email && <small style={{ color: '#dc2626', fontSize: '0.72rem', display: 'block', marginTop: '0.2rem' }}>⚠ {errors.email}</small>}
           </div>
           <div className="form-group">
             <label className="form-label">Phone</label>
-            <input type="tel" className="form-input" value={form.phone} onChange={e => setForm(prev => ({ ...prev, phone: e.target.value }))} placeholder={abroad ? 'With country code, e.g. +1 415 555 0100' : '+91 98765 43210'} />
+            <input type="tel" className="form-input"
+              style={errors.phone ? { borderColor: '#dc2626' } : undefined}
+              value={form.phone}
+              onChange={e => { setForm(prev => ({ ...prev, phone: e.target.value })); setErrors(er => ({ ...er, phone: '' })); }}
+              placeholder={abroad ? 'With country code, e.g. +1 415 555 0100' : '+91 98765 43210'} />
+            {errors.phone && <small style={{ color: '#dc2626', fontSize: '0.72rem', display: 'block', marginTop: '0.2rem' }}>⚠ {errors.phone}</small>}
           </div>
           {abroad && (defaultCountry || 'India') === 'India' && (
             <div className="form-group notice notice-info" style={{ gridColumn: 'span 2', display: 'block', fontSize: '0.78rem', lineHeight: 1.5, padding: '0.5rem 0.75rem', borderRadius: 6 }}>

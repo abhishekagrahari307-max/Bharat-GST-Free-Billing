@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Building2, FileText, BarChart3, Shield, ChevronRight, ChevronLeft, Check, ArrowRight, Image, PenTool } from 'lucide-react';
 import { saveProfile, setRegionMode, getEnabledModules, setEnabledModules, setBusinessType, patchInvoiceDefaults, applyTypeTerms } from '../store';
 import { getStatesForCountry, getCountryConfig, detectCountryFromBrowser, createEmptyAccount, gstinFill } from '../utils';
+import { validateBusinessProfile, validateBankFields, validateGstinForCountry } from '../utils/profileValidation';
 import { BUSINESS_TYPES, applyBusinessType, wizardResult } from '../utils/businessTypes';
 import { getPrintSettings, savePrintSettings } from '../utils/printSettings';
 import { toast } from './Toast';
@@ -35,13 +36,57 @@ export default function WelcomeGuide({ onComplete }) {
   // this one): it sets the features, the print style and the starting terms.
   const [biz, setBiz] = useState('');
   const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState({});
   const cc = getCountryConfig(profile.country);
   const stateOptions = getStatesForCountry(profile.country);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value: rawValue } = e.target;
+    let value = rawValue;
+    if (name === 'gstin' || name === 'pan' || name === 'ifsc') {
+      value = rawValue.toUpperCase().replace(/\s+/g, '');
+    } else if (name === 'pin' && (profile.country || 'India') === 'India') {
+      value = rawValue.replace(/[^\d]/g, '').slice(0, 6);
+    }
+    setErrors(prev => (prev[name] || (name === 'gstin' && (prev.state || prev.pan))
+      ? { ...prev, [name]: '', ...(name === 'gstin' ? { state: '', pan: '' } : {}) }
+      : prev));
     // v1.10.86 - a full GSTIN fills in the state and PAN (empty ones only).
     setProfile(p => ({ ...p, [name]: value, ...(name === 'gstin' && p.country === 'India' ? gstinFill(p, value) : {}) }));
+  };
+
+  const handleGstinBlur = () => {
+    if (!profile.gstin?.trim()) return;
+    const msg = validateGstinForCountry(profile.country || 'India', profile.gstin, profile.state);
+    setErrors(prev => ({ ...prev, gstin: msg }));
+  };
+
+  const handleNextStep = () => {
+    if (step === 1) {
+      const check = validateBusinessProfile(profile, { requireState: true, checkBank: false });
+      if (!check.ok) {
+        setErrors(check.errors);
+        toast(check.firstError, 'error');
+        return;
+      }
+      setErrors({});
+    } else if (step === 2) {
+      const accErrs = validateBankFields(profile, profile.country || 'India');
+      const firstErr = Object.values(accErrs)[0];
+      if (firstErr) {
+        setErrors(accErrs);
+        toast(firstErr, 'error');
+        return;
+      }
+      setErrors({});
+    }
+    setStep(step + 1);
+  };
+
+  const handleSkipBank = () => {
+    setErrors({});
+    setProfile(p => ({ ...p, bankName: '', accountNumber: '', ifsc: '', swift: '', upiId: '' }));
+    setStep(3);
   };
 
   // v1.10.86 - the business type, as the old second wizard applied it, plus
@@ -76,6 +121,13 @@ export default function WelcomeGuide({ onComplete }) {
   };
 
   const handleFinish = async () => {
+    const profileCheck = validateBusinessProfile(profile, { requireState: true, checkBank: true });
+    if (!profileCheck.ok) {
+      setErrors(profileCheck.errors);
+      toast(profileCheck.firstError, 'error');
+      setStep(profileCheck.errors.accountNumber || profileCheck.errors.ifsc || profileCheck.errors.upiId ? 2 : 1);
+      return;
+    }
     setSaving(true);
     try {
       setRegionMode(region);
@@ -112,11 +164,6 @@ export default function WelcomeGuide({ onComplete }) {
     applySetup();
     localStorage.setItem('freegstbill_onboarded', 'true');
     onComplete(null);
-  };
-
-  const canProceed = () => {
-    if (step === 1) return profile.businessName.trim().length > 0;
-    return true;
   };
 
   return (
@@ -205,34 +252,73 @@ export default function WelcomeGuide({ onComplete }) {
               <div style={{ display: 'grid', gap: '1rem' }}>
                 <div className="form-group">
                   <label className="form-label">Business Name *</label>
-                  <input type="text" name="businessName" className="form-input" value={profile.businessName} onChange={handleChange}
+                  <input type="text" name="businessName" className="form-input"
+                    style={errors.businessName ? { borderColor: '#dc2626' } : undefined}
+                    value={profile.businessName} onChange={handleChange}
                     placeholder="e.g. Sharma Consultants Pvt. Ltd." />
+                  {errors.businessName && <small style={{ color: '#dc2626', fontSize: '0.72rem', display: 'block', marginTop: '0.2rem' }}>⚠ {errors.businessName}</small>}
                 </div>
 
                 <div className="form-group">
                   <label className="form-label">Address</label>
-                  <textarea name="address" className="form-input" rows={2} value={profile.address} onChange={handleChange}
+                  <textarea name="address" className="form-input" rows={2}
+                    style={errors.address ? { borderColor: '#dc2626' } : undefined}
+                    value={profile.address} onChange={handleChange}
                     placeholder="e.g. 42, MG Road, Sector 15, Gurugram 122001" />
+                  {errors.address && <small style={{ color: '#dc2626', fontSize: '0.72rem', display: 'block', marginTop: '0.2rem' }}>⚠ {errors.address}</small>}
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group">
+                    <label className="form-label">City</label>
+                    <input type="text" name="city" className="form-input"
+                      style={errors.city ? { borderColor: '#dc2626' } : undefined}
+                      value={profile.city || ''} onChange={handleChange}
+                      placeholder="e.g. Lucknow" />
+                    {errors.city && <small style={{ color: '#dc2626', fontSize: '0.72rem', display: 'block', marginTop: '0.2rem' }}>⚠ {errors.city}</small>}
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">{cc.postalLabel}</label>
+                    <input type="text" name="pin" className="form-input"
+                      style={errors.pin ? { borderColor: '#dc2626' } : undefined}
+                      value={profile.pin || ''} onChange={handleChange}
+                      placeholder={cc.postalLabel} />
+                    {errors.pin && <small style={{ color: '#dc2626', fontSize: '0.72rem', display: 'block', marginTop: '0.2rem' }}>⚠ {errors.pin}</small>}
+                  </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div className="form-group">
                     <label className="form-label">{cc.taxIdLabel}</label>
-                    <input type="text" name="gstin" className="form-input" value={profile.gstin} onChange={handleChange}
-                      placeholder={cc.taxIdPlaceholder} maxLength={20} style={{ textTransform: 'uppercase' }} />
-                    <span className="field-hint">Leave blank if not registered for tax.{profile.country === 'India' && ' Typing your GSTIN fills in the state and PAN.'}</span>
+                    <input type="text" name="gstin" className="form-input"
+                      value={profile.gstin} onChange={handleChange} onBlur={handleGstinBlur}
+                      placeholder={cc.taxIdPlaceholder} maxLength={profile.country === 'India' ? 15 : 20}
+                      style={{ textTransform: 'uppercase', ...(errors.gstin ? { borderColor: '#dc2626' } : {}) }} />
+                    {errors.gstin ? (
+                      <small style={{ color: '#dc2626', fontSize: '0.72rem', display: 'block', marginTop: '0.2rem' }}>⚠ {errors.gstin}</small>
+                    ) : (
+                      <span className="field-hint">Leave blank if not registered for tax.{profile.country === 'India' && ' Typing your GSTIN fills in the state and PAN.'}</span>
+                    )}
                   </div>
                   <div className="form-group">
-                    <label className="form-label">{cc.stateLabel}</label>
+                    <label className="form-label">{cc.stateLabel}{profile.country === 'India' ? ' *' : ''}</label>
                     {stateOptions.length > 0 ? (
-                      <select name="state" className="form-input" value={profile.state} onChange={handleChange}>
+                      <select name="state" className="form-input"
+                        style={errors.state ? { borderColor: '#dc2626' } : undefined}
+                        value={profile.state} onChange={handleChange}>
                         <option value="">Select {cc.stateLabel.toLowerCase()}</option>
                         {stateOptions.map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
                     ) : (
-                      <input type="text" name="state" className="form-input" value={profile.state} onChange={handleChange} placeholder={cc.stateLabel} />
+                      <input type="text" name="state" className="form-input"
+                        style={errors.state ? { borderColor: '#dc2626' } : undefined}
+                        value={profile.state} onChange={handleChange} placeholder={cc.stateLabel} />
                     )}
-                    {profile.country === 'India' && <span className="field-hint">Needed for auto CGST/SGST vs IGST</span>}
+                    {errors.state ? (
+                      <small style={{ color: '#dc2626', fontSize: '0.72rem', display: 'block', marginTop: '0.2rem' }}>⚠ {errors.state}</small>
+                    ) : (
+                      profile.country === 'India' && <span className="field-hint">Needed for auto CGST/SGST vs IGST</span>
+                    )}
                   </div>
                 </div>
 
@@ -240,19 +326,27 @@ export default function WelcomeGuide({ onComplete }) {
                   <div className="form-group">
                     <label className="form-label">PAN</label>
                     <input type="text" name="pan" className="form-input" value={profile.pan} onChange={handleChange}
-                      placeholder="AAAAA1234A" maxLength={10} style={{ textTransform: 'uppercase' }} />
+                      placeholder="AAAAA1234A" maxLength={10}
+                      style={{ textTransform: 'uppercase', ...(errors.pan ? { borderColor: '#dc2626' } : {}) }} />
+                    {errors.pan && <small style={{ color: '#dc2626', fontSize: '0.72rem', display: 'block', marginTop: '0.2rem' }}>⚠ {errors.pan}</small>}
                   </div>
                   <div className="form-group">
                     <label className="form-label">Phone</label>
-                    <input type="text" name="phone" className="form-input" value={profile.phone} onChange={handleChange}
+                    <input type="text" name="phone" className="form-input"
+                      style={errors.phone ? { borderColor: '#dc2626' } : undefined}
+                      value={profile.phone} onChange={handleChange}
                       placeholder="+91 98765 43210" />
+                    {errors.phone && <small style={{ color: '#dc2626', fontSize: '0.72rem', display: 'block', marginTop: '0.2rem' }}>⚠ {errors.phone}</small>}
                   </div>
                 </div>
 
                 <div className="form-group">
                   <label className="form-label">Email</label>
-                  <input type="email" name="email" className="form-input" value={profile.email} onChange={handleChange}
+                  <input type="email" name="email" className="form-input"
+                    style={errors.email ? { borderColor: '#dc2626' } : undefined}
+                    value={profile.email} onChange={handleChange}
                     placeholder="billing@yourbusiness.com" />
+                  {errors.email && <small style={{ color: '#dc2626', fontSize: '0.72rem', display: 'block', marginTop: '0.2rem' }}>⚠ {errors.email}</small>}
                 </div>
               </div>
             </div>
@@ -275,8 +369,11 @@ export default function WelcomeGuide({ onComplete }) {
                   </div>
                   <div className="form-group">
                     <label className="form-label">Account Number</label>
-                    <input type="text" name="accountNumber" className="form-input" value={profile.accountNumber} onChange={handleChange}
+                    <input type="text" name="accountNumber" className="form-input"
+                      style={errors.accountNumber ? { borderColor: '#dc2626' } : undefined}
+                      value={profile.accountNumber} onChange={handleChange}
                       placeholder="e.g. 12345678901234" />
+                    {errors.accountNumber && <small style={{ color: '#dc2626', fontSize: '0.72rem', display: 'block', marginTop: '0.2rem' }}>⚠ {errors.accountNumber}</small>}
                   </div>
                 </div>
 
@@ -284,13 +381,21 @@ export default function WelcomeGuide({ onComplete }) {
                   <div className="form-group">
                     <label className="form-label">{cc.bankLabel || 'IFSC Code'}</label>
                     <input type="text" name="ifsc" className="form-input" value={profile.ifsc} onChange={handleChange}
-                      placeholder="e.g. HDFC0001234" style={{ textTransform: 'uppercase' }} />
+                      placeholder="e.g. HDFC0001234"
+                      style={{ textTransform: 'uppercase', ...(errors.ifsc ? { borderColor: '#dc2626' } : {}) }} />
+                    {errors.ifsc && <small style={{ color: '#dc2626', fontSize: '0.72rem', display: 'block', marginTop: '0.2rem' }}>⚠ {errors.ifsc}</small>}
                   </div>
                   <div className="form-group">
                     <label className="form-label">UPI ID</label>
-                    <input type="text" name="upiId" className="form-input" value={profile.upiId} onChange={handleChange}
+                    <input type="text" name="upiId" className="form-input"
+                      style={errors.upiId ? { borderColor: '#dc2626' } : undefined}
+                      value={profile.upiId} onChange={handleChange}
                       placeholder="e.g. business@upi" />
-                    <span className="field-hint">Auto-generates QR code on invoices</span>
+                    {errors.upiId ? (
+                      <small style={{ color: '#dc2626', fontSize: '0.72rem', display: 'block', marginTop: '0.2rem' }}>⚠ {errors.upiId}</small>
+                    ) : (
+                      <span className="field-hint">Auto-generates QR code on invoices</span>
+                    )}
                   </div>
                 </div>
 
@@ -371,7 +476,7 @@ export default function WelcomeGuide({ onComplete }) {
                 </button>
               )}
               {step > 0 && step < 3 && (
-                <button className="btn btn-secondary" onClick={() => setStep(step - 1)}>
+                <button className="btn btn-secondary" onClick={() => { setErrors({}); setStep(step - 1); }}>
                   <ChevronLeft size={16} /> Back
                 </button>
               )}
@@ -379,12 +484,12 @@ export default function WelcomeGuide({ onComplete }) {
 
             <div style={{ display: 'flex', gap: '0.75rem' }}>
               {step < 3 && (
-                <button className="btn btn-primary" onClick={() => setStep(step + 1)} disabled={!canProceed()}>
+                <button className="btn btn-primary" onClick={handleNextStep}>
                   {step === 0 ? 'Get Started' : 'Next'} <ChevronRight size={16} />
                 </button>
               )}
               {step === 2 && (
-                <button className="btn btn-secondary" onClick={() => setStep(3)} style={{ fontSize: '0.85rem' }}>
+                <button className="btn btn-secondary" onClick={handleSkipBank} style={{ fontSize: '0.85rem' }}>
                   Skip, I'll add later
                 </button>
               )}

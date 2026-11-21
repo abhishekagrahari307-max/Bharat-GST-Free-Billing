@@ -43,6 +43,7 @@ import { findSavedClient, paidTowards, clientKey } from '../utils/clientLedger';
 import { START_KEY, lastInvoiceType, rememberInvoiceType, startTypeFor, startDueDate, startTaxRate, startPaidMode, startOptionsPatch, htmlLineCount, htmlFirstWords } from '../utils/invoiceStart';
 import CreditLimitWarning from './CreditLimitWarning';
 import { useInvoiceCards, InvoiceCard } from './InvoiceCards';
+import { validateGstinForCountry, validatePinCode } from '../utils/profileValidation';
 
 // Rich text editor component that works with contentEditable properly
 function RichEditor({ value, onChange, placeholder, toolbar = false }) {
@@ -1811,18 +1812,23 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
   // v1.10.86 - the cards of this screen: their order and which are closed (InvoiceCards.jsx).
   const cards = useInvoiceCards();
   const handleClientGstinBlur = () => {
-    const decoded = decodeGstin(client.gstin);
-    if (!decoded) { setGstinHint(null); return; }
-    if (!decoded.checksumOk) {
-      setGstinHint({ tone: 'warn', message: 'This GSTIN fails its own checksum — check for a typo.' });
+    const raw = (client.gstin || '').trim();
+    if (!raw) { setGstinHint(null); return; }
+    const clientCountry = client.country || 'India';
+    const gstinErr = validateGstinForCountry(clientCountry, raw, client.state);
+    if (gstinErr) {
+      setGstinHint({ tone: 'warn', message: gstinErr });
       return;
     }
-    if (!decoded.state) { setGstinHint(null); return; }
+    if (clientCountry !== 'India') {
+      setGstinHint(null);
+      return;
+    }
+    const decoded = decodeGstin(raw);
+    if (!decoded || !decoded.state) { setGstinHint(null); return; }
     if (!client.state?.trim()) {
       setClient(prev => ({ ...prev, state: decoded.state }));
       setGstinHint({ tone: 'ok', message: `Registered in ${decoded.state} — state filled in.` });
-    } else if (client.state.trim().toLowerCase() !== decoded.state.toLowerCase()) {
-      setGstinHint({ tone: 'warn', message: `This GSTIN is registered in ${decoded.state}, but the state says ${client.state}.` });
     } else {
       setGstinHint({ tone: 'ok', message: `Registered in ${decoded.state}.` });
     }
@@ -2408,6 +2414,24 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
         ? `Already converted to ${editingBill.convertedTo}, so it is not changed. Use Duplicate to make a new one.`
         : 'A cancelled invoice is not changed. Undo the cancel on the Dashboard, or use Duplicate.', 'warning');
       return null;
+    }
+    const clientCountry = client.country || 'India';
+    if ((client.gstin || '').trim()) {
+      const gstinErr = validateGstinForCountry(clientCountry, client.gstin, client.state);
+      if (gstinErr) {
+        setClientMoreOpen(true);
+        setGstinHint({ tone: 'warn', message: gstinErr });
+        toast(`Client GSTIN: ${gstinErr}`, 'error');
+        return null;
+      }
+    }
+    if ((client.pin || '').trim()) {
+      const pinErr = validatePinCode(client.pin, clientCountry);
+      if (pinErr) {
+        setClientMoreOpen(true);
+        toast(`Client PIN: ${pinErr}`, 'error');
+        return null;
+      }
     }
     // Lazy counter reservation: if this is a NEW bill (no editingBill) and
     // the invoice number is still the peeked value, do the atomic increment
