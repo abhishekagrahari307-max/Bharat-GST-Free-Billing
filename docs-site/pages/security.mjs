@@ -62,7 +62,7 @@ export default [
   <tr><td><code>nodejs.org</code></td><td>During install or update, only if your computer has no recent Node.js</td><td>Downloads Node.js, the engine the app runs on, into the app's own folder. On Windows, if that fails, the installer asks before using Windows' own installer (winget).</td></tr>
   <tr><td><code>registry.npmjs.org</code></td><td>Only if the app's packages are missing or damaged and the launcher repairs them</td><td>Downloads the app's packages again. The release ZIP already contains them, so this normally never happens.</td></tr>
   <tr><td><code>accounts.google.com</code>, <code>www.googleapis.com</code> (Google)</td><td>Only after you set up Google Drive with your own Google key and sign in</td><td>Signs in to your Google account and saves invoice PDFs and backups to your Drive. The app can see only the files it put there itself. Offline mode stops the automatic copy of each PDF.</td></tr>
-  <tr><td><code>dicecodes.com</code> (these help pages)</td><td>When you click a ${ui('?')} button or the User Guide</td><td>Opens this guide in your browser.</td></tr>
+  <tr><td><b>Bharat GST Free Billing</b> (these help pages)</td><td>When you click a ${ui('?')} button or the User Guide</td><td>Opens this guide in your browser.</td></tr>
   <tr><td><code>github.com</code> (issues)</td><td>When you click ${ui('Report')} or Report a problem</td><td>Opens a problem form on GitHub. See <a href="#problem-reports">Problem reports</a>.</td></tr>
   <tr><td>WhatsApp, the GST portal, NSDL and other links</td><td>When you click them</td><td>Ordinary links that open in your browser, such as sharing an invoice on WhatsApp or opening the GST portal.</td></tr>
 </table></div>
@@ -85,7 +85,7 @@ export default [
 <ul>
   <li><strong>It stays free, forever.</strong> There will be no paid version, no locked features, no ads and no tracking. And because the code is open source under the MIT licence, the app you have today can always be used, copied and kept by anyone, even if we stopped working on it. Nobody can take it away or start charging you for it.</li>
   <li><strong>It costs very little to keep going.</strong> The app runs on your computer, so there are no servers and no cloud bills for us to pay.</li>
-  <li><strong>How we earn.</strong> Free GST Billing is made by DiceCodes, a small software company in India. We earn from paid work for businesses that want it (custom features, setup and moving data in, support plans) and from people who choose to support the project. See <a href="support.html">Support &amp; About</a>.</li>
+  <li><strong>How we earn.</strong> Bharat GST Free Billing is made Created by Abhishek Agrahari, a small software company in India. We earn from paid work for businesses that want it (custom features, setup and moving data in, support plans) and from people who choose to support the project. See <a href="support.html">Support &amp; About</a>.</li>
   <li><strong>Tracking you would gain us nothing.</strong> We do not sell ads or data, so there is nothing to collect. Collecting your data would also break the one promise the app is built on.</li>
   <li><strong>The code is public</strong>, so this can be checked, not just believed.</li>
 </ul>
@@ -126,7 +126,7 @@ export default [
 
 <section id="open-source">
 <h2>What "open source" means here</h2>
-<p>Open source means the full program code is public. Free GST Billing's code is on <a href="${SITE.repo}">GitHub</a> under the MIT licence. Anyone (you, your IT person, a developer friend, a security researcher) can read every line and see exactly what it does. Nothing is hidden.</p>
+<p>Open source means the full program code is public. Bharat GST Free Billing's code is on GitHub under the MIT licence. Anyone (you, your IT person, a developer friend, a security researcher) can read every line and see exactly what it does. Nothing is hidden.</p>
 <p>That is the opposite of a risk: a closed program asks you to trust it, while this one lets you check it. Many people look at the code, and problems they find are reported in public.</p>
 <h3>How a careful user can check</h3>
 <ul>
@@ -140,9 +140,9 @@ export default [
 <section id="install-safety">
 <h2>Is the install safe?</h2>
 <ul>
-  <li><strong>No administrator rights.</strong> The install line puts the app in your own user folder (Windows: <code>%LOCALAPPDATA%\\Programs\\Free GST Billing</code>; Mac: <code>Applications</code> in your home folder). It does not change Windows system files, add a Windows service or ask for an admin password.</li>
+  <li><strong>No administrator rights.</strong> The install line puts the app in your own user folder (Windows: <code>%LOCALAPPDATA%\\Programs\\Bharat GST Free Billing</code>; Mac: <code>Applications</code> in your home folder). It does not change Windows system files, add a Windows service or ask for an admin password.</li>
   <li><strong>From the official place only.</strong> The install line downloads the script and the app from this project's own GitHub page, over a secure (HTTPS) connection.</li>
-  <li><strong>Your data is never touched.</strong> Installing over an existing copy backs up your data to <code>Documents\\FreeGSTBill Backups</code> first and replaces only the app's own files.</li>
+  <li><strong>Your data is never touched.</strong> Installing over an existing copy backs up your data to <code>Documents\\BharatGST Backups</code> first and replaces only the app's own files.</li>
 </ul>
 <h3>Why Windows or the Mac may show a warning for the ZIP</h3>
 <p>The app is <b>not code-signed</b>. A signing certificate costs a few hundred dollars every year, and this app is free. So when you open the downloaded ZIP's launcher, Windows may show <b>"Windows protected your PC"</b> and a Mac may say it <b>cannot check the app</b>. That message means "this program is not signed by a paid certificate". It does not mean a virus was found. See <a href="install.html#windows-protected">"Windows protected your PC"</a>.</p>
@@ -177,22 +177,52 @@ export default [
 <section id="what-you-should-do">
 <h2>What you should do</h2>
 <ul>
-  <li><strong>Download only from the official places</strong>: this project's <a href="${SITE.repo}">GitHub page</a> or the install line on these pages (<code>dicecodes.com</code>). Copies on other websites, on YouTube links or forwarded on WhatsApp are not ours and may have been changed.</li>
-  <li><strong>Keep Windows or macOS up to date</strong>, and keep its built-in antivirus on.</li>
-  <li><strong>Put a password on your computer account</strong>, and turn on the app's PIN lock if others use the same PC.</li>
-  <li><strong>Keep a backup copy on another drive</strong> or a USB disk (see <a href="backup.html#backup-copy">Keeping a copy somewhere else</a>).</li>
-  <li><strong>Keep the app updated</strong>: click ${ui('Update')} when it tells you a new version is ready.</li>
+  <li><strong>Use only your official app bookmark</strong>: open Bharat GST Free Billing directly from your installed app or saved bookmark.</li>
+  <li><strong>Keep Windows, macOS, or Android up to date</strong>, and keep built-in device security enabled.</li>
+  <li><strong>Enable AES-256-GCM Vault &amp; PIN Lock</strong> in <b>Settings → Security</b> if other people share the same device.</li>
+  <li><strong>Keep an encrypted backup copy</strong> on a USB drive or Google Drive (see <a href="backup.html">Settings → Data &amp; Backups</a>).</li>
 </ul>
 </section>
 
 <section id="report-a-security-issue">
 <h2>Found a security problem?</h2>
-<p>Please report it privately, not in a public issue, so it can be fixed before anyone misuses it:</p>
+<p>Use synthetic sample data (never real invoices, GSTINs, or bank numbers) when documenting any security or bug report in the app's Problem Log.</p>
+</section>
+`,
+},
+{
+  slug: 'privacy',
+  title: 'Privacy Notice & Data Protection (DPDP)',
+  nav: 'Privacy Notice',
+  lead: 'How Bharat GST Free Billing (Created by Abhishek Agrahari) handles business, client, and invoice data under Indian Digital Personal Data Protection (DPDP) principles.',
+  body: `
+<section id="overview">
+<h2>Zero cloud collection — 100% on your device</h2>
+<p><b>Bharat GST Free Billing</b> is a local-first web and desktop application. We do <b>not</b> operate a central cloud database, do <b>not</b> require user registration, and do <b>not</b> collect, transmit, sell, or profile your invoices, GSTINs, client names, phone numbers, bank accounts, or tax returns.</p>
 <ul>
-  <li><strong>GitHub private report</strong> (preferred): the <a href="${SITE.repo}/security/advisories/new">Report a vulnerability</a> button on the project's Security tab.</li>
-  <li><strong>Email</strong>: Contact@dicecodes.com with <code>SECURITY</code> in the subject.</li>
+  <li><strong>Where your data lives:</strong> All business profiles, invoices, clients, inventory, purchases, expenses, and settings are stored strictly inside your own browser's IndexedDB (or your local computer's <code>data/</code> folder when running the local desktop server).</li>
+  <li><strong>Encryption at rest:</strong> When you enable the PIN Lock / Encrypted Vault in <b>Settings → Security</b>, sensitive records are encrypted using <b>AES-256-GCM</b> with keys derived via <b>PBKDF2-HMAC-SHA256 (310,000 iterations)</b>.</li>
+  <li><strong>Zero analytics or ad trackers:</strong> The application embeds zero third-party analytics scripts, advertising pixels, or external font CDNs.</li>
 </ul>
-<p>Use made-up data when you describe it, never real invoices or GSTINs. The full policy is in <a href="${SITE.repo}/blob/main/SECURITY.md">SECURITY.md</a>.</p>
+</section>
+
+<section id="optional-connections">
+<h2>Optional user-initiated connections</h2>
+<p>Network requests happen only when you explicitly trigger an optional feature:</p>
+<ul>
+  <li><strong>Google Drive Backup (Optional):</strong> If you connect your own Google Drive in <b>Settings → Data &amp; Backups</b>, encrypted backup files are uploaded solely to your own Google Drive account's private app/backup space.</li>
+  <li><strong>WhatsApp Share (Optional):</strong> Clicking Share on WhatsApp opens WhatsApp on your device with the invoice summary you chose to send.</li>
+</ul>
+</section>
+
+<section id="your-rights">
+<h2>Data export, erasure &amp; control</h2>
+<p>Because all records reside on your own device, you have immediate, unrestricted control at all times:</p>
+<ul>
+  <li><strong>Export / Portability:</strong> Export all data as JSON, CSV, Excel, GSTR-1/3B JSON, or encrypted <code>.fgsb</code> archives from <b>Settings → Data &amp; Backups</b>.</li>
+  <li><strong>Erasure:</strong> Delete individual records inside the app or clear site storage / use Reset in Settings to permanently erase local data from your device.</li>
+  <li><strong>Creator &amp; Maintainer:</strong> Created by <b>Abhishek Agrahari</b> for Indian businesses.</li>
+</ul>
 </section>
 `,
 },

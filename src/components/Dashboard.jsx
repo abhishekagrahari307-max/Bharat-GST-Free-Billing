@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
 import { FileText, Trash2, Plus, IndianRupee, Receipt, Edit3, TrendingUp, Search, Copy, X, CheckCircle, Clock, AlertTriangle, MessageCircle, Mail, StickyNote, Send, Package, Download, Printer, Ban, Undo2, Eye, QrCode, Upload, ClipboardList, Truck } from 'lucide-react';
 import HelpButton from './HelpButton';
 import { getAllBills, saveBill, getAllProducts, applyStockChanges, getProfile, getAllClients, getStockAlertSettings, saveReceipt, deleteReceipt, getAllReceipts, reserveReceiptNo, markSavedPdfCancelled, getEnabledModules, trashBill, getTrashedBills, restoreBillFromTrash, purgeTrashedBill, syncTakenChallans } from '../store';
@@ -14,7 +14,7 @@ import PageHeader, { BarButton } from './PageHeader';
 import LockButton from './LockButton';
 import ActionsMenu from './ActionsMenu';
 import BulkCsvImport from './BulkCsvImport';
-import PrintPreviewModal from './PrintPreviewModal';
+const PrintPreviewModal = lazy(() => import('./PrintPreviewModal'));
 import InvoiceTrash from './InvoiceTrash';
 import SupportNudge from './SupportNudge';
 import WelcomeCard from './WelcomeCard';
@@ -1203,7 +1203,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `freegstbill-bills-${sel.length}-${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `bharat-gst-bills-${sel.length}-${new Date().toISOString().split('T')[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
     toast(`Exported ${sel.length} invoice${sel.length !== 1 ? 's' : ''} as JSON`, 'success');
@@ -1369,7 +1369,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
         document.body.appendChild(a); a.click(); a.remove();
         setTimeout(() => URL.revokeObjectURL(url), 10000);
       } else {
-        doc.save(`freegstbill-invoices-${ok}-${localToday()}.pdf`);
+        doc.save(`bharat-gst-invoices-${ok}-${localToday()}.pdf`);
       }
       toast(`Exported ${ok} of ${sel.length} invoices`, 'success');
     } catch (e) {
@@ -2156,6 +2156,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
 
       {/* v1.10.80 (#100) - View: the invoice as it prints, without opening the editor. */}
       {viewBill?.data && (
+        <Suspense fallback={null}>
         <PrintPreviewModal
           isOpen
           onClose={() => setViewBill(null)}
@@ -2173,6 +2174,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
           extraSections={viewBill.data.extraSections || []}
           invoiceOptions={viewBill.data.invoiceOptions || {}}
         />
+        </Suspense>
       )}
 
       {/* Payment Modal */}

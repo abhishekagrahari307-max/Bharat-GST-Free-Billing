@@ -5,10 +5,10 @@ import { ShieldCheck, HardDrive, UserX, WifiOff, EyeOff, Network, Code, Download
 import { docsLink } from '../utils';
 
 const POINTS = [
-  'Your business data stays on this computer',
+  'Your business data stays on this device',
   'No account, no login, no ads',
-  'Works without internet',
-  'Free and open source: anyone can check the code',
+  'Works 100% without internet',
+  'AES-256-GCM encrypted vault & daily backups',
 ];
 
 export default function SafePrivateNote({ style }) {
@@ -38,14 +38,14 @@ const SAFETY = [
   { icon: HardDrive, title: 'Your data stays on this computer', text: 'Invoices, clients and settings are files in the app folder. We run no cloud server that holds your books. Google Drive is used only if you connect your own.', doc: 'security#your-data-stays' },
   { icon: UserX, title: 'No account, no login', text: 'The app never asks for an email address or a password to use it.', doc: 'security#your-data-stays' },
   { icon: WifiOff, title: 'Works without internet', text: 'Invoices, PDFs, reports and GST returns all work offline. Turn on Offline mode (Settings → Privacy & Security → Privacy & internet) and the app never goes online by itself.', doc: 'security#offline-mode' },
-  { icon: EyeOff, title: 'No tracking, no ads', text: 'No analytics and nothing sent to us. We never see your invoices, amounts, GSTIN or bank details. Free because we earn from paid work for businesses, not from data.', doc: 'security#why-free' },
-  { icon: Network, title: 'Other computers cannot open it', text: 'The app answers only this computer, not your Wi-Fi or office network, and refuses requests from other websites. Phones you pair yourself can use it on your own Wi-Fi, only if you turn that on.', doc: 'security#network' },
-  { icon: Code, title: 'Open source', text: 'Anyone can read the code on GitHub, and a developer can build the app from it themselves.', doc: 'security#open-source' },
-  { icon: Download, title: 'A safe install', text: 'No administrator rights, no system changes. It downloads only from this project’s GitHub page, and your data is backed up first.', doc: 'security#install-safety' },
-  { icon: Archive, title: 'Daily backups', text: 'Every day your data is copied into a dated backup, kept for 30 days. Add a second folder on another drive for a copy there too.', doc: 'security#backups-and-lock' },
-  { icon: KeyRound, title: 'Optional PIN lock', text: 'On a shared computer, lock the app with a PIN. It is stored only as a scrambled check value, never as the digits.', doc: 'security#backups-and-lock' },
-  { icon: Bug, title: 'Problem reports only when you click', text: 'Errors are noted on this computer. A report opens only when you click Report, with GSTIN, phone, bank and other private details removed first.', doc: 'security#problem-reports' },
-  { icon: RefreshCw, title: 'Security fixes in updates', text: 'A new version most Saturdays, urgent fixes sooner. GitHub security alerts watch the code libraries the app uses.', doc: 'security#updates-and-security-fixes' },
+  { icon: EyeOff, title: 'No tracking, no ads', text: 'Zero analytics, zero ad scripts, and nothing sent anywhere. Nobody ever sees your invoices, amounts, GSTIN or bank details.', doc: 'security#why-free' },
+  { icon: Network, title: 'Other computers cannot open it', text: 'The app answers only this device, not external websites. Phones you pair yourself can use it on your own Wi-Fi only if you turn that on.', doc: 'security#network' },
+  { icon: Code, title: 'Transparent & auditable', text: 'Pure standard web & cryptographic formats (JSON, CSV, GST Portal JSON, AES-256-GCM .fgsb) with zero vendor lock-in.', doc: 'security#open-source' },
+  { icon: Download, title: 'Safe offline install', text: 'Installs directly as an offline PWA or local desktop app without administrator rights or system modifications.', doc: 'security#install-safety' },
+  { icon: Archive, title: 'Daily backups', text: 'Automatic daily snapshots plus encrypted .fgsb and JSON exports you can save to USB or your own Google Drive.', doc: 'security#backups-and-lock' },
+  { icon: KeyRound, title: 'AES-256-GCM Vault & PIN lock', text: 'Protect sensitive records on shared devices with PBKDF2-SHA256 (310k iterations) + AES-256-GCM encryption and staff roles.', doc: 'security#backups-and-lock' },
+  { icon: Bug, title: 'Local problem log (PII scrubbed)', text: 'Errors are logged strictly on this device with GSTIN, PAN, phone, email, UPI ID and bank numbers redacted automatically.', doc: 'security#problem-reports' },
+  { icon: RefreshCw, title: 'Safe idle updates & self-heal', text: 'Updates apply only when idle — never while typing an invoice — with 9-point startup health diagnostics.', doc: 'security#updates-and-security-fixes' },
   { icon: ListChecks, title: 'Check it yourself', text: 'Switch your internet off and use the app: everything works. Keep a periodic backup on another drive for complete peace of mind.', doc: 'security#check-yourself' },
 ];
 

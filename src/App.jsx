@@ -45,7 +45,6 @@ import { notifyUpdate, canAskToNotify, askToNotify } from './utils/updateNotice'
 // Result: smaller initial JS payload; each heavy view chunk-caches
 // once fetched.
 import Dashboard from './components/Dashboard';
-import InvoiceGenerator from './components/InvoiceGenerator';
 import ToastContainer, { toast } from './components/Toast';
 import UpdateOverlay from './components/UpdateOverlay';
 import { releaseNoteTitles } from './utils/changelog';
@@ -53,6 +52,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import ConfirmModalContainer, { promptAction } from './components/ConfirmModal';
 import WelcomeGuide from './components/WelcomeGuide';
 import { WhatsNewAfterUpdate, SEEN_KEY as WHATS_NEW_SEEN_KEY } from './components/WhatsNewSlides';
+const InvoiceGenerator = lazy(() => import('./components/InvoiceGenerator'));
 const SettingsView = lazy(() => import('./components/SettingsView'));
 // v1.10.86 - loaded on first Ctrl+K (it carries the How do I… list and the help index).
 const QuickSearch = lazy(() => import('./components/QuickSearch'));
@@ -996,6 +996,7 @@ function App() {
 
   return (
     <div className={`app-layout${sidebarAutoHide ? ' sidebar-autohide' : ''}`}>
+      <a href="#main-content" className="skip-link">Skip to main content</a>
       {/* v1.10.86 - "What's new" slides, once after an update (never during the
           first-run welcome, which renders above instead of this layout). */}
       <WhatsNewAfterUpdate blocked={showWelcome} />
@@ -1182,7 +1183,7 @@ function App() {
               onClick={() => setCurrentView('support')}
               title="About Bharat GST Free Billing — Created by Abhishek Agrahari"
               style={{
-                padding: '0.45rem 0.65rem 0.15rem',
+                padding: '0.45rem 0.65rem 0.1rem',
                 fontSize: '0.68rem',
                 color: 'var(--text-muted)',
                 textAlign: 'center',
@@ -1191,6 +1192,11 @@ function App() {
               }}
             >
               Created by <strong style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Abhishek Agrahari</strong>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', paddingBottom: '0.2rem', fontSize: '0.66rem', color: 'var(--text-muted)' }}>
+              <a href="./privacy.html" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>Privacy</a>
+              <span aria-hidden="true">·</span>
+              <a href="./terms.html" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>Terms</a>
             </div>
           </div>
         </nav>
@@ -1201,7 +1207,7 @@ function App() {
         <MenuCustomise extras={menuExtras} onClose={() => setShowMenuEditor(false)}
           onOpenFeatures={() => { setShowMenuEditor(false); openSettingsSection('section-modules'); }} />
       )}
-      <div className="main-content">
+      <main id="main-content" className="main-content">
         <div className="app-topbar" ref={barRef}>
           <div className="page-bar-title" ref={setBarTitleEl} />
           {searchBox}
@@ -1217,6 +1223,9 @@ function App() {
         {currentView === 'dashboard' && (
           <Dashboard onNew={handleNewInvoice} onEdit={handleEditInvoice} onPrint={handlePrintInvoice} onDuplicate={handleDuplicateInvoice} onConvert={handleConvertToInvoice} onOpenProducts={() => setCurrentView('inventory')} onOpenPurchases={() => setCurrentView('purchases')} onOpenSettings={() => setCurrentView('settings')} onOpenGuide={openDocs} onOpenSupport={() => setCurrentView('support')} activeProfile={profile} />
         )}
+        {/* v1.10.4 — All lazy views under one Suspense boundary. Only the
+             matched view's chunk actually loads; others stay unfetched. */}
+        <Suspense fallback={<ViewLoading />}>
         {currentView === 'new' && (
           <InvoiceGenerator
             key={editorKey}
@@ -1224,9 +1233,6 @@ function App() {
             profile={profile} editingBill={editingBill}
           />
         )}
-        {/* v1.10.4 — All lazy views under one Suspense boundary. Only the
-             matched view's chunk actually loads; others stay unfetched. */}
-        <Suspense fallback={<ViewLoading />}>
         {currentView === 'clients' && (
           <ClientsView key={businessKey} onNew={handleNewInvoice} onNewFor={handleNewInvoiceFor} onRecordPayment={handleRecordPaymentFor} onEdit={handleEditInvoice} onDuplicate={handleDuplicateInvoice} onPrint={handlePrintInvoice} />
         )}
@@ -1270,11 +1276,11 @@ function App() {
           <SupportView />
         )}
         </Suspense>
-        {/* Version + DiceCodes line: Dashboard only, so it never takes space on working screens. */}
+        {/* App footer: Dashboard only, so it never takes space on working screens. */}
         {currentView === 'dashboard' && <AppFooter onOpenSupport={() => setCurrentView('support')} />}
         </ErrorBoundary>
         </PageBarSlots.Provider>
-      </div>
+      </main>
 
       {/* Update modal — release notes + Export-backup-first nudge + Update Now */}
       {/* Complete Notification Center (Task 4) */}
@@ -1431,7 +1437,6 @@ function App() {
 
       <MobileBottomBar
         currentView={currentView}
-        navOpen={navOpen}
         onNavigate={(view) => {
           setNavOpen(false);
           setEditingBill(null);
@@ -1441,8 +1446,9 @@ function App() {
           setNavOpen(false);
           handleNewInvoice();
         }}
-        onOpenMore={() => setNavOpen((v) => !v)}
-        inventoryEnabled={isModuleEnabled(enabledModules, 'inventory')}
+        onOpenMenu={() => setNavOpen((v) => !v)}
+        hasInventory={isModuleEnabled(enabledModules, 'inventory')}
+        anyDot={anyDot}
       />
 
       <ToastContainer />

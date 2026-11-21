@@ -49,7 +49,7 @@ export function guidePageHtml({ fingerprint, address, pairUrl, nonce }) {
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="referrer" content="no-referrer" />
 <link rel="icon" href="data:," />
-<title>Connect to your PC - Free GST Billing</title>
+<title>Connect to your PC - Bharat GST Free Billing</title>
 <style>
   :root { color-scheme: light dark; --bg: #eef2f7; --card: #fff; --text: #0f172a; --muted: #475569; --blue: #1e40af; --link: #1d4ed8; --border: #cbd5e1; --ok: #15803d; --okbg: #ecfdf5; }
   @media (prefers-color-scheme: dark) { :root { --bg: #0b1220; --card: #111a2e; --text: #e2e8f0; --muted: #94a3b8; --blue: #93c5fd; --link: #93c5fd; --border: #334155; --ok: #4ade80; --okbg: #052e1a; } }
@@ -115,7 +115,7 @@ export function pairPageHtml({ fingerprint, nonce }) {
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="referrer" content="no-referrer" />
 <link rel="icon" href="data:," />
-<title>Pair this device - Free GST Billing</title>
+<title>Pair this device - Bharat GST Free Billing</title>
 <style>
   :root { color-scheme: light dark; --bg: #eef2f7; --card: #fff; --text: #0f172a; --muted: #475569; --blue: #1e40af; --border: #cbd5e1; --err: #b91c1c; }
   @media (prefers-color-scheme: dark) { :root { --bg: #0b1220; --card: #111a2e; --text: #e2e8f0; --muted: #94a3b8; --blue: #93c5fd; --border: #334155; --err: #fca5a5; } }
@@ -137,7 +137,7 @@ export function pairPageHtml({ fingerprint, nonce }) {
 </style>
 </head><body><main>
 <h1>Pair this device</h1>
-<p class="muted">Free GST Billing on your PC. This phone or tablet must be on the same Wi-Fi as the PC.</p>
+<p class="muted">Bharat GST Free Billing on your PC. This phone or tablet must be on the same Wi-Fi as the PC.</p>
 
 <p><strong>1. Check the security code.</strong> The PC shows a security code next to the QR code. This is the code of the certificate this page came with:</p>
 <p class="fp" id="fp">${esc(fingerprint)}</p>

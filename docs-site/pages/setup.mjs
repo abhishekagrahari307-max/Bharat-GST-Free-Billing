@@ -267,7 +267,7 @@ export default [
 <p>${ui('Change Logo')}, ${ui('Change Signature')} and ${ui('Change Stamp')} pick a new picture; the red bin on a picture removes it (save to keep the change). Saving a logo or signature also ticks <b>Show logo</b> and <b>Show signature</b> for new invoices.</p>
 <p><b>Tips for good pictures.</b> Large photos are made smaller for you (to 1024 pixels on the longer side). For the signature and stamp, a PNG with a transparent background looks best, so the paper shows through; sign on white paper, photograph it in good light, and crop it close. A logo photo (PNG or JPG) is saved with a white background, so it prints cleanly on any printer.</p>
 <p>On a long invoice the signature and stamp always move to the next page together, never split.</p>
-<p><b>Your name and logo in the menu.</b> Tick <b>Show my business name and logo in the app's menu</b> under the logo, then save: the top of the menu shows your logo (or your first letter) and business name instead of "GST Billing". With several businesses, it shows the one that is open. "by DiceCodes" stays under it. New installs ask this during the first setup.</p>
+<p><b>Your name and logo in the menu.</b> Tick <b>Show my business name and logo in the app's menu</b> under the logo, then save: the top of the menu shows your logo (or your first letter) and business name instead of "GST Billing". With several businesses, it shows the one that is open. "Created by Abhishek Agrahari" stays under it. New installs ask this during the first setup.</p>
 <h3>Something wrong?</h3>
 <ul>
   <li><b>"Could not decode this image"</b>: often an iPhone photo in HEIC format. Share it as JPEG first, or set the iPhone camera to <i>Most Compatible</i>.</li>
@@ -490,7 +490,7 @@ export default [
 <ul>
   <li><b>"The two PINs do not match"</b> or <b>"The PIN must be 6 digits"</b>: type the same PIN, of the length you chose, in both boxes.</li>
   <li><b>"Current PIN is wrong"</b>: check Caps Lock is not the problem (PINs are digits only) and try again; after five tries, wait 30 seconds.</li>
-  <li><b>Forgot the PIN?</b> Open the Free-GST-Billing folder (where you start the app), make a new empty file there named <code>RESET-PIN</code>, and reload the app. The PIN is removed and the file deleted. Your invoices are not touched.</li>
+  <li><b>Forgot the PIN?</b> Open the Bharat-GST-Billing folder (where you start the app), make a new empty file there named <code>RESET-PIN</code>, and reload the app. The PIN is removed and the file deleted. Your invoices are not touched.</li>
 </ul>
 </section>
 
@@ -575,10 +575,10 @@ export default [
 <ol class="steps">
   <li><strong>Check</strong>Click ${ui('Check for Updates')}. It needs internet. Next to the button you see <i>Current: v… | Latest: v…</i>, and a green box says <b>New version v… is available!</b> when there is one.</li>
   <li><strong>Update</strong>Click ${ui('Update Now')}. There is one Update Now button here; the ${ui('Update to v…')} button in the sidebar opens the same update.</li>
-  <li><strong>Wait</strong>A window in the middle of the app, <b>Updating Free GST Billing…</b>, shows each step (backing up, downloading, unpacking, putting the new version in place) with a progress bar. It takes about a minute; do not close the app. On Windows a black updater window may open behind the app: leave it, it closes by itself.</li>
+  <li><strong>Wait</strong>A window in the middle of the app, <b>Updating Bharat GST Free Billing…</b>, shows each step (backing up, downloading, unpacking, putting the new version in place) with a progress bar. It takes about a minute; do not close the app. On Windows a black updater window may open behind the app: leave it, it closes by itself.</li>
   <li><strong>Done</strong>The page reloads by itself on the new version. If something went wrong, the window says what: click ${ui('Close')}. What the updater printed is in <a href="#result">the result panel</a> under the card.</li>
 </ol>
-<p>Every update first saves a backup of your data, <code>pre-update-<i>date</i>.zip</code> (Mac and Linux: <code>.tar.gz</code>), in <code>Documents\\FreeGSTBill Backups</code>. Your invoices, data and saved PDFs are never touched; on Mac and Linux, if an update fails half way, the old app files are put back. The .deb, AppImage, Docker and Mac app copies update by installing the new package: after a check the card says how, with a download link. For the other ways to update, see <a href="backup.html#update">Updating</a>.</p>
+<p>Every update first saves a backup of your data, <code>pre-update-<i>date</i>.zip</code> (Mac and Linux: <code>.tar.gz</code>), in <code>Documents\\BharatGST Backups</code>. Your invoices, data and saved PDFs are never touched; on Mac and Linux, if an update fails half way, the old app files are put back. The .deb, AppImage, Docker and Mac app copies update by installing the new package: after a check the card says how, with a download link. For the other ways to update, see <a href="backup.html#update">Updating</a>.</p>
 <h3>Something wrong?</h3>
 <ul>
   <li><b>"Could not check for updates"</b>: check your internet connection and try again.</li>
@@ -621,7 +621,7 @@ export default [
   <li>Finish and save any bill you are typing. Then click ${ui('Stop Server')}.</li>
   <li><b>Windows:</b> it finds the app's process on your port and ends it. <b>Mac and Linux:</b> the app stops itself a moment after replying; the result panel says <b>Stopped. Open the app again from its icon or launcher.</b></li>
   <li>The browser page will then show errors such as "Failed to fetch". That is normal.</li>
-  <li>Open the app again: double-click <b>Free GST Billing</b> on your Desktop (Mac: <b>Free GST Billing - MAC</b>; Linux: your start command).</li>
+  <li>Open the app again: double-click <b>Bharat GST Free Billing</b> on your Desktop (Mac: <b>Bharat GST Free Billing - MAC</b>; Linux: your start command).</li>
 </ol>
 <p><b>Is it safe?</b> Yes. Everything is saved as you work, so nothing already saved is lost. A bill still being typed and not saved is not kept. If the app runs as a service or in Docker, it may start again by itself.</p>
 <p><b>Something wrong?</b> If it will not start again, see <a href="troubleshooting.html#cannot-connect">Failed to fetch, App Not Running</a> and <a href="troubleshooting.html#not-answered">the server has not answered</a>. Mac and Linux: <a href="troubleshooting.html#mac">Mac</a>, <a href="troubleshooting.html#linux">Linux and NAS</a>.</p>
@@ -629,20 +629,20 @@ export default [
 
 <section id="remove">
 <h3>Remove the App</h3>
-<p><b>What it does.</b> Uninstalls Free GST Billing from this computer in one go: the app, its Desktop and Start-menu icons (Mac: the app in Applications; Linux: the menu entry) and the start-with-computer entry. You choose what else goes.</p>
-<p><b>In the app installed with the Windows Setup:</b> the button is ${ui('Open Windows Apps')}. It opens Windows' <b>Settings → Apps → Installed apps</b>: find Free GST Billing, click the three dots, then <b>Uninstall</b>. It asks whether to delete your books too; the answer is No unless you choose Yes.</p>
+<p><b>What it does.</b> Uninstalls Bharat GST Free Billing from this computer in one go: the app, its Desktop and Start-menu icons (Mac: the app in Applications; Linux: the menu entry) and the start-with-computer entry. You choose what else goes.</p>
+<p><b>In the app installed with the Windows Setup:</b> the button is ${ui('Open Windows Apps')}. It opens Windows' <b>Settings → Apps → Installed apps</b>: find Bharat GST Free Billing, click the three dots, then <b>Uninstall</b>. It asks whether to delete your books too; the answer is No unless you choose Yes.</p>
 <ol>
   <li>Click ${ui('Remove…')}. A list opens below the card. (On Windows the launcher window has the same: <b>More options</b> → ${ui('Remove the app...')}.)</li>
   <li>Tick what to delete as well. Nothing is ticked at first, so by default <b>only the program goes and your books stay</b>:
     <ul>
       <li><b>My invoices, clients, products and settings</b>: the data folder, with the daily backups inside it.</li>
       <li><b>Saved invoice PDFs</b>: the <code>Saved Invoices</code> and <code>Trash</code> folders.</li>
-      <li><b>All backup files</b> in <code>Documents\\FreeGSTBill Backups</code>.</li>
+      <li><b>All backup files</b> in <code>Documents\\BharatGST Backups</code>.</li>
     </ul>
     ${ui('Select everything')} ticks all three, for a computer you are giving away.</li>
   <li>Click ${ui('Remove the app')}. If your data is ticked, it asks once more. The app closes and the page says it is being removed. Close the window.</li>
 </ol>
-<p><b>Is it safe?</b> If you delete your data but keep the backups, a last copy, <code>before-removal-<i>date</i>.zip</code> (Mac and Linux: <code>.tar.gz</code>), is saved in <code>Documents\\FreeGSTBill Backups</code> first. If that copy cannot be made, your data is kept. Whatever you keep stays in the app folder; install the app into the same folder again and it is all there. Other files you put in the app folder yourself are not touched, and neither is a second backup folder you chose in Settings.</p>
+<p><b>Is it safe?</b> If you delete your data but keep the backups, a last copy, <code>before-removal-<i>date</i>.zip</code> (Mac and Linux: <code>.tar.gz</code>), is saved in <code>Documents\\BharatGST Backups</code> first. If that copy cannot be made, your data is kept. Whatever you keep stays in the app folder; install the app into the same folder again and it is all there. Other files you put in the app folder yourself are not touched, and neither is a second backup folder you chose in Settings.</p>
 <p><b>Something wrong?</b> If the button reads ${ui('How to remove it')}, the app is running from source code or an old ZIP and cannot remove itself; the button opens <a href="install.html#uninstall">Removing the app</a> with the other ways. On Windows, if a file is in use, a message names the folder to delete by hand after a restart.</p>
 </section>
 
@@ -714,18 +714,18 @@ export default [
 <p>On the ${ui('Data &amp; Backups')} tab of Settings, right under the daily backups, the <b>Backup files (ZIP)</b> card saves your whole data folder as one ZIP file, to keep on a pen drive or carry to a new computer. (These buttons were on the Control Panel screen until version 1.10.86.)</p>
 <div class="table-wrap"><table>
   <tr><th>Card</th><th>Button</th><th>What it does</th></tr>
-  <tr><td><a href="#backup">Backup Data</a></td><td>${ui('Create Backup')}</td><td>Saves your data as a dated ZIP in <code>Documents\\FreeGSTBill Backups</code>.</td></tr>
+  <tr><td><a href="#backup">Backup Data</a></td><td>${ui('Create Backup')}</td><td>Saves your data as a dated ZIP in <code>Documents\\BharatGST Backups</code>.</td></tr>
   <tr><td><a href="#restore">Restore Backup</a></td><td>${ui('Choose Backup ZIP')}</td><td>Pick a backup ZIP to restore. What you have now is saved first, as a safety net.</td></tr>
   <tr><td><a href="#move">Move to Another PC</a></td><td>${ui('Export for Move')}</td><td>Saves your data and settings as one ZIP on your Desktop. See <a href="#move-pc">Moving to a new computer</a>.</td></tr>
   <tr><td>Open Data Folder</td><td>${ui('Open')}</td><td>Opens the folder with your bills, clients, products and settings.</td></tr>
-  <tr><td>Open Backups Folder</td><td>${ui('Open')}</td><td>Opens <code>Documents\\FreeGSTBill Backups</code>.</td></tr>
+  <tr><td>Open Backups Folder</td><td>${ui('Open')}</td><td>Opens <code>Documents\\BharatGST Backups</code>.</td></tr>
 </table></div>
 <p>Three kinds of backup, three buttons: ${ui('Backup now')} in the daily backups card above makes today's daily backup inside the app's data folder; ${ui('Create Backup')} here makes a ZIP outside it; <a href="#export-backup">Export Backup</a> saves a <code>.json</code> file with the parts you choose. After each button here a panel shows whether it worked: see <a href="settings.html#result">The result panel</a>.</p>
 </section>
 
 <section id="backup">
 <h3>Backup Data</h3>
-<p><b>What it does.</b> Saves all your bills, clients, products and settings as one dated ZIP file, <code>backup-<i>date_time</i>.zip</code>, in the <code>Documents\\FreeGSTBill Backups</code> folder (Mac and Linux: <code>Documents/FreeGSTBill Backups</code>).</p>
+<p><b>What it does.</b> Saves all your bills, clients, products and settings as one dated ZIP file, <code>backup-<i>date_time</i>.zip</code>, in the <code>Documents\\BharatGST Backups</code> folder (Mac and Linux: <code>Documents/BharatGST Backups</code>).</p>
 <p><b>When to use it.</b> Before a big change, at the end of the month, or any time you want a copy to keep on a pen drive. The app also makes its own daily backup; this is an extra one at a moment you choose.</p>
 <ol>
   <li>Click ${ui('Create Backup')}. It shows <b>Backing up...</b> for a moment.</li>
@@ -741,7 +741,7 @@ export default [
 <p><b>What it does.</b> Replaces the data in the app with the data from a backup ZIP you choose.</p>
 <p><b>When to use it.</b> After moving to a new computer, or to go back to how things were on an earlier day. It works with ZIPs made by ${ui('Create Backup')} or ${ui('Export for Move')}.</p>
 <ol>
-  <li><b>Windows.</b> Click ${ui('Choose Backup ZIP')}. A file window opens in your <code>FreeGSTBill Backups</code> folder. Pick the ZIP and click <b>Open</b>. (Close the window to cancel; nothing changes.)</li>
+  <li><b>Windows.</b> Click ${ui('Choose Backup ZIP')}. A file window opens in your <code>BharatGST Backups</code> folder. Pick the ZIP and click <b>Open</b>. (Close the window to cancel; nothing changes.)</li>
   <li>The app first saves what you have now as <code>pre-restore-<i>date</i>.zip</code> in the same folder. This is your way back if you chose the wrong file.</li>
   <li>It then replaces the data with the backup's contents and shows <b>[OK] Restore complete!</b> Press <b>Enter</b> to close the black window.</li>
   <li>Restart the app (<a href="settings.html#restart">Restart the App</a>) to see the restored data.</li>
@@ -754,7 +754,7 @@ export default [
 <section id="move">
 <h3>Move to Another PC</h3>
 <p><b>From v1.10.86 there is no separate card:</b> use ${ui('Create Backup')} on the old computer and ${ui('Restore Backup')} on the new one; see <a href="backup.html#move-pc">Moving to a new computer</a>. The launcher (ZIP install on Windows) still has <b>More options → Move to another PC</b>, which does the following.</p>
-<p><b>What it does.</b> Saves your data as one ZIP on your Desktop named <code>MOVE-FreeGSTBill-<i>date_time</i>.zip</code>, ready to carry to a new computer.</p>
+<p><b>What it does.</b> Saves your data as one ZIP on your Desktop named <code>MOVE-BharatGST-<i>date_time</i>.zip</code>, ready to carry to a new computer.</p>
 <p><b>When to use it.</b> When you buy a new computer, or want the same books on a second one.</p>
 <ol>
   <li><b>Windows:</b> in the launcher, ${ui('More options')} → ${ui('Move to another PC')}. A black window shows the progress and the size, then a folder window opens with the ZIP highlighted on your Desktop.</li>
@@ -770,14 +770,14 @@ export default [
 <h2>Keeping a copy somewhere else</h2>
 <p><strong>Every day, automatically, on another drive.</strong> On the Backups tab of Settings, under <b>Also keep a copy of every daily backup in this folder</b>:</p>
 <ol class="steps">
-  <li><strong>Type a folder</strong>On another drive, a USB disk or a synced folder, such as <code>D:\\FreeGSTBill</code> or <code>E:\\</code>.</li>
+  <li><strong>Type a folder</strong>On another drive, a USB disk or a synced folder, such as <code>D:\\BharatGST</code> or <code>E:\\</code>.</li>
   <li><strong>Save it</strong>Click ${ui('Save folder')}. The app checks it can write there and copies today's backup at once. The message says where the copies go.</li>
 </ol>
-<p>Each daily backup is then also copied into <code>FreeGSTBill Backups\\<i>date</i></code> inside that folder, keeping 30 days. The line under the box shows where. If a copy fails (a USB disk not plugged in), the card says so in red. ${ui('Stop copying')} turns it off; copies already made stay.</p>
+<p>Each daily backup is then also copied into <code>BharatGST Backups\\<i>date</i></code> inside that folder, keeping 30 days. The line under the box shows where. If a copy fails (a USB disk not plugged in), the card says so in red. ${ui('Stop copying')} turns it off; copies already made stay.</p>
 <p><b>If the computer fails</b>: install the app again, set the same folder here, and its backups appear in the list with ${ui('Restore')}.</p>
 <p>Or by hand:</p>
 <ul>
-  <li><strong>One click</strong>: ${ui('Create Backup')} under <a href="#backup-zip">Backup files (ZIP)</a>, or ${ui('Back up my data')} in the launcher under ${ui('More options')}, saves a ZIP in <code>Documents\\FreeGSTBill Backups</code>. Copy it to a pen drive or cloud storage.</li>
+  <li><strong>One click</strong>: ${ui('Create Backup')} under <a href="#backup-zip">Backup files (ZIP)</a>, or ${ui('Back up my data')} in the launcher under ${ui('More options')}, saves a ZIP in <code>Documents\\BharatGST Backups</code>. Copy it to a pen drive or cloud storage.</li>
   <li><strong>One file you choose</strong>: see <a href="#export-import">Export Backup</a>.</li>
   <li><strong>Google Drive</strong>: see <a href="settings.html#google-drive">Cloud Backup (Google Drive)</a>.</li>
 </ul>
@@ -804,7 +804,7 @@ export default [
   <li><strong>Open it</strong>Click ${ui('Export Backup…')}. A window lists every part of your data, all ticked.</li>
   <li><strong>Choose what to include</strong>Untick anything you do not want. ${ui('Select all')} and ${ui('Clear all')} tick or untick every one.</li>
   <li><strong>Google Drive copy (optional)</strong>Tick <b>Also save a copy to my Google Drive</b> if you set up <a href="settings.html#google-drive-api">Direct API Upload</a>.</li>
-  <li><strong>Download</strong>Click ${ui('Download Backup')}. The file <code>freegstbill-backup-<i>date</i>.json</code> goes to your Downloads folder. Copy it somewhere safe.</li>
+  <li><strong>Download</strong>Click ${ui('Download Backup')}. The file <code>bharat-gst-backup-<i>date</i>.json</code> goes to your Downloads folder. Copy it somewhere safe.</li>
 </ol>
 <div class="table-wrap"><table>
   <tr><th>Part</th><th>What is in it</th></tr>
@@ -834,7 +834,7 @@ export default [
 <p>Records in the file <b>replace the matching records</b> in the app; records the file does not have are left alone, and parts you did not tick are untouched. Export your current data first, just in case.</p>
 <h3>Something wrong?</h3>
 <ul>
-  <li><b>"This file doesn't look like a Free GST Billing backup"</b>: you picked a different file. Backups are named <code>freegstbill-backup-<i>date</i>.json</code>. A backup ZIP is restored with ${ui('Choose Backup ZIP')} under <a href="#backup-zip">Backup files (ZIP)</a>.</li>
+  <li><b>"This file doesn't look like a Bharat GST Free Billing backup"</b>: you picked a different file. Backups are named <code>bharat-gst-backup-<i>date</i>.json</code>. A backup ZIP is restored with ${ui('Choose Backup ZIP')} under <a href="#backup-zip">Backup files (ZIP)</a>.</li>
   <li><b>Restored, but I do not see it</b>: reload the page, and check the business selected at the top of the sidebar.</li>
 </ul>
 </section>
@@ -887,7 +887,7 @@ export default [
   <li>${ui('Update Now')} in <a href="settings.html#updates">Settings → App &amp; updates</a>.</li>
   <li>In the launcher, ${ui('More options')}, then ${ui('Update to the latest version')}.</li>
 </ul>
-<p>Every update first saves a backup of your data in <code>Documents\\FreeGSTBill Backups</code>, then replaces the app. It never touches your data folder or your saved PDFs. It takes about a minute: a window shows each step, and the page reloads on the new version by itself.</p>
+<p>Every update first saves a backup of your data in <code>Documents\\BharatGST Backups</code>, then replaces the app. It never touches your data folder or your saved PDFs. It takes about a minute: a window shows each step, and the page reloads on the new version by itself.</p>
 <p>To update by hand instead: download the ZIP, stop the app, extract the ZIP over your app folder replacing the files, and open the launcher again.</p>
 <p>If you extract a new ZIP into a different folder by mistake, its launcher does not install a second copy. It shows <b>Already installed on this computer</b>, with the folder, version and number of invoices, and offers ${ui('Update the installed copy')} and ${ui('Open the installed copy')}. The update uses the files in the folder you extracted, so it needs no download and works without internet; your invoices, saved PDFs and trash stay as they are. The new folder can then be deleted.</p>
 <p>Updating also removes files that older versions left behind, such as launchers under their old names, once their replacements are in place. Your data, backups and Node.js are never touched.</p>

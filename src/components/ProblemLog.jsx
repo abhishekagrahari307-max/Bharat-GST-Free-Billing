@@ -2,7 +2,7 @@
 // browser logged (newest first) and the server's own recent errors.log lines,
 // both already redacted. Nothing leaves the computer until Report is clicked.
 import { useEffect, useState } from 'react';
-import { getProblems, clearProblems, onProblemsChanged, copyText, openReport } from '../utils/problemLog';
+import { getProblems, clearProblems, onProblemsChanged, copyText } from '../utils/problemLog';
 import { knownProblemFor, matchKnownProblem, reportText, KNOWN_PROBLEMS, TROUBLESHOOTING_URL } from '../utils/errorReport';
 import { toast } from './Toast';
 import HelpButton from './HelpButton';
@@ -25,7 +25,7 @@ export default function ProblemLog() {
     return () => { live = false; };
   }, []);
 
-  const copy = async (text) => toast(await copyText(text) ? 'Copied. Paste it into an email or a GitHub issue.' : 'Could not copy. Select the text and press Ctrl+C.', 'info');
+  const copy = async (text) => toast(await copyText(text) ? 'Diagnostic details copied to clipboard.' : 'Could not copy. Select the text and press Ctrl+C.', 'info');
   const copyAll = () => copy(items.slice().reverse().map(reportText).join('\n\n')
     + (serverLines?.length ? `\n\nServer log (last ${serverLines.length} lines):\n\`\`\`\n${serverLines.join('\n')}\n\`\`\`` : ''));
 
@@ -65,7 +65,6 @@ export default function ProblemLog() {
                   </span>
                   <span style={{ display: 'flex', gap: '0.35rem' }}>
                     <button type="button" className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '0.2rem 0.55rem' }} onClick={() => copy(reportText(e))}>Copy</button>
-                    <button type="button" className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '0.2rem 0.55rem' }} onClick={() => openReport(e)}>Report</button>
                   </span>
                 </li>
               );

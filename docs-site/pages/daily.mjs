@@ -39,7 +39,7 @@ export default [
 
 <section id="welcome-card">
 <h2>The welcome note</h2>
-<p>A new install shows a large note at the top: <b>Thank you for choosing Free GST Billing</b>. It says the app is free for good, your data stays on your own computer and works offline, a new update comes every Saturday, and support is welcome but never needed.</p>
+<p>A new install shows a large note at the top: <b>Thank you for choosing Bharat GST Free Billing</b>. It says the app is free for good, your data stays on your own computer and works offline, a new update comes every Saturday, and support is welcome but never needed.</p>
 <table>
   <tr><th>Button</th><th>What it does</th></tr>
   <tr><td>${ui('Support with any amount')}</td><td>Opens <a href="shortcuts.html#support">Support &amp; About</a>, where you can pay any amount by <a href="support.html#upi">UPI</a>. Nothing is charged unless you pay yourself.</td></tr>
@@ -85,7 +85,7 @@ export default [
 
 <section id="star-banner">
 <h3>The "star on GitHub" line</h3>
-<p>A few days after you start using the app, a slim blue line may appear at the top of most screens: <b>Finding Free GST Billing useful? A star on GitHub helps other businesses find it.</b> ${ui('Star on GitHub')} opens the app's GitHub page (a free account is needed to give a star) and hides the line for good. ${ui('Already starred')} also hides it for good. ${ui('✕')} hides it for 30 days. It is never shown on the new invoice screen.</p>
+<p>A few days after you start using the app, a slim blue line may appear at the top of most screens: <b>Finding Bharat GST Free Billing useful? A star on GitHub helps other businesses find it.</b> ${ui('Star on GitHub')} opens the app's GitHub page (a free account is needed to give a star) and hides the line for good. ${ui('Already starred')} also hides it for good. ${ui('✕')} hides it for 30 days. It is never shown on the new invoice screen.</p>
 </section>
 
 <section id="overdue">
@@ -446,7 +446,7 @@ export default [
   <tr><td>${ui('Overdue (n)')}</td><td>Only overdue ones, for chasing payments</td></tr>
   <tr><td>${ui('Paid (n)')}</td><td>Only fully paid ones</td></tr>
 </table>
-<p>The number in brackets is how many will go in. Each invoice starts on a new A4 page; a long one takes as many pages as it needs. For more than five invoices, a message shows how far it has got; for more than 100 you are asked first, as it can take a minute. The file <code>freegstbill-invoices-25-2026-10-31.pdf</code> lands in your Downloads folder, and a message says how many were included.</p>
+<p>The number in brackets is how many will go in. Each invoice starts on a new A4 page; a long one takes as many pages as it needs. For more than five invoices, a message shows how far it has got; for more than 100 you are asked first, as it can take a minute. The file <code>bharat-gst-invoices-25-2026-10-31.pdf</code> lands in your Downloads folder, and a message says how many were included.</p>
 <div class="note tip"><strong>Something wrong?</strong>
 <p>"No overdue invoices to print": none in the list match; check the filters. "Could not generate any PDFs": see <a href="troubleshooting.html#print-blocked">Print does nothing, or "Print failed"</a>. To choose exactly which invoices go in, tick them and use ${ui('One merged PDF')} or ${ui('Separate PDFs (ZIP)')} instead (see below).</p></div>
 </section>
@@ -457,7 +457,7 @@ export default [
 <table>
   <tr><th>Button</th><th>What it does</th></tr>
   <tr><td>${ui('Mark paid')}, ${ui('Mark unpaid')}, ${ui('Mark overdue')}</td><td>Change them all, after asking. Mark paid records a payment for each balance (note "Marked paid (bulk)"); Mark unpaid takes such payments back, as the <a href="#status">status dropdown</a> does. Only tax invoices, bills of supply and composition bills change; ticked quotations or challans are left alone. Marking a cancelled invoice as anything brings it back and takes its stock out again.</td></tr>
-  <tr><td>${ui('Export JSON')}</td><td>Saves the ticked invoices to one file, such as <code>freegstbill-bills-3-2026-10-31.json</code>, which can be brought back with <a href="backup.html#export-import">Import</a> in Settings, Backup.</td></tr>
+  <tr><td>${ui('Export JSON')}</td><td>Saves the ticked invoices to one file, such as <code>bharat-gst-bills-3-2026-10-31.json</code>, which can be brought back with <a href="backup.html#export-import">Import</a> in Settings, Backup.</td></tr>
   <tr><td>${ui('One merged PDF')}</td><td>Combines the ticked invoices into one PDF, one invoice per page, useful for your CA or for filing. Works like the <a href="#quick-print">Print menu</a>.</td></tr>
   <tr><td>${ui('Separate PDFs (ZIP)')}</td><td>One PDF file per ticked invoice, named by its invoice number (such as <code>INV-0012.pdf</code>), downloaded together in one ZIP, such as <code>invoices-26-2026-10-31.zip</code>. Open the ZIP to get the files.</td></tr>
   <tr><td>${ui('E-invoice JSON')}</td><td>Only when e-invoicing is on. One file with the ticked invoices, to upload on the e-invoice portal. See <a href="#einvoice">E-invoicing from the Dashboard</a>.</td></tr>

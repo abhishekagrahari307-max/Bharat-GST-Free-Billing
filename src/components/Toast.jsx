@@ -70,7 +70,7 @@ export default function ToastContainer() {
   };
 
   return (
-    <div className="toast-container">
+    <div className="toast-container" role="status" aria-live="polite" aria-atomic="true">
       {toasts.map(t => {
         const Icon = ICONS[t.type] || ICONS.info;
         const color = COLORS[t.type] || COLORS.info;
@@ -86,7 +86,7 @@ export default function ToastContainer() {
             {t.actions?.map((a) => (a.href
               ? <a key={a.label} className="toast-action" href={a.href} target="_blank" rel="noopener noreferrer">{a.label}</a>
               : <button key={a.label} type="button" className="toast-action" onClick={a.onClick}>{a.label}</button>))}
-            <button className="toast-close" onClick={() => dismiss(t.id)}>
+            <button type="button" className="toast-close" aria-label="Dismiss notification" onClick={() => dismiss(t.id)}>
               <X size={14} />
             </button>
           </div>

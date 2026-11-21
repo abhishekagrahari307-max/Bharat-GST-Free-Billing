@@ -56,7 +56,7 @@ const ECDSA_SHA256 = seq(oid('1.2.840.10045.4.3.2'));
 
 // { names: ['my-pc', 'my-pc.local'], ips: ['192.168.1.20'] } ->
 // { key, cert } (PEM) and the certificate's SHA-256 fingerprint.
-export function makeSelfSignedCert({ names = [], ips = [], commonName = 'Free GST Billing', days = CERT_DAYS, now = new Date() } = {}) {
+export function makeSelfSignedCert({ names = [], ips = [], commonName = 'Bharat GST Free Billing', days = CERT_DAYS, now = new Date() } = {}) {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
   const serial = crypto.randomBytes(16);
   serial[0] = (serial[0] & 0x7f) | 0x40; // positive, and no leading zero byte (strict DER)

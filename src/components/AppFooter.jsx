@@ -35,6 +35,10 @@ export default function AppFooter({ onOpenSupport }) {
           style={{ ...link, background: 'none', border: 0, padding: 0, font: 'inherit', fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
           <Heart size={11} style={{ color: '#e11d48', fill: '#e11d48' }} /> About
         </button>
+        <span aria-hidden="true">·</span>
+        <a href="./privacy.html" target="_blank" rel="noopener noreferrer" style={link}>Privacy</a>
+        <span aria-hidden="true">·</span>
+        <a href="./terms.html" target="_blank" rel="noopener noreferrer" style={link}>Terms</a>
       </span>
     </footer>
   );

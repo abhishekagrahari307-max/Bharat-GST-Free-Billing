@@ -323,9 +323,40 @@ export function pdfAccentRGB() {
 // Company → Business type), so the open Print & PDF panel reloads them.
 export const PRINT_SETTINGS_EVENT = 'fgsb:print-settings';
 
-export function savePrintSettings(settings) {
+// Maps a Print & PDF settings patch (or full object) into the shared
+// `freegstbill_invoiceOptions` / `/api/meta/invoiceDisplayOptions` keys so
+// new invoices in InvoiceGenerator honour Settings → Print & PDF immediately
+// instead of falling back to stale `pdfStyle: 'classic'` defaults.
+export function printSettingsToInvoiceDefaults(patch = {}, fullSettings = null) {
+  const src = patch || {};
+  const out = {};
+  if ('pdfTemplate' in src) {
+    // Clearing per-invoice pdfStyle lets InvoicePreview read ps.pdfTemplate directly.
+    out.pdfStyle = '';
+  }
+  if ('userColorsEnabled' in src || 'pdfAccent' in src) {
+    const ps = fullSettings || src;
+    out.accentColor = ps.userColorsEnabled ? '' : (out.accentColor ?? '');
+  }
+  if ('showLogo' in src) out.showLogo = src.showLogo !== false;
+  if ('showHSN' in src) out.showHSN = src.showHSN !== false;
+  if ('showBankDetails' in src) out.showBankDetails = src.showBankDetails !== false;
+  if ('showUPI' in src) out.showUPI = src.showUPI !== false;
+  if ('showAmountWords' in src) out.showAmountWords = src.showAmountWords !== false;
+  if ('signatureShow' in src) out.showSignature = src.signatureShow !== false;
+  if ('fontSize' in src && src.fontSize) out.thermalFontSize = src.fontSize;
+  if ('cutMark' in src) out.thermalCutMark = src.cutMark !== false;
+  if ('termsFormatMode' in src && src.termsFormatMode) out.termsFormatMode = src.termsFormatMode;
+  return out;
+}
+
+export function savePrintSettings(settings, { silent = false } = {}) {
   try {
-    localStorage.setItem('gst_printSettings', JSON.stringify(settings));
+    const merged = { ...DEFAULT_PRINT_SETTINGS, ...(settings || {}) };
+    localStorage.setItem('gst_printSettings', JSON.stringify(merged));
+    if (!silent && typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+      window.dispatchEvent(new CustomEvent(PRINT_SETTINGS_EVENT, { detail: merged }));
+    }
     return true;
   } catch { return false; }
 }

@@ -89,10 +89,11 @@ export default function SettingsView({ onSaved }) {
   // switching and the one Save bar still covers every tab. The open tab is
   // remembered for this browser session.
   const TAB_KEY = 'gst_settingsTab';
+  const LAST_TAB_KEY = 'bharat_gst_last_settings_tab';
   // `activeSection` holds the open TAB's id; setActiveSection takes a tab or
   // a section id (a section: its tab opens and the page scrolls to it).
   const [activeSection, setActiveSectionState] = useState(() => {
-    try { return tabOf(sessionStorage.getItem(TAB_KEY)); } catch { return SETTINGS_TABS[0][0]; }
+    try { return tabOf(sessionStorage.getItem(TAB_KEY) || localStorage.getItem(LAST_TAB_KEY)); } catch { return SETTINGS_TABS[0][0]; }
   });
   const scrollToSection = (id) => {
     if (!ALL_SECTIONS.includes(id) || id === sectionsOf(tabOf(id))[0]) return;
@@ -101,7 +102,10 @@ export default function SettingsView({ onSaved }) {
   const setActiveSection = (id) => {
     const tab = tabOf(id);
     setActiveSectionState(tab);
-    try { sessionStorage.setItem(TAB_KEY, tab); } catch { /* storage blocked */ }
+    try {
+      sessionStorage.setItem(TAB_KEY, tab);
+      localStorage.setItem(LAST_TAB_KEY, tab);
+    } catch { /* storage blocked */ }
     scrollToSection(id);
   };
   // Opened at a section from elsewhere (App's openSettingsAt): first open
@@ -600,7 +604,7 @@ export default function SettingsView({ onSaved }) {
   const runExport = async () => {
     try {
       const json = await exportAllData(exportSel);
-      const fileName = `freegstbill-backup-${new Date().toISOString().split('T')[0]}.json`;
+      const fileName = `bharat-gst-backup-${new Date().toISOString().split('T')[0]}.json`;
 
       // Local download (always)
       const blob = new Blob([json], { type: 'application/json' });
@@ -886,7 +890,7 @@ export default function SettingsView({ onSaved }) {
 
 
   return (
-    <div className="settings-container">
+    <div className={`settings-container${activeSection === 'tab-print' ? ' settings-container-wide' : ''}`}>
       {/* v1.10.36 — Header lifted with a soft primary-accent gradient
            card, gear glyph in a rounded badge for visual identity, and
            a subtle count chip showing how many sections there are so
@@ -1131,8 +1135,8 @@ export default function SettingsView({ onSaved }) {
         </div>
       </div>
 
-      {/* v1.10.77 (#84) - optional PIN lock. Same order as Region, so it sits right after it. */}
-      <div id="section-lock" className="glass-panel p-6 mb-6" style={{ order: 7 }}>
+      {/* Prominent App Lock & Multi-Staff Security Card */}
+      <div id="section-lock" className="glass-panel p-6 mb-6" style={{ order: 6, borderLeft: '4px solid var(--primary)' }}>
         <AppLockSettings />
       </div>
       {/* v1.10.85 - use on a phone or tablet on the same Wi-Fi (needs the PIN above). */}
@@ -2216,7 +2220,7 @@ function BackupAndTrashPanel() {
         <label className="form-label" htmlFor="backup-folder">Also keep a copy of every daily backup in this folder <HelpButton title="Backup copy in another folder" doc="backup#backup-copy" size={16} style={{ marginLeft: 6 }} /></label>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           <input id="backup-folder" type="text" className="form-input" style={{ flex: 1, minWidth: 220 }}
-            placeholder={'e.g. D:\\FreeGSTBill or E:\\ (a second drive or USB disk)'}
+            placeholder={'e.g. D:\\BharatGST or E:\\ (a second drive or USB disk)'}
             value={folderInput} onChange={(e) => setFolderInput(e.target.value)} />
           <button type="button" className="btn btn-primary" disabled={folderBusy || folderInput.trim() === (backupFolder.path || '')}
             onClick={() => saveBackupFolder(folderInput.trim())}>Save folder</button>

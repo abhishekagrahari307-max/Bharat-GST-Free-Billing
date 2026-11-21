@@ -4,15 +4,16 @@
     <meta charset="UTF-8" />
     <script src="./boot-guard.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
 
     <meta http-equiv="Content-Security-Policy" content="
       default-src 'self';
       script-src  'self' 'wasm-unsafe-eval' https://accounts.google.com https://apis.google.com https://cdn.jsdelivr.net;
       worker-src  'self' blob: https://cdn.jsdelivr.net;
-      style-src   'self' 'unsafe-inline' http: https:;
-      font-src    'self' http: https: data:;
+      style-src   'self' 'unsafe-inline';
+      font-src    'self' data:;
       img-src     'self' data: blob: https://*.googleusercontent.com;
-      connect-src 'self' http: https:;
+      connect-src 'self' https://www.googleapis.com https://accounts.google.com https://oauth2.googleapis.com https://cdn.jsdelivr.net;
       frame-src   'self' blob: https://accounts.google.com;
       object-src  'none';
       base-uri    'self';
@@ -30,15 +31,17 @@
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Bharat GST Free Billing" />
     <meta property="og:title" content="Bharat GST Free Billing — Free GST Invoice Generator, GSTR-1/3B/2B, UPI QR & Inventory" />
-    <meta property="og:description" content="Free GST billing & invoicing platform for Indian businesses. Tax invoices, GSTR-1 / GSTR-3B JSON exports, GSTR-2B reconciliation, e-Way Bill, TDS/TCS reports, UPI QR, inventory, thermal & PDF printing. No signup, free forever." />
-    <meta property="og:image" content="./icons/icon-512.png" />
+    <meta property="og:description" content="Bharat GST Free Billing — 100% free invoicing &amp; GST filing platform for Indian businesses. Tax invoices, GSTR-1 / GSTR-3B JSON exports, GSTR-2B reconciliation, e-Way Bill, TDS/TCS reports, UPI QR, inventory, thermal &amp; PDF printing. No signup, free forever." />
+    <meta property="og:image" content="https://abhishekagrahari307-max.github.io/Bharat-ai-Voice/icons/og-card.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
     <meta property="og:url" content="https://abhishekagrahari307-max.github.io/Bharat-ai-Voice/" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Bharat GST Free Billing — Free GST Invoicing, GSTR-1/2B/3B, TDS/TCS & Multi-Currency" />
     <meta name="twitter:description" content="Free GST invoice generator for Bharat. GSTR-1/2B/3B, e-Way Bill, TDS/TCS reports, UPI QR, inventory & thermal receipt printing. Free forever." />
-    <meta name="twitter:image" content="./icons/icon-512.png" />
+    <meta name="twitter:image" content="https://abhishekagrahari307-max.github.io/Bharat-ai-Voice/icons/og-card.png" />
 
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
@@ -70,17 +73,16 @@
       },
       "description": "Free GST invoice generator and billing software for India. Tax Invoice, Proforma, Credit Note, Bill of Supply, Delivery Challan, E-Way Bill. GSTR-1/3B/2B reports, expense tracker, inventory, profit & loss, multi-currency. Free forever.",
       "author": {
-        "@type": "Organization",
-        "name": "Bharat GST Free Billing"
+        "@type": "Person",
+        "name": "Abhishek Agrahari"
       }
     }
     </script>
-    <script type="module" crossorigin src="./assets/index-DBc_LP6a.js"></script>
-    <link rel="modulepreload" crossorigin href="./assets/icons-CUD-auJS.js">
-    <link rel="modulepreload" crossorigin href="./assets/react-vendor-Cp3fk9Jv.js">
-    <link rel="modulepreload" crossorigin href="./assets/pdf-CnbE6V4s.js">
-    <link rel="modulepreload" crossorigin href="./assets/qr-DgLtAz-0.js">
-    <link rel="stylesheet" crossorigin href="./assets/index-BYWAtxdf.css">
+    <script type="module" crossorigin src="./assets/index-DVRaozUc.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/icons-D1rGyCzP.js">
+    <link rel="modulepreload" crossorigin href="./assets/react-vendor-Z-mBtGwu.js">
+    <link rel="modulepreload" crossorigin href="./assets/pdf-S4cmhafG.js">
+    <link rel="stylesheet" crossorigin href="./assets/index-BgLXtQKQ.css">
   <link rel="manifest" href="./manifest.webmanifest"></head>
   <body>
     <noscript>

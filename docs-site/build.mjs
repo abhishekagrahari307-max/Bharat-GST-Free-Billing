@@ -17,12 +17,14 @@
 import { mkdirSync, writeFileSync, copyFileSync, rmSync, readdirSync, existsSync, readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import sharp from 'sharp';
+import zlib from 'zlib';
 import { NAV, SITE, SEO } from './site.mjs';
 // v1.10.86 - the pages, text() and sectionsOf() live in sections.mjs (the app's quick search reads them too).
 import { PAGES, text, sectionsOf } from './sections.mjs';
 
+const sharpMod = await import('sharp').then((m) => m.default || m).catch(() => null);
 const HERE = dirname(fileURLToPath(import.meta.url));
+const ROOT_GUIDE = join(HERE, '..', 'user-guide');
 const OUT = join(HERE, 'out', SITE.folder);
 const IMG_SRC = join(HERE, 'assets', 'img');
 const TODAY = new Date().toISOString().slice(0, 10);
@@ -98,44 +100,125 @@ for (const p of PAGES) {
 // Pages are written with .png sources; the build swaps in .webp and adds
 // width/height so the page does not jump while images load.
 const imgSize = new Map();
+function readPngSize(file) {
+  try {
+    const b = readFileSync(file);
+    if (b.length >= 24 && b[0] === 0x89 && b[1] === 0x50) {
+      return { w: b.readUInt32BE(16), h: b.readUInt32BE(20) };
+    }
+  } catch { /* fallback */ }
+  return null;
+}
+
+function makeFallbackPng(w, h) {
+  // Pure-Node 1200x630 navy-and-saffron banner PNG when sharp isn't installed
+  const crcTable = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+    crcTable[n] = c >>> 0;
+  }
+  const crc32 = (buf) => {
+    let c = 0xffffffff;
+    for (let i = 0; i < buf.length; i++) c = crcTable[(c ^ buf[i]) & 0xff] ^ (c >>> 8);
+    return (c ^ 0xffffffff) >>> 0;
+  };
+  const chunk = (type, data) => {
+    const len = Buffer.alloc(4); len.writeUInt32BE(data.length, 0);
+    const t = Buffer.from(type, 'ascii');
+    const crc = Buffer.alloc(4); crc.writeUInt32BE(crc32(Buffer.concat([t, data])), 0);
+    return Buffer.concat([len, t, data, crc]);
+  };
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(w, 0); ihdr.writeUInt32BE(h, 4);
+  ihdr[8] = 8; ihdr[9] = 2; // 8-bit RGB
+  const rowLen = 1 + w * 3;
+  const raw = Buffer.alloc(rowLen * h);
+  for (let y = 0; y < h; y++) {
+    const rowOff = y * rowLen;
+    raw[rowOff] = 0;
+    const topBand = y < 12;
+    const bottomBand = y >= h - 12;
+    for (let x = 0; x < w; x++) {
+      const p = rowOff + 1 + x * 3;
+      if (x < 16 || topBand) { raw[p] = 37; raw[p + 1] = 99; raw[p + 2] = 235; } // #2563eb
+      else if (bottomBand) { raw[p] = 14; raw[p + 1] = 122; raw[p + 2] = 92; } // #0e7a5c
+      else { raw[p] = 15; raw[p + 1] = 23; raw[p + 2] = 42; } // #0f172a
+    }
+  }
+  const idat = zlib.deflateSync(raw, { level: 6 });
+  return Buffer.concat([
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+    chunk('IHDR', ihdr),
+    chunk('IDAT', idat),
+    chunk('IEND', Buffer.alloc(0)),
+  ]);
+}
+
 async function buildImages() {
   for (const f of readdirSync(IMG_SRC)) {
     const src = join(IMG_SRC, f);
     if (f.endsWith('.png')) {
-      const img = sharp(src);
-      const meta = await img.metadata();
-      // Screenshots were taken at 1.5x; 1600 px wide is sharp on any screen.
-      const width = Math.min(meta.width, 1600);
-      const info = await img.resize({ width, withoutEnlargement: true }).webp({ quality: 82 })
-        .toFile(join(OUT, 'assets', 'img', f.replace(/\.png$/, '.webp')));
-      imgSize.set(f, { w: info.width, h: info.height });
+      if (sharpMod) {
+        const img = sharpMod(src);
+        const meta = await img.metadata();
+        const width = Math.min(meta.width, 1600);
+        const info = await img.resize({ width, withoutEnlargement: true }).webp({ quality: 82 })
+          .toFile(join(OUT, 'assets', 'img', f.replace(/\.png$/, '.webp')));
+        imgSize.set(f, { w: info.width, h: info.height });
+      } else {
+        const webpName = f.replace(/\.png$/, '.webp');
+        const existingWebp = join(ROOT_GUIDE, 'assets', 'img', webpName);
+        const size = readPngSize(src);
+        if (size) {
+          const scale = size.w > 1600 ? 1600 / size.w : 1;
+          imgSize.set(f, { w: Math.round(size.w * scale), h: Math.round(size.h * scale) });
+        }
+        if (existsSync(existingWebp)) {
+          copyFileSync(existingWebp, join(OUT, 'assets', 'img', webpName));
+        } else {
+          copyFileSync(src, join(OUT, 'assets', 'img', f));
+        }
+      }
     } else {
       copyFileSync(src, join(OUT, 'assets', 'img', f));
     }
   }
   // Social preview (1200x630) and the home-screen icon.
   await makeSocialImage(join(OUT, 'assets', 'img', 'og.png'));
-  await sharp(join(IMG_SRC, 'icon.svg'), { density: 400 }).resize(180, 180)
-    .png().toFile(join(OUT, 'assets', 'img', 'apple-touch-icon.png'));
+  if (sharpMod) {
+    await sharpMod(join(IMG_SRC, 'icon.svg'), { density: 400 }).resize(180, 180)
+      .png().toFile(join(OUT, 'assets', 'img', 'apple-touch-icon.png'));
+  } else {
+    const existingApple = join(ROOT_GUIDE, 'assets', 'img', 'apple-touch-icon.png');
+    const fallbackApple = join(HERE, '..', 'public', 'icons', 'icon-192.png');
+    if (existsSync(existingApple)) copyFileSync(existingApple, join(OUT, 'assets', 'img', 'apple-touch-icon.png'));
+    else if (existsSync(fallbackApple)) copyFileSync(fallbackApple, join(OUT, 'assets', 'img', 'apple-touch-icon.png'));
+  }
 }
 const withImages = (html) => html.replace(/<img src="assets\/img\/([^"]+)\.png"/g, (_, name) => {
   const s = imgSize.get(`${name}.png`);
-  return `<img src="assets/img/${name}.webp"${s ? ` width="${s.w}" height="${s.h}"` : ''}`;
+  const hasWebp = existsSync(join(OUT, 'assets', 'img', `${name}.webp`));
+  return `<img src="assets/img/${name}.${hasWebp ? 'webp' : 'png'}"${s ? ` width="${s.w}" height="${s.h}"` : ''}`;
 });
 
 async function makeSocialImage(file) {
-  const shot = await sharp(join(IMG_SRC, 'app-dashboard.png')).resize({ width: 600 }).png().toBuffer();
+  if (!sharpMod) {
+    writeFileSync(file, makeFallbackPng(1200, 630));
+    return;
+  }
+  const shot = await sharpMod(join(IMG_SRC, 'app-dashboard.png')).resize({ width: 600 }).png().toBuffer();
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630">
     <rect width="1200" height="630" fill="#f6f8fb"/>
     <rect x="0" y="0" width="14" height="630" fill="#2563eb"/>
-    <text x="64" y="170" font-family="Segoe UI, Arial, sans-serif" font-size="52" font-weight="700" fill="#15233f">Free GST</text>
-    <text x="64" y="240" font-family="Segoe UI, Arial, sans-serif" font-size="52" font-weight="700" fill="#15233f">Billing Software</text>
+    <text x="64" y="170" font-family="Segoe UI, Arial, sans-serif" font-size="52" font-weight="700" fill="#15233f">Bharat GST</text>
+    <text x="64" y="240" font-family="Segoe UI, Arial, sans-serif" font-size="52" font-weight="700" fill="#15233f">Free Billing</text>
     <text x="64" y="310" font-family="Segoe UI, Arial, sans-serif" font-size="28" fill="#44526d">GST invoices, payments, stock</text>
-    <text x="64" y="352" font-family="Segoe UI, Arial, sans-serif" font-size="28" fill="#44526d">and GSTR-1 / GSTR-3B.</text>
+    <text x="64" y="352" font-family="Segoe UI, Arial, sans-serif" font-size="28" fill="#44526d">and GSTR-1 / GSTR-3B · Created by Abhishek Agrahari</text>
     <text x="64" y="430" font-family="Segoe UI, Arial, sans-serif" font-size="26" font-weight="700" fill="#0e7a5c">Free · Offline · No signup</text>
     <text x="64" y="560" font-family="Segoe UI, Arial, sans-serif" font-size="24" fill="#44526d">Documentation</text>
   </svg>`;
-  await sharp(Buffer.from(svg)).composite([{ input: shot, left: 560, top: 140 }]).png().toFile(file);
+  await sharpMod(Buffer.from(svg)).composite([{ input: shot, left: 560, top: 140 }]).png().toFile(file);
 }
 
 // ---- structured data ----------------------------------------------------------
@@ -239,9 +322,6 @@ function page(p) {
 <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
 <link rel="alternate" type="text/plain" title="Documentation for AI tools" href="llms.txt">
 <script type="application/ld+json">${jsonLd(p, title, description)}</script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,750&family=Hind:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="assets/style.css">
 <script>try{var t=localStorage.getItem('fgb-docs-theme');if(t)document.documentElement.dataset.theme=t;}catch(e){}</script>
 </head>
@@ -255,7 +335,7 @@ function page(p) {
     <img src="assets/img/icon.svg" alt="" width="30" height="30">
     <span>${esc(SITE.name)}</span>
   </a>
-  <a class="top-link" href="support.html"${p.slug === 'support' ? ' aria-current="page"' : ''}><span aria-hidden="true">♥</span> <span class="top-link-text">Support &amp; About</span></a>
+  <a class="top-link" href="support.html"${p.slug === 'support' ? ' aria-current="page"' : ''}><span aria-hidden="true">♥</span> <span class="top-link-text">About</span></a>
   <div class="search">
     <label class="sr-only" for="q">Search the docs</label>
     <input id="q" type="search" placeholder="Search" autocomplete="off" spellcheck="false">
@@ -265,11 +345,11 @@ function page(p) {
   <button class="theme-btn" type="button" aria-label="Switch between light and dark">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
   </button>
-  <a class="download" href="${SITE.download}">Download</a>
+  <a class="download" href="../">Open App</a>
 </header>
 <div class="shell">
   <nav class="sidebar" id="sidebar" aria-label="Documentation">${sidebar(p.slug)}
-    <p class="sidebar-foot">Written for version ${esc(SITE.version)}. <a href="${SITE.repo}/blob/main/CHANGELOG.md">Changelog: what changed in each version</a></p>
+    <p class="sidebar-foot">Guide for version ${esc(SITE.version)} · Created by ${esc(SITE.publisher.name)}</p>
   </nav>
   <div class="scrim" hidden></div>
   <main id="main" class="doc">
@@ -284,8 +364,7 @@ ${body}
       ${next ? `<a class="next" href="${next.slug}.html"><span>Next</span>${esc(next.nav || next.title)}</a>` : '<span></span>'}
     </nav>
     <footer class="foot">
-      <p>${esc(BRAND)} is free and open source under the MIT licence, made by <a href="${SITE.publisher.url}">${esc(SITE.publisher.name)}</a>. Something wrong or missing on this page?
-      <a href="${SITE.repo}/issues">Tell us on GitHub</a>.</p>
+      <p>${esc(BRAND)} · Created by <strong>${esc(SITE.publisher.name)}</strong>. 100% Free, Offline-Ready &amp; Privacy-First GST Billing for Bharat · <a href="privacy.html">Privacy Notice</a></p>
     </footer>
   </main>
   <aside class="toc" aria-label="On this page">
@@ -380,13 +459,13 @@ writeFileSync(join(OUT, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>
 ${order.map((slug) => `  <url><loc>${pageUrl(slug)}</loc><lastmod>${TODAY}</lastmod><priority>${priority(slug)}</priority></url>`).join('\n')}
 </urlset>
 `);
-// Search engines only read robots.txt at the root of the domain. This copy is
-// a ready-made block to add to https://dicecodes.com/robots.txt.
+// Search engines read robots.txt at the root of the domain; publish-static-pages.mjs also generates root robots.txt.
 writeFileSync(join(OUT, 'robots.txt'), `User-agent: *\nAllow: /\n\nSitemap: ${SITE.url}sitemap.xml\n`);
 writeFileSync(join(OUT, 'llms.txt'), llmsTxt());
 writeFileSync(join(OUT, 'llms-full.txt'), llmsFullTxt());
 
 const anchors = PAGES.map((p) => ({ page: `${p.slug}.html`, title: p.title, sections: sectionsOf(p) }));
 writeFileSync(join(HERE, 'out', 'anchors.json'), JSON.stringify(anchors, null, 2));
+copyFileSync(join(OUT, 'assets', 'img', 'og.png'), join(HERE, '..', 'public', 'icons', 'og-card.png'));
 
 console.log(`Built ${PAGES.length} pages, ${index.length} search entries, ${imgSize.size} images -> ${OUT}`);
