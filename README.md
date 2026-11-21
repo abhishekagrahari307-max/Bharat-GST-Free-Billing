@@ -4,8 +4,8 @@
 
 Created & maintained by **Abhishek Agrahari** — built for Indian retail shops, kirana stores, pharmacies, mobile/electronics dealers, jewellers, wholesalers, manufacturers, restaurants, freelancers, exporters, and Chartered Accountants. **Zero subscriptions, zero ads, zero signup, and zero locked features — forever.**
 
-🌐 **Live Web & Installable Offline PWA:** [https://abhishekagrahari307-max.github.io/Bharat-ai-Voice/](https://abhishekagrahari307-max.github.io/Bharat-ai-Voice/)  
-📖 **Complete Self-Hosted User Guide (35 Pages, EN + GST Guides):** [https://abhishekagrahari307-max.github.io/Bharat-ai-Voice/user-guide/](https://abhishekagrahari307-max.github.io/Bharat-ai-Voice/user-guide/)
+🌐 **Live Web & Installable Offline PWA:** [https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/](https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/)  
+📖 **Complete Self-Hosted User Guide (35 Pages, EN + GST Guides):** [https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/user-guide/](https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/user-guide/)
 
 ---
 
@@ -45,7 +45,7 @@ Created & maintained by **Abhishek Agrahari** — built for Indian retail shops,
 ## ⚡ Quick Start
 
 ### Use Instantly (Zero Install) or Install as Offline App
-Open **[https://abhishekagrahari307-max.github.io/Bharat-ai-Voice/](https://abhishekagrahari307-max.github.io/Bharat-ai-Voice/)** in Chrome, Edge, Brave, or Safari and click **Settings → App & Offline Install → Install Desktop / Mobile App** for 100% offline use.
+Open **[https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/](https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/)** in Chrome, Edge, Brave, or Safari and click **Settings → App & Offline Install → Install Desktop / Mobile App** for 100% offline use.
 
 ### Run Locally with Node.js (18+)
 

@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://abhishekagrahari307-max.github.io/Bharat-ai-Voice/user-guide/sitemap.xml
+Sitemap: https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/user-guide/sitemap.xml

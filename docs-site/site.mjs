@@ -4,11 +4,11 @@
 export const SITE = {
   name: 'Bharat GST Free Billing',
   folder: 'docs',
-  url: 'https://abhishekagrahari307-max.github.io/Bharat-ai-Voice/user-guide/',
-  appUrl: 'https://abhishekagrahari307-max.github.io/Bharat-ai-Voice/',
-  publisher: { name: 'Abhishek Agrahari', url: 'https://abhishekagrahari307-max.github.io/Bharat-ai-Voice/' },
-  version: '1.10.86',
-  repo: 'https://abhishekagrahari307-max.github.io/Bharat-ai-Voice/',
+  url: 'https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/user-guide/',
+  appUrl: 'https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/',
+  publisher: { name: 'Abhishek Agrahari', url: 'https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/' },
+  version: '2.6.0',
+  repo: 'https://github.com/abhishekagrahari307-max/Bharat-GST-Free-Billing',
   download: '../',
 };
 
