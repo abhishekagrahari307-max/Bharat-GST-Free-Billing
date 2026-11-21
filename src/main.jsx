@@ -95,20 +95,22 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-// Gentle idle poll: check every 30 min against ./version.json for deployed updates
+// Gentle check on startup + every 30 min against ./version.json for deployed updates
 if (!SAFE_MODE && typeof window !== 'undefined') {
   const checkRemoteVersion = async () => {
     if (!navigator.onLine) return;
     try {
+      const reg = await navigator.serviceWorker?.getRegistration?.();
+      await reg?.update?.();
       const r = await fetch(`./version.json?t=${Date.now()}`, { cache: 'no-store' });
       if (!r.ok) return;
       const data = await r.json();
       if (data?.version && APP_VERSION && data.version !== APP_VERSION && APP_VERSION !== 'unknown') {
-        const reg = await navigator.serviceWorker?.getRegistration?.();
         await reg?.update?.();
       }
     } catch { /* offline or dev mode */ }
   };
+  setTimeout(checkRemoteVersion, 1200);
   setInterval(checkRemoteVersion, 30 * 60 * 1000);
 }
 

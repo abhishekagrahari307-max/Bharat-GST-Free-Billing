@@ -925,7 +925,7 @@ export default function SettingsView({ onSaved }) {
           .filter((id) => !sectionsOf(activeSection).includes(id))
           .map((id) => `#${id}`).join(', ') + ' { display: none !important; }'}</style>
         <nav className="settings-jumpnav" aria-label="Settings sections" style={{
-          display: 'flex', gap: '0.3rem', flexWrap: 'wrap', alignItems: 'center',
+          display: 'flex', gap: '0.3rem', flexWrap: 'nowrap', overflowX: 'auto', scrollbarWidth: 'none', alignItems: 'center',
         }}>
           {SETTINGS_TABS.map(([id, label]) => {
             const active = activeSection === id;
@@ -940,8 +940,9 @@ export default function SettingsView({ onSaved }) {
                 style={{
                   fontSize: '0.76rem',
                   fontWeight: active ? 700 : 600,
-                  padding: '0.38rem 0.8rem',
+                  padding: '0.36rem 0.76rem',
                   borderRadius: 999,
+                  flexShrink: 0,
                   background: active
                     ? 'linear-gradient(135deg, var(--primary), var(--primary-darker))'
                     : 'var(--bg-secondary)',
@@ -2053,25 +2054,31 @@ export default function SettingsView({ onSaved }) {
       {/* v1.10.75 - Save all changes, docked flat along the bottom edge of the
            screen (asked for: stuck to the bottom, not floating). Position and
            width are in index.css (.settings-savebar). */}
+      {/* Save all changes bar: hidden on auto-saving tabs (Print & PDF, Appearance,
+          App & Offline Install) when there are no unsaved edits from other tabs,
+          giving laptops maximum vertical workspace. Always appears immediately
+          whenever any form has unsaved edits. */}
+      {(unsaved.length > 0 || !['section-print', 'section-appearance', 'section-offline-app'].includes(activeSection)) && (
       <div className="settings-savebar" style={{
           zIndex: 40,
           display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap',
-          padding: '0.6rem 1.5rem',
+          padding: '0.5rem 1.25rem',
           borderTop: unsaved.length ? '2px solid #f59e0b' : '1px solid var(--border)',
           background: unsaved.length ? 'color-mix(in srgb, #f59e0b 8%, var(--bg-secondary))' : 'var(--bg-secondary)',
           boxShadow: '0 -4px 16px rgba(15, 23, 42, 0.10)',
         }}>
-        <span style={{ flex: '1 1 220px', fontSize: '0.85rem', fontWeight: 600, color: unsaved.length ? '#f59e0b' : 'var(--text-muted)' }}
+        <span style={{ flex: '1 1 220px', fontSize: '0.84rem', fontWeight: 600, color: unsaved.length ? '#f59e0b' : 'var(--text-muted)' }}
           title="Payment accounts, Print & PDF, Region and App lock save as you change them. Business type and Features wait for Save all changes.">
           {unsaved.length ? <>● Unsaved changes in {unsaved.join(', ')}</> : '✓ All changes saved'}
         </span>
         {unsaved.length > 0 && (
-          <button type="button" className="btn" onClick={discardAll} style={{ fontSize: '0.85rem' }}>Discard</button>
+          <button type="button" className="btn" onClick={discardAll} style={{ fontSize: '0.84rem' }}>Discard</button>
         )}
-        <button type="button" className="btn btn-primary" disabled={saving || invNumSaving || stockAlertsSaving} onClick={saveAll} style={{ fontSize: '0.85rem' }}>
+        <button type="button" className="btn btn-primary" disabled={saving || invNumSaving || stockAlertsSaving} onClick={saveAll} style={{ fontSize: '0.84rem' }}>
           <Save size={16} /> {saving || invNumSaving || stockAlertsSaving ? 'Saving…' : 'Save all changes'}
         </button>
       </div>
+      )}
     </div>
   );
 }
