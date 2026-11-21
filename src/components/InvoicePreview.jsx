@@ -4,7 +4,8 @@ import SignatureImages from './SignatureImages';
 import DOMPurify from 'dompurify';
 import { sectionPrint, numberToWords, printedSubtotal, formatCurrency, INVOICE_TYPES, getCountryConfig, CURRENCY_NAMES, formatExchangeRateLine, getAccountById, getPaperSize, resolveLineDiscount, htmlHasText, splitNumberedTerms, invoiceOptionOn, DEFAULT_DECLARATION, filledOrderDetails, formatShortDate, isModuleEnabled, getStateCode, COUNTRIES } from '../utils';
 import { getEnabledModules } from '../store';
-import { getPrintSettings, getLabel, formatCurrencyEx, formatDate } from '../utils/printSettings';
+import { getPrintSettings, getLabel, formatCurrencyEx, formatDate, PRINT_SETTINGS_EVENT } from '../utils/printSettings';
+import { code128Svg } from '../utils/barcode';
 import InvoiceGridLayout, { HsnSummaryTable } from './InvoiceGridLayout';
 import { exportDeclaration } from '../utils/lut';
 import { purposeCodeText } from '../utils/purposeCodes';
@@ -24,14 +25,35 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
   // (a page refresh while editing an invoice), and reading a bank field from
   // null blanked the whole app. Empty until it arrives.
   const profile = profileProp || {};
+  // Subscribe to PRINT_SETTINGS_EVENT so live previews across tabs update
+  // immediately whenever Settings → Print & PDF saves.
+  const [, setPsTick] = useState(0);
+  useEffect(() => {
+    const bump = () => setPsTick((n) => n + 1);
+    window.addEventListener(PRINT_SETTINGS_EVENT, bump);
+    return () => window.removeEventListener(PRINT_SETTINGS_EVENT, bump);
+  }, []);
+  const _ps = getPrintSettings();
+
   // v1.10.86 (#188) - the item table steps down to a tighter size when its
   // columns need more room than the sheet has (see utils/invoiceFit.js).
+  // Also observe container resize so hidden tabs (`display: none` -> `block`)
+  // re-run fitItemTable as soon as they gain a non-zero width.
   const sheetRef = useRef(null);
   const setSheetRef = useCallback((el) => {
     sheetRef.current = el;
     if (typeof ref === 'function') ref(el); else if (ref) ref.current = el;
   }, [ref]);
   useLayoutEffect(() => { fitItemTable(sheetRef.current); });
+  useEffect(() => {
+    const el = sheetRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(() => {
+      if (el.clientWidth > 0) fitItemTable(el);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   // Interstate detection must match InvoiceGenerator.jsx — it honours
   // details.placeOfSupply (POS override) and client.isSEZ (SEZ supplies
   // are always interstate regardless of physical state). Without this
@@ -92,24 +114,24 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
   const showState = opt('showState');
   const showGSTIN = opt('showGSTIN');
   const showPlaceOfSupply = opt('showPlaceOfSupply', showGST);
-  const showHSN = opt('showHSN');
+  const showHSN = opt('showHSN', _ps.showHSN !== false);
   // v1.10.86 - (#189, #192) MRP column, off unless chosen. Information only:
   // the rate, tax and totals never use it.
   const showMRP = opt('showMRP', false);
   const mrpText = (item) => (Number(item.mrp) > 0 ? fmt(Number(item.mrp)) : '-');
   const showDiscount = opt('showDiscount');
-  const showBankDetails = opt('showBankDetails');
+  const showBankDetails = opt('showBankDetails', _ps.showBankDetails !== false);
   // v1.10.83 - Settings → Features → UPI QR code off hides it on every invoice.
-  const showUPI = opt('showUPI') && isModuleEnabled('upiQr', getEnabledModules());
-  const showLogo = opt('showLogo');
-  const showSignature = opt('showSignature');
+  const showUPI = opt('showUPI', _ps.showUPI !== false) && isModuleEnabled('upiQr', getEnabledModules());
+  const showLogo = opt('showLogo', _ps.showLogo !== false);
+  const showSignature = opt('showSignature', _ps.signatureShow !== false);
   const showSignatoryText = opt('showSignatoryText');
   const showTerms = opt('showTerms');
   const showNotes = opt('showNotes');
   // v1.10.70 - requested (#72, @sangwanmail-eng). OFF unless chosen: most
   // invoices are signed, and this line would contradict a signature.
   const showSystemGeneratedNote = opt('showSystemGeneratedNote', false);
-  const showAmountWords = opt('showAmountWords');
+  const showAmountWords = opt('showAmountWords', _ps.showAmountWords !== false);
   const showDueDate = opt('showDueDate');
   const showItemQty = opt('showItemQty');
   const showItemUnit = opt('showItemUnit');
@@ -151,7 +173,7 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
   // rupee total when Print Settings → Dual currency display is on.
   const baseCurrency = sellerCC.currency;
   const exchangeRateLine = options.exchangeRate && currencySymbol !== baseCurrency
-    ? formatExchangeRateLine(currencySymbol, options.exchangeRate, baseCurrency, getPrintSettings().dualCurrencyEnabled ? totals.total : null)
+    ? formatExchangeRateLine(currencySymbol, options.exchangeRate, baseCurrency, _ps.dualCurrencyEnabled ? totals.total : null)
     : '';
   // A PayPal / Wise / Payoneer link on the payment account, printed on
   // invoices in a foreign currency (UPI cannot take one).
@@ -160,13 +182,6 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
   // own, else the payment account's.
   const purposeCode = clientAbroad || currencySymbol !== baseCurrency ? String(options.purposeCode || account?.purposeCode || '').trim() : '';
 
-  // v1.10.4 — Single read of print settings per render. Prior code
-  // called getPrintSettings() at 6 different points, each hitting
-  // localStorage.getItem + JSON.parse. Multiplied by every keystroke
-  // in InvoiceGenerator (which rerenders the preview), this was a
-  // measurable hot spot. Now: one lookup + downstream aliases keep
-  // JSX shape untouched.
-  const _ps = getPrintSettings();
   // Room (px; 794 px = 210 mm) to leave above the e-invoice block so the
   // PDF's copy label (drawn 4-10 mm from the top) does not cover its QR code.
   const copyLabelGap = _ps.multiCopyEnabled && Number(_ps.multiCopyCount) > 1
@@ -253,6 +268,44 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
     if (einv?.signedQr) QRCode.toDataURL(einv.signedQr, { errorCorrectionLevel: 'L', margin: 1, width: 360 }, (err, u) => { url = err ? '' : u; });
     return url;
   }, [einv?.signedQr]);
+
+  // Live Verification QR, Code-128 Barcode & Feedback QR (generated synchronously
+  // so PrintSettings Live Preview, InvoiceGenerator on-screen preview, Test Print,
+  // and billPdf.js all display them immediately; InvoiceGenerator's jsPDF path
+  // skips data-fgsb-live-overlay="1" elements because it stamps native vector QRs).
+  const verifyPayload = useMemo(() => {
+    if (!_ps.invoiceQrEnabled) return '';
+    return JSON.stringify({
+      inv: details?.invoiceNumber || 'INV-001',
+      date: details?.invoiceDate || '',
+      total: Number(totals?.total || 0),
+      seller: profile?.gstin || profile?.businessName || '',
+      buyer: client?.gstin || client?.name || '',
+    });
+  }, [_ps.invoiceQrEnabled, details?.invoiceNumber, details?.invoiceDate, totals?.total, profile?.gstin, profile?.businessName, client?.gstin, client?.name]);
+
+  const verifyQrUrl = useMemo(() => {
+    let url = '';
+    if (verifyPayload) {
+      try { QRCode.toDataURL(verifyPayload, { errorCorrectionLevel: 'M', margin: 1, width: 140 }, (err, u) => { url = err ? '' : u; }); } catch { url = ''; }
+    }
+    return url;
+  }, [verifyPayload]);
+
+  const feedbackQrImgUrl = useMemo(() => {
+    let url = '';
+    const target = _ps.feedbackQrEnabled ? String(_ps.feedbackQrUrl || '').trim() : '';
+    if (target) {
+      try { QRCode.toDataURL(target, { errorCorrectionLevel: 'M', margin: 1, width: 140 }, (err, u) => { url = err ? '' : u; }); } catch { url = ''; }
+    }
+    return url;
+  }, [_ps.feedbackQrEnabled, _ps.feedbackQrUrl]);
+
+  const barcodeSvgHtml = useMemo(() => {
+    if (!_ps.invoiceBarcodeEnabled) return '';
+    const code = String(details?.invoiceNumber || 'INV-001').replace(/[^\x20-\x7e]/g, '').slice(0, 24) || 'INV-001';
+    try { return code128Svg(code); } catch { return ''; }
+  }, [_ps.invoiceBarcodeEnabled, details?.invoiceNumber]);
 
   const accentColors = {
     'tax-invoice': '#1e40af',
@@ -1105,6 +1158,14 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
     ...(pdfFontSizeCss ? { fontSize: pdfFontSizeCss } : {}),
     ...(pdfFontWeightCss ? { fontWeight: pdfFontWeightCss } : {}),
     ...(pdfCapsOn ? { textTransform: 'uppercase' } : {}),
+    // Live print-margin preview in Print & PDF Settings (real PDF export
+    // applies these exact mm margins at jsPDF placement time).
+    ...(!isThermal && options._showLiveOverlays ? {
+      paddingTop: `${Math.max(4, Number(_ps_final.marginTop ?? 10))}mm`,
+      paddingRight: `${Math.max(4, Number(_ps_final.marginRight ?? 10))}mm`,
+      paddingBottom: `${Math.max(4, Number(_ps_final.marginBottom ?? 10))}mm`,
+      paddingLeft: `${Math.max(4, Number(_ps_final.marginLeft ?? 10))}mm`,
+    } : {}),
     // v1.10.67 (#66 item 12) — origin for the CANCELLED watermark below.
     position: 'relative',
   };
@@ -1779,7 +1840,7 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
       })()}
 
       {/* Watermark for proforma */}
-      {invoiceType === 'proforma' && (
+      {invoiceType === 'proforma' && !_ps_final.watermarkEnabled && (
         <div style={{
           position: 'absolute', top: '50%', left: '50%',
           transform: 'translate(-50%, -50%) rotate(-35deg)',
@@ -1787,6 +1848,87 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
           pointerEvents: 'none', whiteSpace: 'nowrap'
         }}>
           ESTIMATE
+        </div>
+      )}
+
+      {/* User-configured Print & PDF Watermark (PAID / DRAFT / DUPLICATE / Custom) */}
+      {_ps_final.watermarkEnabled && String(_ps_final.watermarkText || '').trim() && (
+        <div
+          data-fgsb-live-overlay="1"
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            pointerEvents: 'none',
+            overflow: 'hidden',
+            zIndex: 4,
+          }}
+        >
+          <span style={{
+            transform: 'rotate(-35deg)',
+            fontSize: '4.4rem',
+            fontWeight: 800,
+            letterSpacing: '0.14em',
+            color: `rgba(100, 116, 139, ${Math.min(0.6, Math.max(0.03, Number(_ps_final.watermarkOpacity ?? 0.08)))})`,
+            whiteSpace: 'nowrap',
+            userSelect: 'none',
+          }}>
+            {String(_ps_final.watermarkText).trim()}
+          </span>
+        </div>
+      )}
+
+      {/* Live Verification QR, Code-128 Barcode & Feedback QR strip */}
+      {(verifyQrUrl || barcodeSvgHtml || feedbackQrImgUrl) && (
+        <div
+          data-fgsb-live-overlay="1"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '0.75rem',
+            marginTop: '0.85rem',
+            padding: '0.6rem 1.25rem',
+            borderTop: '1px dashed #cbd5e1',
+            fontSize: '0.68rem',
+            color: '#475569',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            {verifyQrUrl && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <img src={verifyQrUrl} alt="Invoice verification QR" style={{ width: 52, height: 52, display: 'block' }} />
+                <div style={{ lineHeight: 1.25 }}>
+                  <div style={{ fontWeight: 700, color: '#0f172a' }}>Verify Invoice</div>
+                  <div>Scan for JSON summary</div>
+                </div>
+              </div>
+            )}
+            {barcodeSvgHtml && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                <div
+                  style={{ width: 132, height: 28 }}
+                  dangerouslySetInnerHTML={{ __html: barcodeSvgHtml }}
+                />
+                <span style={{ fontFamily: 'monospace', fontSize: '0.64rem', letterSpacing: '0.06em', color: '#0f172a' }}>
+                  {details?.invoiceNumber || 'INV-001'}
+                </span>
+              </div>
+            )}
+          </div>
+          {feedbackQrImgUrl && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginLeft: 'auto' }}>
+              <div style={{ textAlign: 'right', lineHeight: 1.25 }}>
+                <div style={{ fontWeight: 700, color: '#0f172a' }}>{_ps_final.feedbackQrLabel || 'Rate your experience'}</div>
+                <div>Scan QR</div>
+              </div>
+              <img src={feedbackQrImgUrl} alt="Feedback QR" style={{ width: 52, height: 52, display: 'block' }} />
+            </div>
+          )}
         </div>
       )}
 

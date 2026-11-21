@@ -109,21 +109,18 @@ export function BackupFiles({ status }) {
           <p className="page-subtitle mb-4">Your whole data folder as one ZIP, to keep on a pen drive or carry to a new computer.</p>
           <div className="app-actions-grid">
             <ActionCard icon={<Download size={22} />} title="Backup Data" doc="backup#backup"
-              body="Zips your data folder into Documents/FreeGSTBill Backups, with the date and time. New computer? Copy that ZIP to it, install the app there, then Restore Backup."
+              body="Zips your data folder into Documents/BharatGST Backups, with the date and time. New computer? Copy that ZIP to it, install the app there, then Restore Backup."
               buttonLabel={label('backup', 'Create Backup', 'Backing up…')}
               disabled={!!busy || !can('backup')} onClick={() => runAction('backup')} />
             <ActionCard icon={<Upload size={22} />} title="Restore Backup" doc="backup#restore"
               body="Pick a backup ZIP. Your data as it is now is saved first, as a safety net."
               buttonLabel={label('restore', 'Choose Backup ZIP', 'Restoring…')}
               disabled={!!busy || !can('restore')} onClick={() => launchScript('restore')} />
-            {/* v1.10.86 (maintainer, 19 Nov) - "Move to Another PC" folded into
-                 Create Backup: the same ZIP moves the books (Backup, then Restore
-                 on the new PC). The launcher keeps its own Move option. */}
             <ActionCard icon={<FolderOpen size={22} />} title="Open Data Folder" doc="backup#where-data-lives"
               body="The folder where your bills, clients, products and settings are kept."
               buttonLabel="Open" disabled={!!busy} onClick={() => runAction('open-data-folder')} />
             <ActionCard icon={<FolderOpen size={22} />} title="Open Backups Folder" doc="backup#backup-zip"
-              body="Documents/FreeGSTBill Backups, where every backup ZIP is kept."
+              body="Documents/BharatGST Backups, where every backup ZIP is kept."
               buttonLabel="Open" disabled={!!busy} onClick={() => runAction('open-backups-folder')} />
           </div>
           <ResultPanel result={act.lastResult} />
@@ -305,7 +302,7 @@ function AppActions({ act, status }) {
         {status?.installed ? (
           // The Setup's app is removed like other Windows programs.
           <ActionCard icon={<Trash2 size={22} />} title="Remove the App" doc="settings#remove"
-            body="Remove it like other Windows programs: Settings → Apps → Installed apps → Free GST Billing → Uninstall. It asks before deleting your books; the answer is No unless you choose Yes."
+            body="Remove it like other Windows programs: Settings → Apps → Installed apps → Bharat GST Free Billing → Uninstall. It asks before deleting your books; the answer is No unless you choose Yes."
             buttonLabel="Open Windows Apps" disabled={!!busy} onClick={() => runAction('open-apps-settings')} variant="danger" />
         ) : (
           <ActionCard icon={<Trash2 size={22} />} title="Remove the App" doc="settings#remove"
@@ -356,7 +353,7 @@ function RemovePanel({ status, busy, setBusy, onCancel }) {
     return (
       <div id="remove-app" className="glass-panel p-6" style={{ marginTop: '1.5rem' }}>
         <h3 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <CheckCircle size={22} color="#22c55e" /> Free GST Billing is being removed
+          <CheckCircle size={22} color="#22c55e" /> Bharat GST Free Billing is being removed
         </h3>
         <p>The app has closed and its files and icons are being deleted. You can close this window.</p>
         {removed.kept && (
@@ -366,7 +363,7 @@ function RemovePanel({ status, busy, setBusy, onCancel }) {
           </p>
         )}
         {removed.data && !removed.backups && (
-          <p>A last copy of your data was saved in <code>Documents/FreeGSTBill Backups</code> as <code>before-removal-…</code>.</p>
+          <p>A last copy of your data was saved in <code>Documents/BharatGST Backups</code> as <code>before-removal-…</code>.</p>
         )}
       </div>
     );
@@ -374,7 +371,7 @@ function RemovePanel({ status, busy, setBusy, onCancel }) {
 
   return (
     <div id="remove-app" className="glass-panel p-6" style={{ marginTop: '1.5rem', border: '1px solid #dc2626' }}>
-      <h3 style={{ margin: '0 0 0.4rem' }}>Remove Free GST Billing from this computer</h3>
+      <h3 style={{ margin: '0 0 0.4rem' }}>Remove Bharat GST Free Billing from this computer</h3>
       <p style={{ margin: '0 0 0.8rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
         Tick what else should be deleted. Anything not ticked stays in <code>{status.appFolder}</code>.
       </p>
@@ -383,7 +380,7 @@ function RemovePanel({ status, busy, setBusy, onCancel }) {
         {[
           ['data', 'My invoices, clients, products and settings (and the daily backups inside the app)'],
           ['pdfs', 'Saved invoice PDFs (the Saved Invoices and Trash folders)'],
-          ['backups', 'All backup files in Documents/FreeGSTBill Backups'],
+          ['backups', 'All backup files in Documents/BharatGST Backups'],
         ].map(([key, text]) => (
           <label key={key}>
             <input type="checkbox" checked={opts[key]} onChange={e => setOpts(o => ({ ...o, [key]: e.target.checked }))} /> {text}
@@ -391,7 +388,7 @@ function RemovePanel({ status, busy, setBusy, onCancel }) {
         ))}
       </div>
       {opts.data && !opts.backups && (
-        <p style={{ fontSize: '0.82rem', margin: '0.8rem 0 0' }}>A last copy of your data is saved in <code>Documents/FreeGSTBill Backups</code> first.</p>
+        <p style={{ fontSize: '0.82rem', margin: '0.8rem 0 0' }}>A last copy of your data is saved in <code>Documents/BharatGST Backups</code> first.</p>
       )}
       {opts.data && opts.backups && (
         <p style={{ fontSize: '0.82rem', margin: '0.8rem 0 0', color: '#ef4444' }}><b>Nothing will be left. This cannot be undone.</b> Export a backup first if you may want your books again.</p>

@@ -17,8 +17,6 @@ import { getPrintSettings } from '../utils/printSettings';
 import { APP_VERSION } from '../utils/problemLog';
 
 export const SEEN_KEY = 'freegstbill_lastSeenVersion';
-const REPO = 'https://github.com/abhishekagrahari307-max/Bharat-ai-Voice';
-const notesUrl = (version) => `${REPO}/releases/tag/v${encodeURIComponent(version)}`;
 
 const LOOK = {
   added: { Icon: Sparkles, heading: 'New in this update' },
@@ -64,8 +62,8 @@ export default function WhatsNewSlides({ entry, onClose }) {
             <>
               <h2 id="wns-title" className="wns-title">That&apos;s the main news</h2>
               <p className="wns-text">
-                {more > 0 ? `And ${more} more change${more === 1 ? '' : 's'}` : 'Every change, with the details,'} in the full notes on GitHub.
-                Your invoices and settings were kept.
+                {more > 0 ? `Plus ${more} more improvement${more === 1 ? '' : 's'} included in this version.` : 'All improvements are ready to use offline.'}
+                {' '}Your invoices and settings were kept safely.
               </p>
             </>
           ) : (
@@ -89,7 +87,6 @@ export default function WhatsNewSlides({ entry, onClose }) {
             : <button type="button" className="btn btn-secondary" onClick={onClose}>Skip</button>}
           {last ? (
             <div className="wns-actions-end">
-              <a className="btn btn-secondary" href={notesUrl(entry.version)} target="_blank" rel="noopener noreferrer">Read the full notes</a>
               <button type="button" className="btn btn-primary" onClick={onClose}>Done</button>
             </div>
           ) : <button type="button" className="btn btn-primary" onClick={() => go(at + 1)}>Next</button>}

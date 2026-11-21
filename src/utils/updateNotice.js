@@ -14,10 +14,10 @@ export const canAskToNotify = () => supported() && Notification.permission === '
 export function notifyUpdate(latest) {
   if (!supported() || !latest || Notification.permission !== 'granted' || get(SHOWN_KEY) === latest) return;
   try {
-    const n = new Notification(`Free GST Billing ${latest} is available`, {
+    const n = new Notification(`Bharat GST Free Billing ${latest} is available`, {
       body: 'Open the app and click "Update to v' + latest + '". Your books are kept.',
       icon: '/icons/icon-192.png',
-      tag: 'freegstbill-update',
+      tag: 'bharat-gst-update',
     });
     n.onclick = () => { window.focus(); n.close(); };
     set(SHOWN_KEY, latest);

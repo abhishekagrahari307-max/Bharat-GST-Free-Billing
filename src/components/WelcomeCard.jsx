@@ -10,13 +10,14 @@ import { SUPPORT_NUDGE_MIN_INVOICES } from '../utils/supporters';
 import HelpButton from './HelpButton';
 
 const KEY = 'freegstbill_welcomeCard';
-const SHARE_TEXT = 'I use Bharat GST Free Billing for my GST invoices. It is 100% free, GST-ready (CGST/SGST/IGST, GSTR-1/3B/2B, UPI QR) and keeps data safe: https://github.com/abhishekagrahari307-max/Bharat-ai-Voice';
 
 const isClosed = () => { try { return localStorage.getItem(KEY) === 'closed'; } catch { return false; } };
 
 export default function WelcomeCard({ invoiceCount, onOpenSupport }) {
   const [closed, setClosed] = useState(isClosed);
   if (closed || invoiceCount >= SUPPORT_NUDGE_MIN_INVOICES) return null;
+  const appUrl = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '';
+  const shareText = `I use Bharat GST Free Billing (Created by Abhishek Agrahari) for my GST invoices — 100% free, offline-ready, CGST/SGST/IGST, GSTR-1/3B/2B & UPI QR${appUrl ? `: ${appUrl}` : ''}`;
   const close = () => {
     try { localStorage.setItem(KEY, 'closed'); } catch { /* private mode */ }
     setClosed(true);
@@ -40,7 +41,7 @@ export default function WelcomeCard({ invoiceCount, onOpenSupport }) {
         <button type="button" className="welcome-card-btn welcome-card-btn-primary" onClick={close}>
           Start Billing Now
         </button>
-        <a className="welcome-card-btn" href={`https://wa.me/?text=${encodeURIComponent(SHARE_TEXT)}`} target="_blank" rel="noopener noreferrer">
+        <a className="welcome-card-btn" href={`https://wa.me/?text=${encodeURIComponent(shareText)}`} target="_blank" rel="noopener noreferrer">
           <Share2 size={16} /> Share on WhatsApp
         </a>
         <button type="button" className="welcome-card-btn welcome-card-btn-quiet" onClick={onOpenSupport}>

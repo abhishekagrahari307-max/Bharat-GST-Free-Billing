@@ -2,7 +2,8 @@
 // of Dashboard.jsx, where it was made for the WhatsApp button, so the Clients
 // account's WhatsApp button sends the same PDF). The A4 page helpers moved
 // with it; Dashboard's Bulk PDF imports them from here.
-import { INVOICE_TYPES } from '../utils';
+import { INVOICE_TYPES } from '../utils.js';
+import { getPrintSettings } from './printSettings.js';
 
 // v1.10.79 - put a captured invoice on A4 pages. It used to be drawn into one
 // page whatever its height (`Math.min(h, 297)`), so a long invoice shared on
@@ -11,10 +12,13 @@ import { INVOICE_TYPES } from '../utils';
 // `breaks` are canvas heights where a page may end (row and block bottoms,
 // see safeBreaks): a page ends at the last one that fits, so rows and the
 // signature are not cut in half.
-export function addCanvasAsA4Pages(doc, canvas, startOnNewPage, breaks = []) {
+export function addCanvasAsA4Pages(doc, canvas, startOnNewPage, breaks = [], fontScale = 1) {
+  const scale = Math.min(1.2, Math.max(0.7, Number(fontScale) || 1));
   const pageW = 210;
   const pageH = 297;
-  const slicePx = Math.floor((canvas.width * pageH) / pageW);
+  const drawW = pageW * scale;
+  const xOff = (pageW - drawW) / 2;
+  const slicePx = Math.floor((canvas.width * (pageH / scale)) / pageW);
   for (let y = 0, page = 0; y < canvas.height; page++) {
     let h = Math.min(slicePx, canvas.height - y);
     if (y + h < canvas.height) {
@@ -30,7 +34,7 @@ export function addCanvasAsA4Pages(doc, canvas, startOnNewPage, breaks = []) {
     ctx.fillRect(0, 0, slice.width, slice.height);
     ctx.drawImage(canvas, 0, y, canvas.width, h, 0, 0, canvas.width, h);
     if (page > 0 || startOnNewPage) doc.addPage();
-    doc.addImage(slice.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, pageW, (h * pageW) / canvas.width, undefined, 'FAST');
+    doc.addImage(slice.toDataURL('image/jpeg', 0.92), 'JPEG', xOff, 0, drawW, (h * drawW) / canvas.width, undefined, 'FAST');
     y += h;
   }
 }
@@ -48,6 +52,7 @@ export function safeBreaks(el, canvas) {
 
 export async function billPdfBlob(bill) {
   const data = bill.data || {};
+  const ps = getPrintSettings();
   const { jsPDF } = await import('jspdf');
   const html2canvas = (await import('html2canvas')).default;
   const InvoicePreviewMod = await import('../components/InvoicePreview');
@@ -62,17 +67,23 @@ export async function billPdfBlob(bill) {
       root.render(createElement(InvoicePreviewMod.default, {
         profile: data.profile, client: data.client, details: data.details, items: data.items,
         totals: data.totals, invoiceType: data.invoiceType, customTerms: data.customTerms,
-        customNotes: data.customNotes, extraSections: data.extraSections, options: data.invoiceOptions,
+        customNotes: data.customNotes, extraSections: data.extraSections,
+        options: { ...(data.invoiceOptions || {}), _showLiveOverlays: true },
+        previewOnly: true,
         cancelled: bill.status === 'cancelled', einvoice: bill.einvoice,
       }));
       requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(resolve, 100)));
     });
+    const targetEl = container.firstElementChild || container;
+    if (ps.pdfDarkenOnPrint !== false && targetEl.classList) {
+      targetEl.classList.add('printing-mode');
+    }
     const capScale = Math.min(4, Math.max(2, Math.round((window.devicePixelRatio || 1) * 1.2)));
-    const canvas = await html2canvas(container.firstElementChild || container, {
+    const canvas = await html2canvas(targetEl, {
       scale: capScale, backgroundColor: '#ffffff', useCORS: false, logging: false,
     });
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
-    addCanvasAsA4Pages(doc, canvas, false, safeBreaks(container.firstElementChild || container, canvas));
+    addCanvasAsA4Pages(doc, canvas, false, safeBreaks(targetEl, canvas), ps.pdfFontScale || 1);
     return doc.output('blob');
   } finally {
     root.unmount();

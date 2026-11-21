@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { Printer, TestTube, RotateCcw, Info, Save as SaveIcon, Trash2 } from 'lucide-react';
+import { Printer, TestTube, RotateCcw, Info, Save as SaveIcon, Trash2, Download } from 'lucide-react';
 import { toast } from './Toast';
 import { confirmAction } from './ConfirmModal';
 import InvoicePreview from './InvoicePreview';
-import { getProfile, getInvoiceDisplayOptions, saveInvoiceDisplayOptions, getBusinessType } from '../store';
-import { DEFAULT_PRINT_SETTINGS, getPrintSettings, savePrintSettings, buildSampleInvoice, BUSINESS_PRESETS, applyBusinessPreset, LABEL_PRESETS, PRINT_SETTINGS_EVENT } from '../utils/printSettings';
+import { getProfile, getInvoiceDisplayOptions, saveInvoiceDisplayOptions, getBusinessType, patchInvoiceDefaults } from '../store';
+import { DEFAULT_PRINT_SETTINGS, getPrintSettings, savePrintSettings, buildSampleInvoice, BUSINESS_PRESETS, applyBusinessPreset, LABEL_PRESETS, PRINT_SETTINGS_EVENT, printSettingsToInvoiceDefaults } from '../utils/printSettings';
 import HelpButton from './HelpButton';
 
 // v1.9.9 — Visual design presets. Each is a starting point that flips
@@ -196,13 +196,17 @@ const DESIGN_PRESETS = [
 
 export default function PrintSettings() {
   const [settings, setSettings] = useState(getPrintSettings);
-  const [showTestPreview, setShowTestPreview] = useState(false);
+  const [testingPrint, setTestingPrint] = useState(false);
   const [profile, setProfile] = useState(null);
-  const previewRef = useRef(null);
+  const testPrintRef = useRef(null);
   // v1.9.8 — preview mode toggle so users see the right layout for the
   // change they're making. Sticky preview on the right stays in view as
   // they scroll settings on the left.
   const [previewMode, setPreviewMode] = useState('pdf'); // 'pdf' | 'thermal' | 'both'
+  // On screens <= 1180px (laptops at 125%/150% zoom, tablets, phones), default
+  // to 'stacked' (preview on top + full-width controls below, zero overlap),
+  // with instant 1-click toggles for Controls-only or Full Preview.
+  const [narrowPaneMode, setNarrowPaneMode] = useState('stacked'); // 'stacked' | 'controls' | 'preview'
 
   useEffect(() => { getProfile().then(setProfile).catch(() => {}); }, []);
   // v1.10.86 - Settings → Company → Business type sets the print style too.
@@ -212,26 +216,20 @@ export default function PrintSettings() {
     return () => window.removeEventListener(PRINT_SETTINGS_EVENT, reload);
   }, []);
 
-  const set = (patch) => {
-    const next = { ...settings, ...patch };
+  const applyAndSync = (next, patchSource = next) => {
     setSettings(next);
     savePrintSettings(next);
+    const defaultsPatch = printSettingsToInvoiceDefaults(patchSource, next);
+    if (Object.keys(defaultsPatch).length > 0) {
+      patchInvoiceDefaults(defaultsPatch).catch(() => {});
+    }
   };
 
-  // v1.10.36 — Business-type awareness for "Recommended for" tags AND
-  // for actually HIDING options that are irrelevant to the active
-  // business type. Reported: "if I have selected freelance why it is
-  // still showing me retails or other option — thermal etc should also
-  // hide according to business type."
-  //
-  // Two helpers:
-  //   isRecommendedForActive([...]) → shows a ★ badge on the option.
-  //   isVisibleFor([...])           → returns true if the option should
-  //                                   render AT ALL. Any option not
-  //                                   listed here is always visible.
-  //
-  // Empty activeBiz (user hasn't picked a preset yet) shows everything
-  // — no premature hiding.
+  const set = (patch) => {
+    const next = { ...settings, ...patch };
+    applyAndSync(next, patch);
+  };
+
   const activeBiz = settings.activeBusinessPresetId || '';
   const isRecommendedForActive = (recommendedList) => {
     if (!activeBiz) return false;
@@ -241,8 +239,6 @@ export default function PrintSettings() {
     if (!activeBiz) return true;              // no preset → show everything
     return relevantList.includes(activeBiz);  // preset picked → only show if listed
   };
-  // Reusable "hidden by business type" note so users understand WHY an
-  // option isn't there when their picked preset doesn't need it.
   const HIDDEN_HINT = activeBiz ? (
     <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
       Some options are hidden because they don't apply to your "{BUSINESS_PRESETS[activeBiz]?.label}" print style. Click Show all options to see everything.
@@ -250,103 +246,131 @@ export default function PrintSettings() {
   ) : null;
 
   const reset = () => {
-    setSettings({ ...DEFAULT_PRINT_SETTINGS });
-    savePrintSettings({ ...DEFAULT_PRINT_SETTINGS });
+    const fresh = { ...DEFAULT_PRINT_SETTINGS };
+    applyAndSync(fresh, fresh);
     toast('Print settings reset to defaults', 'info');
   };
 
-  const runTestPrint = async () => {
-    // Render a sample invoice with current settings, then trigger browser print.
-    setShowTestPreview(true);
-    // Wait for React to render the preview + fonts to load, then generate PDF.
-    setTimeout(async () => {
-      try {
-        const { jsPDF } = await import('jspdf');
-        const html2canvas = (await import('html2canvas')).default;
-        if (!previewRef.current) { toast('Preview not ready', 'error'); return; }
+  const runTestPrint = async ({ downloadOnly = false } = {}) => {
+    if (testingPrint) return;
+    setTestingPrint(true);
+    try {
+      const { jsPDF } = await import('jspdf');
+      const html2canvas = (await import('html2canvas')).default;
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const targetEl = testPrintRef.current;
+      if (!targetEl) { toast('Preview not ready', 'error'); return; }
 
-        // v1.10.3 — await fonts + capped scale + blob leak fix.
-        if (document.fonts && document.fonts.ready) {
-          try { await document.fonts.ready; } catch { /* non-fatal */ }
-        }
-        // v1.10.11 — buffer-safe mode lowers the scale + JPEG quality
-        // and grayscales the capture so old thermal printers with
-        // small buffers can accept it.
-        const bufSafe = !!settings.thermalBufferSafe;
-        const capScale = bufSafe
-          ? 2
-          : Math.min(6, Math.max(2, Math.round((window.devicePixelRatio || 1) * 1.5)));
-        const canvas = await html2canvas(previewRef.current, {
-          scale: capScale,
-          backgroundColor: '#ffffff', useCORS: false, logging: false,
-        });
-        // Grayscale the canvas in-place when buffer-safe is on. This
-        // simplifies the raster the printer driver needs to process.
-        if (bufSafe) {
-          try {
-            const ctx = canvas.getContext('2d');
-            const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const d = img.data;
-            for (let i = 0; i < d.length; i += 4) {
-              // Luminosity method; also boost contrast so grays snap to B/W.
-              const gray = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
-              const v = gray < 180 ? 0 : 255;   // hard threshold for dot-matrix feel
-              d[i] = d[i + 1] = d[i + 2] = v;
-            }
-            ctx.putImageData(img, 0, 0);
-          } catch { /* CORS-tainted canvas can't be read; fall back to raw */ }
-        }
+      if (document.fonts && document.fonts.ready) {
+        try { await document.fonts.ready; } catch { /* non-fatal */ }
+      }
+      const isThermalSample = previewMode === 'thermal';
+      const bufSafe = isThermalSample && !!settings.thermalBufferSafe;
+      const capScale = bufSafe
+        ? 2
+        : Math.min(4, Math.max(2, Math.round((window.devicePixelRatio || 1) * 1.5)));
+
+      if (!isThermalSample && settings.pdfDarkenOnPrint !== false) {
+        targetEl.classList.add('printing-mode');
+      }
+      const canvas = await html2canvas(targetEl, {
+        scale: capScale,
+        backgroundColor: '#ffffff',
+        useCORS: false,
+        logging: false,
+      });
+      targetEl.classList.remove('printing-mode');
+
+      if (bufSafe) {
+        try {
+          const ctx = canvas.getContext('2d');
+          const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const d = img.data;
+          for (let i = 0; i < d.length; i += 4) {
+            const gray = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
+            const v = gray < 180 ? 0 : 255;
+            d[i] = d[i + 1] = d[i + 2] = v;
+          }
+          ctx.putImageData(img, 0, 0);
+        } catch { /* CORS-tainted canvas can't be read; fall back to raw */ }
+      }
+
+      const jpegQ = bufSafe ? 0.72 : (settings.pdfQuality === 'draft' ? 0.75 : 0.94);
+      let pdf;
+      if (isThermalSample) {
         const width = 80;
         const height = (canvas.height * width) / canvas.width;
-        const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [width, Math.max(150, height)] });
-        const jpegQ = bufSafe ? 0.72 : 0.95;
+        pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [width, Math.max(140, height)], compress: true });
         pdf.addImage(canvas.toDataURL('image/jpeg', jpegQ), 'JPEG', 0, 0, width, height, undefined, 'FAST');
-
-        // v1.10.3 — blob URL revoked in `finally`-equivalent (timer +
-        // load handler both trigger cleanup once). Prior code only
-        // revoked in onload; if the iframe never loaded (blocked, bad
-        // PDF), the blob URL leaked forever.
-        const blob = pdf.output('blob');
-        const url = URL.createObjectURL(blob);
-        let cleaned = false;
-        const cleanup = () => { if (!cleaned) { cleaned = true; URL.revokeObjectURL(url); } };
-        const timer = setTimeout(cleanup, 90_000);
-        let frame = document.getElementById('fgsb-print-frame');
-        if (!frame) {
-          frame = document.createElement('iframe');
-          frame.id = 'fgsb-print-frame';
-          frame.style.cssText = 'position:fixed;left:-99999px;top:-99999px;width:0;height:0;border:0;';
-          document.body.appendChild(frame);
-        }
-        frame.src = url;
-        frame.onload = () => {
-          try { frame.contentWindow.focus(); frame.contentWindow.print(); }
-          catch { window.open(url, '_blank'); }
-          setTimeout(() => { clearTimeout(timer); cleanup(); }, 60_000);
-        };
-        frame.onerror = () => { clearTimeout(timer); cleanup(); };
-        toast('Test print sent to your default printer', 'success');
-      } catch (e) {
-        console.error('Test print failed', e);
-        toast('Test print failed — try Download PDF instead', 'error');
+      } else {
+        const pageW = 210;
+        const pageH = 297;
+        const fontScale = Math.min(1.2, Math.max(0.7, Number(settings.pdfFontScale) || 1));
+        const drawW = pageW * fontScale;
+        const xOff = (pageW - drawW) / 2;
+        const rawH = (canvas.height * drawW) / canvas.width;
+        const fitRatio = rawH <= pageH ? 1 : Math.min(1, pageH / rawH);
+        const finalW = drawW * fitRatio;
+        const finalH = rawH * fitRatio;
+        const finalX = xOff + (drawW - finalW) / 2;
+        pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
+        pdf.addImage(canvas.toDataURL('image/jpeg', jpegQ), 'JPEG', finalX, 0, finalW, finalH, undefined, 'FAST');
       }
-    }, 300);
+
+      if (downloadOnly) {
+        pdf.save(isThermalSample ? 'Sample-Thermal-Receipt-80mm.pdf' : 'Sample-Tax-Invoice-A4.pdf');
+        toast('Sample PDF downloaded', 'success');
+        return;
+      }
+
+      const blob = pdf.output('blob');
+      const url = URL.createObjectURL(blob);
+      let cleaned = false;
+      const cleanup = () => { if (!cleaned) { cleaned = true; URL.revokeObjectURL(url); } };
+      const timer = setTimeout(cleanup, 90_000);
+      let frame = document.getElementById('fgsb-print-frame');
+      if (!frame) {
+        frame = document.createElement('iframe');
+        frame.id = 'fgsb-print-frame';
+        frame.style.cssText = 'position:fixed;left:-99999px;top:-99999px;width:0;height:0;border:0;';
+        document.body.appendChild(frame);
+      }
+      frame.src = url;
+      frame.onload = () => {
+        try { frame.contentWindow.focus(); frame.contentWindow.print(); }
+        catch { window.open(url, '_blank'); }
+        setTimeout(() => { clearTimeout(timer); cleanup(); }, 60_000);
+      };
+      frame.onerror = () => { clearTimeout(timer); cleanup(); };
+      toast(`Test print (${isThermalSample ? 'Thermal 80mm' : 'A4 PDF'}) sent to printer`, 'success');
+    } catch (e) {
+      console.error('Test print failed', e);
+      toast('Test print failed — try Download Sample PDF instead', 'error');
+    } finally {
+      setTestingPrint(false);
+    }
   };
 
-  // Build the invoiceOptions that flows into the InvoicePreview for the test
-  // preview. All the user's chosen print settings map into the thermal-specific
-  // invoiceOptions fields that InvoicePreview already reads.
+  // Build the invoiceOptions that flows into the InvoicePreview for live preview
+  // and sample print. _showLiveOverlays turns on live Watermark, Margins,
+  // Verification QR, Code-128 Barcode, and Feedback QR inside the preview.
   const previewInvoiceOptions = {
     paperSize: 'thermal80',
+    pdfStyle: settings.pdfTemplate || 'classic',
     showGST: true,
-    showBankDetails: settings.showBankDetails,
-    showUPI: settings.showUPI,
-    showAmountWords: settings.showAmountWords,
-    showTerms: false, showNotes: false,
+    showLogo: settings.showLogo !== false,
+    showHSN: settings.showHSN !== false,
+    showBankDetails: settings.showBankDetails !== false,
+    showUPI: settings.showUPI !== false,
+    showSignature: settings.signatureShow !== false,
+    showAmountWords: settings.showAmountWords !== false,
+    showTerms: true,
+    showNotes: false,
+    termsFormatMode: settings.termsFormatMode || 'compact',
+    _showLiveOverlays: true,
     thermalFontSize: settings.fontSize,
     thermalCompact: !settings.showRateLine && !settings.showHSN,
     thermalCutMark: settings.cutMark,
-    // Custom fields wired in the InvoicePreview thermal render
     thermalFontFamily: settings.fontFamily,
     thermalFontWeight: settings.fontWeight,
     thermalAllCaps: settings.allCaps,
@@ -364,11 +388,12 @@ export default function PrintSettings() {
   };
 
   const sample = buildSampleInvoice(profile);
+  const sampleTerms = settings.defaultTerms || '1. Goods once sold will not be taken back or exchanged.\n2. Interest @ 18% p.a. will be charged on overdue bills.\n3. Subject to local jurisdiction.';
 
   return (
-    <div className="glass-panel p-6 mb-6">
+    <div className="glass-panel p-6 mb-6 print-settings-panel">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
+        <div style={{ minWidth: 0, flex: '1 1 280px' }}>
           <h3 className="section-title" style={{ marginTop: 0, marginBottom: '0.25rem' }}>
             <Printer size={18} style={{ display: 'inline', verticalAlign: -3, marginRight: 6 }} />
             Print & PDF Settings
@@ -377,29 +402,44 @@ export default function PrintSettings() {
             </span>
           </h3>
           <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: 0 }}>
-            App-wide defaults for every printed / PDF invoice. 70+ settings — every one dynamic. Each invoice can override via its Customize panel.
+            App-wide defaults for every printed / PDF invoice. Every change saves automatically &amp; updates new invoices + Live Preview immediately.
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          {/* v1.10.86 - "Run setup wizard" removed with the wizard: the business
-              type is in Settings → Company, paper and language are on this page. */}
-          <button className="btn btn-secondary" style={{ fontSize: '0.82rem' }} onClick={reset}>
+          <button type="button" className="btn btn-secondary" style={{ fontSize: '0.82rem' }} onClick={reset}>
             <RotateCcw size={14} /> Reset defaults
           </button>
-          <button className="btn btn-primary" style={{ fontSize: '0.82rem' }} onClick={runTestPrint}>
-            <TestTube size={14} /> Test Print
+          <button type="button" className="btn btn-secondary" style={{ fontSize: '0.82rem' }} disabled={testingPrint} onClick={() => runTestPrint({ downloadOnly: true })}>
+            <Download size={14} /> Sample PDF
+          </button>
+          <button type="button" className="btn btn-primary" style={{ fontSize: '0.82rem' }} disabled={testingPrint} onClick={() => runTestPrint({ downloadOnly: false })}>
+            <TestTube size={14} /> {testingPrint ? 'Preparing…' : 'Test Print'}
           </button>
         </div>
       </div>
 
-      {/* v1.9.8 — Split layout: settings scroll on the left, preview stays sticky on the right */}
-      <div className="print-settings-layout" style={{
-        display: 'grid',
-        gridTemplateColumns: 'minmax(0, 1fr) minmax(340px, 460px)',
-        gap: '1.25rem',
-        marginTop: '1.25rem',
-        alignItems: 'flex-start',
-      }}>
+      {/* Responsive view switcher for laptops (<= 1180px), tablets & phones — prevents cramping/overlap */}
+      <div className="print-settings-mobile-tabs" role="tablist" aria-label="Print settings view mode">
+        {[
+          ['stacked', '⊞ Controls + Preview'],
+          ['controls', '⚙️ Controls Only'],
+          ['preview', '👁️ Full Preview'],
+        ].map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={narrowPaneMode === id}
+            className={`print-settings-mobile-tab ${narrowPaneMode === id ? 'active' : ''}`}
+            onClick={() => setNarrowPaneMode(id)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Split layout: settings scroll on the left, preview stays sticky on the right on wide screens (> 1180px) */}
+      <div className={`print-settings-layout narrow-mode-${narrowPaneMode}`}>
         <div className="print-settings-body" style={{ minWidth: 0 }}>
 
       {/* v1.10.36 — Business-type preset was buried below 25 other
@@ -446,8 +486,7 @@ export default function PrintSettings() {
                     tone: 'warning',
                   })) return;
                   const next = { ...applyBusinessPreset(settings, key), activeBusinessPresetId: key };
-                  setSettings(next);
-                  savePrintSettings(next);
+                  applyAndSync(next, preset.patch || next);
                   toast(`Applied "${preset.label}" preset`, 'success');
                 }}
                 style={{
@@ -526,16 +565,18 @@ export default function PrintSettings() {
               <button
                 key={preset.id}
                 type="button"
+                className="design-preset-card"
+                data-keep-light="1"
                 onClick={() => {
                   const next = { ...settings, ...preset.settings, activePresetId: preset.id };
-                  setSettings(next); savePrintSettings(next);
+                  applyAndSync(next, preset.settings);
                   toast(`Applied "${preset.name}" design — every setting still editable below`, 'success');
                 }}
                 style={{
                   padding: 0,
                   border: active ? '2px solid var(--primary)' : '1px solid var(--border)',
                   borderRadius: 10,
-                  background: active ? 'var(--primary-light, rgba(30,64,175,0.06))' : 'var(--card)',
+                  background: active ? 'var(--primary-light, rgba(30,64,175,0.06))' : 'var(--card-bg, #ffffff)',
                   cursor: 'pointer',
                   textAlign: 'left',
                   overflow: 'hidden',
@@ -616,80 +657,17 @@ export default function PrintSettings() {
         </div>
       </div>
 
-      {/* v1.10.36 — Reported: "if I have selected freelance why it is
-           still showing me retails or other option ... thermal etc
-           should also hide according to business type". This entire
-           thermal-typography/layout/content/footer block is hidden for
-           A4-first businesses (freelancer / service / manufacturer /
-           wholesale). Retail + restaurant see it. When no biz preset is
-           picked, everyone sees it. */}
-      {isVisibleFor(['retail_shop', 'restaurant']) ? (
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem' }}>
-        {/* TYPOGRAPHY — thermal-only since v1.10.9 */}
-        <SettingGroup title="Typography (Thermal receipts)" doc="print-settings#thermal-typography">
-          <SelectRow label="Font family" value={settings.fontFamily} onChange={v => set({ fontFamily: v })}
-            options={[
-              ['mono', 'Monospace (Courier) — thermal-optimized'],
-              ['sans', 'Sans-serif (Arial-like)'],
-            ]}
-            hint="Applies to THERMAL receipts only. For A4/A5 PDFs use the 'PDF FONT FAMILY' section below." />
-          <SelectRow label="Font size" value={settings.fontSize} onChange={v => set({ fontSize: v })}
-            options={[
-              ['small', 'Small (fits more per receipt)'],
-              ['medium', 'Medium (recommended)'],
-              ['large', 'Large'],
-              ['xlarge', 'Extra Large (easier for older customers)'],
-            ]} />
-          <SelectRow label="Font weight" value={settings.fontWeight} onChange={v => set({ fontWeight: v })}
-            options={[
-              ['normal', 'Normal'],
-              ['bold', 'Bold (recommended)'],
-              ['ultra', 'Ultra bold (darkest print)'],
-            ]}
-            hint="Thermal print heads render bold weights much darker than normal — pick bold or ultra for consistent legibility." />
-          <ToggleRow label="ALL CAPS mode" value={settings.allCaps} onChange={v => set({ allCaps: v })}
-            hint="Renders every text element in UPPERCASE — matches the SMART BAZAAR / Reliance receipt style. Best for high legibility." />
-        </SettingGroup>
-
-        {/* LAYOUT */}
-        <SettingGroup title="Layout" doc="print-settings#thermal-layout">
-          <SelectRow label="Line spacing" value={settings.lineSpacing} onChange={v => set({ lineSpacing: v })}
-            options={[
-              ['compact', 'Compact (save paper)'],
-              ['normal', 'Normal'],
-              ['comfortable', 'Comfortable (easier to read)'],
-            ]} />
-          <SelectRow label="Header alignment" value={settings.headerAlign} onChange={v => set({ headerAlign: v })}
-            options={[
-              ['center', 'Center (default)'],
-              ['left', 'Left-aligned'],
-            ]} />
-          {/* v1.10.36 — renamed from "Print contrast" — the internal
-              `contrast` label + normal/high/ultra options were jargon.
-              Users think of thermal fade as "darkness", not "contrast",
-              so the label + option names now match the mental model. */}
-          <SelectRow label="Thermal ink darkness" value={settings.contrast} onChange={v => set({ contrast: v })}
-            options={[
-              ['normal', 'Standard'],
-              ['high', 'Dark (recommended for older printers)'],
-              ['ultra', 'Extra-dark (max)'],
-            ]}
-            hint="Applies grayscale + contrast filter to logo / QR so faded prints come out darker." />
-          <ToggleRow label="Force ALL CAPS in header" value={settings.headerCaps} onChange={v => set({ headerCaps: v })}
-            hint="Business name always uppercase (independent of ALL CAPS mode)." />
-        </SettingGroup>
-
-        {/* CONTENT */}
-        <SettingGroup title="Content" doc="print-settings#thermal-content">
+      {/* Universal Invoice Content & Typography — applies to BOTH PDF (A4/A5) & Thermal receipts */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem', marginBottom: '1.25rem' }}>
+        <SettingGroup title="Invoice Content (PDF & Thermal)" doc="print-settings#thermal-content">
           <ToggleRow label="Show business logo" value={settings.showLogo} onChange={v => set({ showLogo: v })} />
-          <ToggleRow label="Show HSN code per item" value={settings.showHSN} onChange={v => set({ showHSN: v })}
-            hint="Required for GST compliance if you're printing tax invoices. Turn off for informal counter receipts." />
-          <ToggleRow label='Show "Qty × Rate" line per item' value={settings.showRateLine} onChange={v => set({ showRateLine: v })} />
+          <ToggleRow label="Show HSN / SAC code per item" value={settings.showHSN} onChange={v => set({ showHSN: v })}
+            hint="Recommended for GST compliance on tax invoices." />
           <ToggleRow label="Show amount in words" value={settings.showAmountWords} onChange={v => set({ showAmountWords: v })} />
           <ToggleRow label="Show bank details" value={settings.showBankDetails} onChange={v => set({ showBankDetails: v })} />
           <ToggleRow label="Show UPI QR code" value={settings.showUPI} onChange={v => set({ showUPI: v })} />
           {settings.showUPI && (
-            <SelectRow label="UPI QR size" value={settings.qrSize} onChange={v => set({ qrSize: v })}
+            <SelectRow label="UPI QR size (Thermal)" value={settings.qrSize} onChange={v => set({ qrSize: v })}
               options={[
                 ['small', 'Small (60 × 60 px)'],
                 ['medium', 'Medium (90 × 90 px)'],
@@ -698,31 +676,73 @@ export default function PrintSettings() {
           )}
         </SettingGroup>
 
-        {/* FOOTER */}
-        <SettingGroup title="Footer" doc="print-settings#thermal-footer">
-          <TextRow label="Custom footer message" value={settings.footerMessage} onChange={v => set({ footerMessage: v })}
-            placeholder="Thank you for your business!"
-            hint='Appears above the cut mark. Leave blank to hide.' />
-          <ToggleRow label='Show cut mark ("✂ cut here")' value={settings.cutMark} onChange={v => set({ cutMark: v })}
-            hint="For thermal printers without auto-cutters. Turn off if your printer feeds paper automatically." />
-          <SelectRow label="Feed lines after cut" value={String(settings.feedLines)} onChange={v => set({ feedLines: parseInt(v, 10) })}
-            options={[['0', 'No extra feed'], ['1', '1 line'], ['2', '2 lines (default)'], ['3', '3 lines'], ['4', '4 lines'], ['6', '6 lines']]}
-            hint="Extra blank lines after the cut mark so the tear is clean." />
-          <ToggleRow label="Show tagline" value={settings.showTagline} onChange={v => set({ showTagline: v })}
-            hint="Optional tagline printed below business name." />
-          {settings.showTagline && (
-            <TextRow label="Tagline text" value={settings.tagline} onChange={v => set({ tagline: v })}
-              placeholder="e.g. Fresh & Local Since 2010" />
-          )}
+        <SettingGroup title="Typography & Emphasis" doc="print-settings#thermal-typography">
+          <SelectRow label="Base font size" value={settings.fontSize} onChange={v => set({ fontSize: v })}
+            options={[
+              ['small', 'Small (compact)'],
+              ['medium', 'Medium (recommended)'],
+              ['large', 'Large'],
+              ['xlarge', 'Extra Large (high legibility)'],
+            ]} />
+          <SelectRow label="Font weight" value={settings.fontWeight} onChange={v => set({ fontWeight: v })}
+            options={[
+              ['normal', 'Normal'],
+              ['bold', 'Bold (crisper print)'],
+              ['ultra', 'Ultra bold (darkest print)'],
+            ]} />
+          <ToggleRow label="ALL CAPS mode" value={settings.allCaps} onChange={v => set({ allCaps: v })}
+            hint="Renders invoice text in UPPERCASE for maximum thermal & dot-matrix legibility." />
         </SettingGroup>
       </div>
-      ) : (
-        /* v1.10.36 — Thermal block hidden for non-thermal presets.
-           Show a subtle note so the user knows it's not missing. */
-        <div style={{ padding: '0.75rem 1rem', background: 'var(--bg-secondary)', borderRadius: 8, marginBottom: '1rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-          🖨 Thermal receipt settings (font, cut mark, feed lines, contrast) are hidden — the <strong>{BUSINESS_PRESETS[activeBiz]?.label}</strong> print style uses A4/A5 PDFs. Use another print style (at the top) if you also print thermal receipts.
+
+      {/* Thermal POS Receipt Hardware Settings — open by default for Retail/Restaurant, expandable for A4 businesses */}
+      <details open={isVisibleFor(['retail_shop', 'restaurant'])} style={{ padding: '0.85rem 1rem', background: 'var(--bg-secondary)', borderRadius: 8, marginBottom: '1rem' }}>
+        <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: '0.88rem', color: 'var(--text)' }}>
+          🖨 Thermal POS Receipt Layout &amp; Cutter Settings (58mm / 80mm)
+        </summary>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem', marginTop: '0.85rem' }}>
+          <SettingGroup title="Thermal Layout" doc="print-settings#thermal-layout">
+            <SelectRow label="Thermal font family" value={settings.fontFamily} onChange={v => set({ fontFamily: v })}
+              options={[
+                ['mono', 'Monospace (Courier) — thermal-optimized'],
+                ['sans', 'Sans-serif (Arial-like)'],
+              ]} />
+            <SelectRow label="Line spacing" value={settings.lineSpacing} onChange={v => set({ lineSpacing: v })}
+              options={[
+                ['compact', 'Compact (save paper)'],
+                ['normal', 'Normal'],
+                ['comfortable', 'Comfortable (easier to read)'],
+              ]} />
+            <SelectRow label="Header alignment" value={settings.headerAlign} onChange={v => set({ headerAlign: v })}
+              options={[
+                ['center', 'Center (default)'],
+                ['left', 'Left-aligned'],
+              ]} />
+            <SelectRow label="Thermal ink darkness" value={settings.contrast} onChange={v => set({ contrast: v })}
+              options={[
+                ['normal', 'Standard'],
+                ['high', 'Dark (recommended for older printers)'],
+                ['ultra', 'Extra-dark (max)'],
+              ]} />
+            <ToggleRow label="Force ALL CAPS in header" value={settings.headerCaps} onChange={v => set({ headerCaps: v })} />
+            <ToggleRow label='Show "Qty × Rate" line per item' value={settings.showRateLine} onChange={v => set({ showRateLine: v })} />
+          </SettingGroup>
+
+          <SettingGroup title="Thermal Footer & Cutter" doc="print-settings#thermal-footer">
+            <TextRow label="Custom footer message" value={settings.footerMessage} onChange={v => set({ footerMessage: v })}
+              placeholder="Thank you for your business!"
+              hint="Appears above the cut mark. Leave blank to hide." />
+            <ToggleRow label='Show cut mark ("✂ cut here")' value={settings.cutMark} onChange={v => set({ cutMark: v })} />
+            <SelectRow label="Feed lines after cut" value={String(settings.feedLines)} onChange={v => set({ feedLines: parseInt(v, 10) })}
+              options={[['0', 'No extra feed'], ['1', '1 line'], ['2', '2 lines (default)'], ['3', '3 lines'], ['4', '4 lines'], ['6', '6 lines']]} />
+            <ToggleRow label="Show tagline" value={settings.showTagline} onChange={v => set({ showTagline: v })} />
+            {settings.showTagline && (
+              <TextRow label="Tagline text" value={settings.tagline} onChange={v => set({ tagline: v })}
+                placeholder="e.g. Fresh & Local Since 2010" />
+            )}
+          </SettingGroup>
         </div>
-      )}
+      </details>
 
       {/* ============================================================ */}
       {/* PDF & UNIVERSAL PRINT FEATURES (v1.9.0) */}
@@ -937,8 +957,8 @@ export default function PrintSettings() {
               { key: 'delivery-challan',label: 'Delivery Challan',  def: 'DC'   },
               { key: 'sales-order',     label: 'Sales Order',       def: 'SO'   },
             ].map(({ key, label, def }) => (
-              <div key={key} style={{ display: 'grid', gridTemplateColumns: '1fr 130px', gap: '0.5rem', alignItems: 'center', marginBottom: 6 }}>
-                <span style={{ fontSize: '0.82rem' }}>{label}</span>
+              <div key={key} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(96px, 128px)', gap: '0.5rem', alignItems: 'center', marginBottom: 6 }}>
+                <span style={{ fontSize: '0.82rem', minWidth: 0 }}>{label}</span>
                 <input type="text" className="form-input"
                   value={settings.customPrefixes?.[key] || ''}
                   onChange={e => set({ customPrefixes: { ...(settings.customPrefixes || {}), [key]: e.target.value.replace(/[^A-Za-z0-9_-]/g, '').slice(0, 8) } })}
@@ -1271,93 +1291,94 @@ export default function PrintSettings() {
               confirmLabel: 'Load template',
               tone: 'warning',
             })) return;
-            setSettings(tpl.settings);
-            savePrintSettings(tpl.settings);
+            applyAndSync(tpl.settings, tpl.settings);
             toast(`Loaded "${tpl.name}"`, 'success');
           }} />
       </div>
 
-      {/* v1.10.5 — reminder-scheduling UI removed. See M25 audit note
-           above the SAVED TEMPLATES section. Notification bell still
-           surfaces overdue bills using `reminderEnabled` alone. */}
-
         </div>{/* end .print-settings-body */}
 
-        {/* v1.9.8 — Sticky preview pane. Stays in view while user scrolls
-             settings on the left. Tab toggle at top switches between the
-             PDF (A4) and Thermal (80mm) render. Split view shows both. */}
-        <div className="print-settings-preview-pane" style={{
-          position: 'sticky', top: '1rem',
-          maxHeight: 'calc(100vh / var(--ui-zoom, 1) - 2rem)',
-          padding: '1rem',
-          background: 'var(--bg-secondary)',
-          borderRadius: 8,
-          display: 'flex', flexDirection: 'column', gap: '0.75rem',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <strong style={{ fontSize: '0.9rem' }}>
-              <Info size={14} style={{ display: 'inline', verticalAlign: -2, marginRight: 5 }} />
-              Live preview <HelpButton title="Live preview" doc="print-settings#preview" size={16} style={{ marginLeft: 6 }} />
+        {/* Sticky preview pane on desktop (> 1180px), full-width panel on narrow screens */}
+        <div className="print-settings-preview-pane">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <strong style={{ fontSize: '0.9rem', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+              <Info size={14} />
+              Live preview <HelpButton title="Live preview" doc="print-settings#preview" size={16} />
             </strong>
-            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Updates as you type</span>
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+              {settings.pdfFontScale && Number(settings.pdfFontScale) !== 1
+                ? `PDF scale ${Math.round(Number(settings.pdfFontScale) * 100)}% · Live`
+                : 'Updates instantly'}
+            </span>
           </div>
 
           {/* Preview mode tabs */}
-          <div style={{ display: 'flex', gap: '0.25rem', background: 'var(--card)', padding: '0.25rem', borderRadius: 6 }}>
+          <div style={{ display: 'flex', gap: '0.25rem', background: 'var(--card-bg, #ffffff)', border: '1px solid var(--border)', padding: '0.25rem', borderRadius: 8 }}>
             {[
               ['pdf', '📄 PDF (A4)'],
               ['thermal', '🖨 Thermal (80mm)'],
-              ['both', '⊞ Split view'],
+              ['both', '⊞ Stacked Both'],
             ].map(([key, label]) => (
               <button key={key} type="button"
                 onClick={() => setPreviewMode(key)}
                 style={{
-                  flex: 1, padding: '0.35rem', border: 'none', borderRadius: 4,
+                  flex: 1, padding: '0.4rem 0.35rem', border: 'none', borderRadius: 6,
                   background: previewMode === key ? 'var(--primary)' : 'transparent',
                   color: previewMode === key ? '#fff' : 'var(--text)',
                   fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
+                  whiteSpace: 'nowrap',
                 }}>
                 {label}
               </button>
             ))}
           </div>
 
-          {/* Preview canvas — scrolls internally so left settings scroll independently.
-              CSS transform: scale doesn't shrink the layout box, so we wrap the
-              scaled invoice in a container sized to the post-scale dimensions.
-              Otherwise the 210mm A4 pushes out of the pane and content clips. */}
-          <div style={{ overflow: 'auto', flex: 1, background: '#fff', padding: '0.75rem', borderRadius: 6, minHeight: 200 }}>
+          {/* Preview canvas — uses ResizeObserver + CSS transform: scale() wrapper
+              so neither A4 (210mm) nor Thermal (80mm) ever overflows, clips, or overlaps. */}
+          <div className="print-settings-preview-stage">
             {previewMode === 'both' ? (
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                <div style={{ zoom: 0.42, minWidth: 0 }}>
-                  <InvoicePreview
-                    profile={sample.profile}
-                    client={sample.client}
-                    details={sample.details}
-                    items={sample.items}
-                    totals={sample.totals}
-                    invoiceType={sample.invoiceType}
-                    options={{ ...previewInvoiceOptions, paperSize: 'a4' }}
-                    customTerms="" customNotes="" extraSections={[]}
-                  />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div>
+                  <div className="print-preview-sheet-badge">📄 PDF (A4 — 210 × 297 mm)</div>
+                  <ScaledPaperStage naturalWidthPx={794}>
+                    <InvoicePreview
+                      previewOnly
+                      profile={sample.profile}
+                      client={sample.client}
+                      details={sample.details}
+                      items={sample.items}
+                      totals={sample.totals}
+                      invoiceType={sample.invoiceType}
+                      options={{ ...previewInvoiceOptions, paperSize: 'a4' }}
+                      customTerms={sampleTerms}
+                      customNotes=""
+                      extraSections={[]}
+                    />
+                  </ScaledPaperStage>
                 </div>
-                <div style={{ zoom: 0.85, minWidth: 0 }}>
-                  <InvoicePreview
-                    profile={sample.profile}
-                    client={sample.client}
-                    details={sample.details}
-                    items={sample.items}
-                    totals={sample.totals}
-                    invoiceType={sample.invoiceType}
-                    options={{ ...previewInvoiceOptions, paperSize: 'thermal80' }}
-                    customTerms="" customNotes="" extraSections={[]}
-                  />
+                <div>
+                  <div className="print-preview-sheet-badge">🖨 Thermal POS Receipt (80 mm)</div>
+                  <ScaledPaperStage naturalWidthPx={302}>
+                    <InvoicePreview
+                      previewOnly
+                      profile={sample.profile}
+                      client={sample.client}
+                      details={sample.details}
+                      items={sample.items}
+                      totals={sample.totals}
+                      invoiceType={sample.invoiceType}
+                      options={{ ...previewInvoiceOptions, paperSize: 'thermal80' }}
+                      customTerms={sampleTerms}
+                      customNotes=""
+                      extraSections={[]}
+                    />
+                  </ScaledPaperStage>
                 </div>
               </div>
             ) : previewMode === 'pdf' ? (
-              <div style={{ zoom: 0.5, minWidth: 0 }}>
+              <ScaledPaperStage naturalWidthPx={794}>
                 <InvoicePreview
-                  ref={previewRef}
+                  previewOnly
                   profile={sample.profile}
                   client={sample.client}
                   details={sample.details}
@@ -1365,13 +1386,15 @@ export default function PrintSettings() {
                   totals={sample.totals}
                   invoiceType={sample.invoiceType}
                   options={{ ...previewInvoiceOptions, paperSize: 'a4' }}
-                  customTerms="" customNotes="" extraSections={[]}
+                  customTerms={sampleTerms}
+                  customNotes=""
+                  extraSections={[]}
                 />
-              </div>
+              </ScaledPaperStage>
             ) : (
-              <div style={{ margin: '0 auto', width: 'fit-content' }}>
+              <ScaledPaperStage naturalWidthPx={302}>
                 <InvoicePreview
-                  ref={previewRef}
+                  previewOnly
                   profile={sample.profile}
                   client={sample.client}
                   details={sample.details}
@@ -1379,16 +1402,106 @@ export default function PrintSettings() {
                   totals={sample.totals}
                   invoiceType={sample.invoiceType}
                   options={{ ...previewInvoiceOptions, paperSize: 'thermal80' }}
-                  customTerms="" customNotes="" extraSections={[]}
+                  customTerms={sampleTerms}
+                  customNotes=""
+                  extraSections={[]}
                 />
-              </div>
+              </ScaledPaperStage>
             )}
           </div>
         </div>
       </div>{/* end .print-settings-layout */}
 
-      {/* Hidden preview for the actual test-print rendering */}
-      {showTestPreview && null}
+      {/* Dedicated unscaled 1:1 offscreen sheet so Test Print & Sample PDF
+          capture full crisp geometry regardless of screen width or Split View */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'fixed',
+          left: '-99999px',
+          top: 0,
+          width: previewMode === 'thermal' ? '302px' : '794px',
+          background: '#ffffff',
+          pointerEvents: 'none',
+          zIndex: -1,
+        }}
+      >
+        <InvoicePreview
+          ref={testPrintRef}
+          previewOnly
+          profile={sample.profile}
+          client={sample.client}
+          details={sample.details}
+          items={sample.items}
+          totals={sample.totals}
+          invoiceType={sample.invoiceType}
+          options={{ ...previewInvoiceOptions, paperSize: previewMode === 'thermal' ? 'thermal80' : 'a4' }}
+          customTerms={sampleTerms}
+          customNotes=""
+          extraSections={[]}
+        />
+      </div>
+    </div>
+  );
+}
+
+// Scales a fixed-mm paper sheet (794px A4 or 302px 80mm thermal) to fit inside
+// any container width without CSS `zoom` quirks, horizontal clipping, or height
+// overlap. Reserves exact post-scale width × height on the layout wrapper.
+function ScaledPaperStage({ naturalWidthPx = 794, children }) {
+  const outerRef = useRef(null);
+  const innerRef = useRef(null);
+  const [box, setBox] = useState({ scale: 0.5, w: Math.round(naturalWidthPx * 0.5), h: 520 });
+
+  useEffect(() => {
+    const outer = outerRef.current;
+    const inner = innerRef.current;
+    if (!outer || !inner) return undefined;
+
+    const recompute = () => {
+      const availW = Math.max(180, outer.clientWidth - 4);
+      const natW = Math.max(200, inner.scrollWidth || inner.offsetWidth || naturalWidthPx);
+      const natH = Math.max(160, inner.scrollHeight || inner.offsetHeight || 500);
+      const scale = Math.min(1, availW / natW);
+      const w = Math.round(natW * scale);
+      const h = Math.round(natH * scale);
+      setBox((prev) => (Math.abs(prev.scale - scale) < 0.005 && Math.abs(prev.w - w) < 2 && Math.abs(prev.h - h) < 2 ? prev : { scale, w, h }));
+    };
+
+    recompute();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(recompute);
+    ro.observe(outer);
+    ro.observe(inner);
+    return () => ro.disconnect();
+  }, [naturalWidthPx]);
+
+  return (
+    <div ref={outerRef} style={{ width: '100%', overflow: 'hidden', display: 'flex', justifyContent: 'center' }}>
+      <div
+        style={{
+          width: `${box.w}px`,
+          height: `${box.h}px`,
+          overflow: 'hidden',
+          borderRadius: 6,
+          background: '#ffffff',
+          boxShadow: '0 2px 12px rgba(15, 23, 42, 0.1)',
+          border: '1px solid #e2e8f0',
+          position: 'relative',
+          flexShrink: 0,
+        }}
+      >
+        <div
+          ref={innerRef}
+          style={{
+            width: 'fit-content',
+            transform: `scale(${box.scale})`,
+            transformOrigin: 'top left',
+          }}
+        >
+          {children}
+        </div>
+      </div>
     </div>
   );
 }
@@ -1564,11 +1677,11 @@ function SavedTemplatesEditor({ templates, onChange, currentSettings, onLoad }) 
             onClick={() => onChange(templates.filter((_, j) => j !== i))}><Trash2 size={13} /></button>
         </div>
       ))}
-      <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.5rem' }}>
+      <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
         <input type="text" value={name} onChange={e => setName(e.target.value)}
           placeholder="Template name (e.g. Retail v1)"
-          className="form-input" style={{ fontSize: '0.82rem', padding: '0.35rem', flex: 1 }} />
-        <button type="button" className="btn btn-primary" style={{ fontSize: '0.78rem' }}
+          className="form-input" style={{ fontSize: '0.82rem', padding: '0.35rem 0.5rem', flex: '1 1 160px', minWidth: 0 }} />
+        <button type="button" className="btn btn-primary" style={{ fontSize: '0.78rem', flexShrink: 0 }}
           onClick={() => {
             if (!name.trim()) return;
             onChange([...(templates || []), { name: name.trim(), settings: { ...currentSettings } }]);
@@ -1584,13 +1697,13 @@ function SavedTemplatesEditor({ templates, onChange, currentSettings, onLoad }) 
 
 function ColorRow({ label, value, onChange, hint }) {
   return (
-    <div>
+    <div style={{ minWidth: 0 }}>
       <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: 4 }}>{label}</label>
-      <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'nowrap' }}>
         <input type="color" value={value} onChange={e => onChange(e.target.value)}
-          style={{ width: 42, height: 32, padding: 0, border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer' }} />
+          style={{ width: 38, height: 32, padding: 0, border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer', flexShrink: 0 }} />
         <input type="text" value={value} onChange={e => onChange(e.target.value)}
-          className="form-input" style={{ fontSize: '0.8rem', padding: '0.3rem 0.4rem', fontFamily: 'monospace' }}
+          className="form-input" style={{ fontSize: '0.8rem', padding: '0.3rem 0.45rem', fontFamily: 'monospace', width: '100%', maxWidth: 120, minWidth: 0 }}
           placeholder="#000000" />
       </div>
       {hint && <p style={{ margin: '3px 0 0', fontSize: '0.68rem', color: 'var(--text-muted)' }}>{hint}</p>}

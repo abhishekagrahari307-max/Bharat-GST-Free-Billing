@@ -215,7 +215,7 @@ const DEFAULT_OPTIONS = {
   selectedAccountId: null,   // null ⇒ resolve via last-used / default / first-active at render time
   showAccountLabel: false,   // when true, prints "Pay via: <account label>" above the bank block
   accentColor: '',
-  pdfStyle: 'classic',
+  pdfStyle: '',              // '' ⇒ inherit pdfTemplate from Settings → Print & PDF
   // v1.10.22 — invoice-level (whole-bill) discount. Treated as a cash
   // discount / trade allowance applied AFTER tax. Doesn't affect the
   // GSTR-1 taxable value (which per Section 15(3) requires pre-supply
@@ -385,6 +385,7 @@ function SuggestingInput({ item, suggestions, onFieldChange, onSelectProduct, on
     <>
       <textarea ref={boxRef} rows={1} className="form-input line-item-name" value={item.name}
         placeholder="Item"
+        aria-label="Item name"
         onChange={(e) => onFieldChange(item.id, 'name', e.target.value.replace(/\s*\n\s*/g, ' '))}
         onBlur={() => setTimeout(() => onSetProductSearch({ itemId: null, query: '' }), 200)}
         onKeyDown={handleKey}
@@ -444,9 +445,9 @@ function CustomFields({ details, setDetails }) {
       </div>
       {rows.map((f, i) => (
         <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
-          <input className="form-input" style={{ flex: 1 }} placeholder="Field name, e.g. R SPH" value={f.label}
+          <input className="form-input" style={{ flex: 1 }} placeholder="Field name, e.g. R SPH" aria-label={`Custom field ${i + 1} name`} value={f.label}
             onChange={(e) => edit(i, 'label', e.target.value)} />
-          <input className="form-input" style={{ flex: 1.4 }} placeholder="Value" value={f.value}
+          <input className="form-input" style={{ flex: 1.4 }} placeholder="Value" aria-label={f.label || `Custom field ${i + 1} value`} value={f.value}
             onChange={(e) => edit(i, 'value', e.target.value)} />
           <button type="button" className="icon-btn" title="Remove this field" onClick={() => save(rows.filter((_, j) => j !== i))}>
             <Trash2 size={14} />
@@ -468,7 +469,7 @@ function SizeFields({ item, onSizeChange, clampNonNeg }) {
   const box = (key, label) => (
     <div className="line-item-field" style={{ flex: 0.6, minWidth: 64 }}>
       <label className="form-label">{label}</label>
-      <input type="number" min="0" step="any" className="form-input" value={s[key]}
+      <input type="number" min="0" step="any" className="form-input" aria-label={label} value={s[key]}
         onFocus={(e) => e.target.select()}
         onChange={(e) => onSizeChange(item.id, { [key]: clampNonNeg(e.target.value) })} />
     </div>
@@ -480,7 +481,7 @@ function SizeFields({ item, onSizeChange, clampNonNeg }) {
       {box('pcs', 'Pcs')}
       <div className="line-item-field" style={{ flex: 0.7, minWidth: 80 }}>
         <label className="form-label">Round up</label>
-        <select className="form-input" value={Number(s.step) || 0}
+        <select className="form-input" aria-label="Round up size" value={Number(s.step) || 0}
           onChange={(e) => onSizeChange(item.id, { step: Number(e.target.value) })}>
           {SIZE_STEPS.map((n) => <option key={n} value={n}>{n ? `${n} inch` : 'No'}</option>)}
         </select>
@@ -488,9 +489,9 @@ function SizeFields({ item, onSizeChange, clampNonNeg }) {
       <div className="line-item-field" style={{ flex: 0.7, minWidth: 84 }}>
         <label className="form-label">Sq.ft</label>
         {sizeHasDims(s) ? (
-          <input type="text" className="form-input" value={sizeSqft(s)} disabled title="Rounded length x width / 144 x pieces" />
+          <input type="text" className="form-input" aria-label="Square feet" value={sizeSqft(s)} disabled title="Rounded length x width / 144 x pieces" />
         ) : (
-          <input type="number" min="0" step="any" className="form-input" value={s.sqft ?? ''}
+          <input type="number" min="0" step="any" className="form-input" aria-label="Square feet" value={s.sqft ?? ''}
             title="No size typed: type the square feet, or fill Length and Width"
             onFocus={(e) => e.target.select()}
             onChange={(e) => onSizeChange(item.id, { sqft: clampNonNeg(e.target.value) })} />
@@ -615,7 +616,7 @@ const LineItem = memo(function LineItem({
       {invoiceOptions.showHSN && (
         <div className="line-item-field" style={{ flex: 1, position: 'relative' }}>
           <label className="form-label">{invoiceMode === 'services' ? 'SAC' : 'HSN/SAC'}</label>
-          <input type="text" className="form-input line-item-hsn" value={item.hsn}
+          <input type="text" className="form-input line-item-hsn" aria-label={invoiceMode === 'services' ? 'SAC code' : 'HSN or SAC code'} value={item.hsn}
             onChange={(e) => {
               const val = e.target.value;
               onFieldChange(item.id, 'hsn', val);
@@ -650,10 +651,10 @@ const LineItem = memo(function LineItem({
       <div className="line-item-field" style={{ flex: 0.7 }}>
         <label className="form-label">Qty</label>
         {item.unit === 'NA' ? (
-          <input type="text" className="form-input" value="-" disabled
+          <input type="text" className="form-input" aria-label="Quantity" value="-" disabled
             title="Unit NA: no quantity - the amount is the rate" />
         ) : (
-          <input type="number" min="0" step="any" className="form-input" value={item.quantity}
+          <input type="number" min="0" step="any" className="form-input" aria-label="Quantity" value={item.quantity}
             onFocus={(e) => e.target.select()}
             onChange={(e) => onFieldChange(item.id, 'quantity', clampNonNeg(e.target.value))} />
         )}
@@ -662,7 +663,7 @@ const LineItem = memo(function LineItem({
       {/* v1.10.83 - a services invoice that does not print the unit has no unit column. */}
       {(invoiceMode !== 'services' || invoiceOptionOn(invoiceOptions, 'showItemUnit')) && <div className="line-item-field" style={{ flex: 0.9 }}>
         <label className="form-label">Unit</label>
-        <select className="form-input" value={item.unit || getDefaultUnitForMode(invoiceMode)}
+        <select className="form-input" aria-label="Unit" value={item.unit || getDefaultUnitForMode(invoiceMode)}
           onChange={(e) => {
             if (e.target.value === '__custom__') { onAddCustomUnit(item.id); return; }
             if (e.target.value.startsWith('__remove__::')) {
@@ -694,7 +695,7 @@ const LineItem = memo(function LineItem({
       {invoiceOptionOn(invoiceOptions, 'showMRP') && (
         <div className="line-item-field" style={{ flex: 0.9 }}>
           <label className="form-label">MRP</label>
-          <input type="number" min="0" step="any" className="form-input line-item-mrp" value={item.mrp ?? ''}
+          <input type="number" min="0" step="any" className="form-input line-item-mrp" aria-label="MRP" value={item.mrp ?? ''}
             title="Printed price on the pack. For information only: the rate and totals do not use it."
             onFocus={(e) => e.target.select()}
             onChange={(e) => onFieldChange(item.id, 'mrp', clampNonNeg(e.target.value))} />
@@ -705,11 +706,11 @@ const LineItem = memo(function LineItem({
         {item.size?.manual ? (
           // #140 - Type amount: the amount is kept on the size; the rate per
           // sq.ft follows from it (so GSTR-1 and stock still see the area).
-          <input type="number" min="0" step="any" className="form-input line-item-rate" value={item.size.amount ?? ''}
+          <input type="number" min="0" step="any" className="form-input line-item-rate" aria-label="Amount" value={item.size.amount ?? ''}
             onFocus={(e) => e.target.select()}
             onChange={(e) => onSizeChange(item.id, { amount: clampNonNeg(e.target.value) })} />
         ) : (
-          <input type="number" min="0" step="any" className="form-input line-item-rate" value={item.rate}
+          <input type="number" min="0" step="any" className="form-input line-item-rate" aria-label="Rate" value={item.rate}
             onFocus={(e) => e.target.select()}
             onChange={(e) => onFieldChange(item.id, 'rate', clampNonNeg(e.target.value))} />
         )}
@@ -725,11 +726,12 @@ const LineItem = memo(function LineItem({
               each unit × qty), Price With Tax (₹ off the tax-inclusive
               total — tax gets backed out so consumer sees clean round). */}
           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-            <input type="number" min="0" step="any" className="form-input" value={item.discount}
+            <input type="number" min="0" step="any" className="form-input" aria-label="Discount" value={item.discount}
               onFocus={(e) => e.target.select()}
               onChange={(e) => onFieldChange(item.id, 'discount', clampNonNeg(e.target.value))}
               style={{ flex: 1, minWidth: 55 }} />
             <select className="form-input"
+              aria-label="Discount mode"
               value={item.discountType === 'percent' ? 'percent' : 'fixed'}
               onChange={(e) => onFieldChange(item.id, 'discountType', e.target.value)}
               style={{ width: 52, padding: '0.4rem 0.3rem', fontSize: '0.82rem' }}
@@ -742,6 +744,7 @@ const LineItem = memo(function LineItem({
                 selector when type='percent' to avoid dead UI. */}
             {item.discountType !== 'percent' && invoiceMode !== 'services' && (
               <select className="form-input"
+                aria-label="Discount base"
                 value={item.discountBase || 'net'}
                 onChange={(e) => { onFieldChange(item.id, 'discountBase', e.target.value); onFieldChange(item.id, 'withTaxRule', 2); }}
                 style={{ width: 78, padding: '0.4rem 0.3rem', fontSize: '0.75rem' }}
@@ -758,6 +761,7 @@ const LineItem = memo(function LineItem({
         <div className="line-item-field" style={{ flex: 1 }}>
           <label className="form-label">{taxLabel} %</label>
           <select className="form-input"
+            aria-label={`${taxLabel} percentage`}
             value={countryTaxRates.includes(Number(item.taxPercent)) ? String(item.taxPercent) : '__custom__'}
             onChange={async (e) => {
               if (e.target.value === '__custom__') {
@@ -788,6 +792,7 @@ const LineItem = memo(function LineItem({
         <div className="line-item-field" style={{ flex: 0.8 }}>
           <label className="form-label" title="GST Compensation Cess (tobacco / auto / coal etc.)">Cess %</label>
           <input type="number" min="0" max="500" step="any" className="form-input"
+            aria-label="Cess percentage"
             value={item.cessPercent || 0}
             onChange={(e) => onFieldChange(item.id, 'cessPercent', clampNonNeg(e.target.value))} />
         </div>
@@ -812,6 +817,7 @@ const LineItem = memo(function LineItem({
                   <input
                     type="text"
                     className="form-input"
+                    aria-label={def.label}
                     value={val}
                     disabled={readOnly}
                     placeholder={def.placeholder || def.label}
@@ -837,6 +843,7 @@ const LineItem = memo(function LineItem({
           <textarea
             className="form-input"
             rows={2}
+            aria-label="Item description"
             placeholder="Description (optional, shown under this line in the PDF)"
             value={item.description || ''}
             onChange={(e) => onFieldChange(item.id, 'description', e.target.value)}
@@ -1121,6 +1128,17 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
   const [products, setProducts] = useState([]);
   const [productSearch, setProductSearch] = useState({ itemId: null, query: '' });
   const [invoiceOptions, setInvoiceOptions] = useState(() => {
+    const ps = getPrintSettings();
+    const psDefaults = {
+      showLogo: ps.showLogo !== false,
+      showHSN: ps.showHSN !== false,
+      showBankDetails: ps.showBankDetails !== false,
+      showUPI: ps.showUPI !== false,
+      showAmountWords: ps.showAmountWords !== false,
+      showSignature: ps.signatureShow !== false,
+      thermalFontSize: ps.fontSize || 'medium',
+      thermalCutMark: ps.cutMark !== false,
+    };
     try {
       const saved = localStorage.getItem('freegstbill_invoiceOptions');
       const persisted = saved ? JSON.parse(saved) : {};
@@ -1129,11 +1147,16 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
       // user-preference stores (localStorage / server). Strip on read so
       // opening Invoice B doesn't pick up Invoice A's snapshot.
       delete persisted.paymentAccountSnapshot; stripLutOptions(persisted);
+      // If user configured a non-classic template in Settings → Print & PDF
+      // and persisted still holds legacy default 'classic', let PrintSettings win.
+      if (ps.pdfTemplate && ps.pdfTemplate !== 'classic' && persisted.pdfStyle === 'classic') {
+        persisted.pdfStyle = '';
+      }
       // Persisted options are the user's defaults, draft can override for in-progress work
       // v1.10.86 - a brand-new invoice: goods / services and GST as it starts.
       const start = blankNew ? startOptionsPatch(persisted, invoiceType, lastTypeAtOpen) : {};
-      return { ...DEFAULT_OPTIONS, ...persisted, ...start, ...(draft?.invoiceOptions || {}) };
-    } catch { return draft?.invoiceOptions || { ...DEFAULT_OPTIONS }; }
+      return { ...DEFAULT_OPTIONS, ...psDefaults, ...persisted, ...start, ...(draft?.invoiceOptions || {}) };
+    } catch { return draft?.invoiceOptions || { ...DEFAULT_OPTIONS, ...psDefaults }; }
   });
   const [showOptions, setShowOptions] = useState(false);
   // v1.10.36 — Portal-based print preview modal state. Only opens for
@@ -1345,6 +1368,10 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
         // have posted it). Preserves the current bill's snapshot in `prev`.
         delete serverOpts.paymentAccountSnapshot;
         stripLutOptions(serverOpts);
+        const psNow = getPrintSettings();
+        if (psNow.pdfTemplate && psNow.pdfTemplate !== 'classic' && serverOpts.pdfStyle === 'classic') {
+          serverOpts.pdfStyle = '';
+        }
         // v1.10.77 - a restored draft keeps its own choices (design, columns
         // ...); the saved defaults only fill what it does not set. They used
         // to replace the draft's options a moment after a page refresh.
@@ -3360,6 +3387,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
           }
         }
         clonedDoc.querySelectorAll('[data-pdf-page]').forEach(el => el.style.display = 'none');
+        clonedDoc.querySelectorAll('[data-fgsb-live-overlay="1"]').forEach(el => { el.style.display = 'none'; });
         if (inv) {
           try { if (clonedDoc.fonts?.ready) await clonedDoc.fonts.ready; } catch { /* non-fatal */ }
           domBoundariesPx = collectRowBoundaries(inv);

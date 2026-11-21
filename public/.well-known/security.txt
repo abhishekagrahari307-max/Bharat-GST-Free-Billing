@@ -1,0 +1,5 @@
+Contact: https://github.com/abhishekagrahari307-max/Bharat-ai-Voice/security/advisories/new
+Expires: 2027-12-31T23:59:59.000Z
+Preferred-Languages: en, hi
+Canonical: https://abhishekagrahari307-max.github.io/Bharat-ai-Voice/.well-known/security.txt
+Policy: https://abhishekagrahari307-max.github.io/Bharat-ai-Voice/privacy.html

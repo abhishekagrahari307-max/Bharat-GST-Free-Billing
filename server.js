@@ -90,11 +90,11 @@ try { makeDir(DATA_DIR); } catch { /* reported below */ }
   const lock = await acquireLock(LOCK_FILE, { pid: process.pid, host: LOCK_HOST, id: LOCK_ID, identify: portIdentity });
   if (!lock.ok) {
     if (lock.reason === 'other-host') {
-      console.log(`\n  These books are open in Free GST Billing on another computer (${lock.held.host}).`);
+      console.log(`\n  These books are open in Bharat GST Free Billing on another computer (${lock.held.host}).`);
       console.log(`  Close the app there first. If it is not running there, delete ${LOCK_FILE} and open the app again.\n`);
       process.exit(1);
     }
-    console.log(`\n  Free GST Billing is already running for these books${lock.held?.port ? ` at http://localhost:${lock.held.port}` : ''} (process ${lock.held?.pid}).`);
+    console.log(`\n  Bharat GST Free Billing is already running for these books${lock.held?.port ? ` at http://localhost:${lock.held.port}` : ''} (process ${lock.held?.pid}).`);
     console.log('  Not starting a second copy: two copies would overwrite each other\'s changes.\n');
     process.exit(0);
   }
@@ -127,6 +127,13 @@ const STARTING_PORT = (WEB_MODE && process.env.PORT) ? Number(process.env.PORT) 
 const MAX_PORT_SCAN = 50; // 47371 → 47420 is enough headroom for any conceivable collision
 
 const app = express();
+app.disable('x-powered-by');
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=()');
+  next();
+});
 const PHONE_HEADLESS = process.env.FGSB_PHONE_ACCESS === '1';
 
 // v1.10.85 - the first check of every request. On the 127.0.0.1 listener it
@@ -208,7 +215,7 @@ try {
   const why = err.code === 'ENOSPC' ? 'The disk is full. Free some space and open the app again.'
     : (err.code === 'EACCES' || err.code === 'EPERM') ? 'The app is not allowed to write to its data folder. Move the app folder to Documents (not Program Files), or allow it in your antivirus.'
       : `The data folder could not be created (${err.code || err.message}).`;
-  console.error(`\n  Free GST Billing cannot start: ${why}\n  Data folder: ${DATA_DIR}\n  Help: https://dicecodes.com/free-gst-software-documentation/troubleshooting.html#${err.code === 'ENOSPC' ? 'disk-full' : 'no-permission'}\n`);
+  console.error(`\n  Bharat GST Free Billing cannot start: ${why}\n  Data folder: ${DATA_DIR}\n  Help: open user-guide/troubleshooting.html#${err.code === 'ENOSPC' ? 'disk-full' : 'no-permission'}\n`);
   try { fs.appendFileSync(path.join(DATA_DIR, 'errors.log'), `[${new Date().toISOString()}] [startup] ${why} ${err.code || ''}\n`, 'utf-8'); } catch { /* the folder is the problem */ }
   process.exit(1);
 }
@@ -1774,7 +1781,7 @@ function phoneCertificate() {
     if (certStillGood(cert, key)) return { key, cert, fingerprint256: new crypto.X509Certificate(cert).fingerprint256 };
   } catch { /* none yet */ }
   const isIp = (h) => /^\d+\.\d+\.\d+\.\d+$/.test(h);
-  const made = makeSelfSignedCert({ names: phoneHostNames().filter((h) => !isIp(h)), ips: [...lanAddresses(), ...PHONE_EXTRA_HOSTS.filter(isIp)], commonName: `Free GST Billing on ${os.hostname()}` });
+  const made = makeSelfSignedCert({ names: phoneHostNames().filter((h) => !isIp(h)), ips: [...lanAddresses(), ...PHONE_EXTRA_HOSTS.filter(isIp)], commonName: `Bharat GST Free Billing on ${os.hostname()}` });
   makeDir(PHONE_DIR);
   fs.writeFileSync(PHONE_KEY, made.key, { mode: 0o600 });
   fs.writeFileSync(PHONE_CERT, made.cert);
@@ -2962,6 +2969,7 @@ app.use((req, res, next) => ((WEB_MODE || req.socket.encrypted) && req.method ==
   ? sendPhoneIndex(req, res) : next()));
 const docsOutPath = path.join(__dirname, 'docs-site', 'out', 'docs');
 app.use(['/docs', '/user-guide'], express.static(docsOutPath, { fallthrough: true }));
+app.use(['/docs', '/user-guide'], express.static(path.join(__dirname, 'user-guide'), { fallthrough: true }));
 app.use(express.static(distPath, { fallthrough: true })); // fallthrough = ok if dist doesn't exist
 
 // ============================================================

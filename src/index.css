@@ -713,8 +713,15 @@ html:not([data-theme="dark"]) .mobile-topbar .topbar-search { background: rgba(1
     background: rgba(15,23,42,0.55);
   }
   /* Two classes so this outranks the base .main-content padding further down. */
-  .app-layout > .main-content { padding: calc(52px + 1rem) 1rem 1.5rem; }
-  .app-layout .settings-savebar { left: 0; } /* the sidebar is off-screen on phones */
+  .app-layout > .main-content { padding: calc(52px + 1rem) 1rem calc(5.25rem + env(safe-area-inset-bottom, 0px)); }
+  .app-layout .settings-savebar {
+    left: 0;
+    bottom: calc(3.9rem + env(safe-area-inset-bottom, 0px));
+    z-index: 1040;
+  }
+  .app-layout .settings-container {
+    padding-bottom: calc(8.5rem + env(safe-area-inset-bottom, 0px));
+  }
   .app-layout .settings-bar { top: -1rem; } /* just under the fixed mobile header; two classes to outrank the base rule below */
 }
 .sidebar::-webkit-scrollbar { width: 10px; }
@@ -757,7 +764,7 @@ html:not([data-theme="dark"]) .mobile-topbar .topbar-search { background: rgba(1
 
 .sidebar-subtitle {
   font-size: 0.7rem;
-  color: #64748b;
+  color: #94a3b8;
   margin: 0;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -1029,8 +1036,11 @@ html:not([data-theme="dark"]) .profile-switcher-item + .profile-switcher-details
 /* Settings "Save all changes" bar: docked along the bottom of the screen,
    from the sidebar to the right edge. The page gets room so its last
    section is never hidden under it. */
-.settings-savebar { position: fixed; left: 260px; right: 0; bottom: 0; }
-.settings-container { padding-bottom: 4.5rem; }
+.settings-savebar { position: fixed; left: 260px; right: 0; bottom: 0; z-index: 40; }
+@media (min-width: 769px) {
+  .app-layout.sidebar-autohide .settings-savebar { left: 64px; }
+}
+.settings-container { padding-bottom: 92px; }
 
 /* ========= Glass Panels ========= */
 .glass-panel {
@@ -1321,6 +1331,7 @@ th[aria-sort="descending"] .th-sort::after { content: "\25BC"; opacity: 1; font-
    margin. Existing form grids inside were already `grid-cols-2` and
    scale naturally. */
 .settings-container { max-width: 1100px; margin: 0 auto; width: 100%; }
+.settings-container.settings-container-wide { max-width: 1480px; }
 
 .stats-grid {
   display: grid;
@@ -2262,28 +2273,124 @@ th[aria-sort="descending"] .th-sort::after { content: "\25BC"; opacity: 1; font-
   color: #1e293b !important;
 }
 
-/* v1.9.8 — Print Settings split layout. Sticky preview on the right;
-   collapses to stacked on narrow screens so mobile users don't get a
-   tiny preview crushed to 100px wide. */
-@media (max-width: 900px) {
+/* Print & PDF Settings responsive split layout — zero overlap across desktop,
+   13"-15" laptops (including 125% DPI zoom), tablets, and mobile phones. */
+.print-settings-mobile-tabs {
+  display: none;
+  gap: 0.3rem;
+  margin-top: 1rem;
+  padding: 0.3rem;
+  border-radius: 10px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+}
+.print-settings-mobile-tab {
+  flex: 1;
+  padding: 0.48rem 0.55rem;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.print-settings-mobile-tab.active {
+  background: var(--primary);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+}
+
+.print-settings-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(380px, 460px);
+  gap: 1.5rem;
+  margin-top: 1.25rem;
+  align-items: flex-start;
+}
+.print-settings-body { min-width: 0; }
+.print-settings-body p,
+.print-settings-body span { overflow-wrap: break-word; word-break: normal; }
+.print-settings-body label,
+.print-settings-body select,
+.print-settings-body input { max-width: 100%; box-sizing: border-box; }
+
+.print-settings-preview-pane {
+  position: sticky;
+  top: 4.5rem; /* sits cleanly below sticky .settings-bar (z-index: 30) */
+  z-index: 10;
+  max-height: clamp(260px, calc(100vh / var(--ui-zoom, 1) - 210px), 900px) !important;
+  padding: 1rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  overflow: auto !important;
+  overscroll-behavior: contain;
+  min-width: 0;
+}
+.print-settings-preview-stage {
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
+  background: #f1f5f9;
+  padding: 0.85rem;
+  border-radius: 8px;
+  min-height: 260px;
+}
+.print-preview-sheet-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #334155;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.4rem;
+  text-align: center;
+}
+
+@media (max-width: 1180px) {
+  .print-settings-mobile-tabs {
+    display: flex;
+    position: sticky;
+    top: 3.1rem;
+    z-index: 22;
+  }
   .print-settings-layout {
     grid-template-columns: 1fr !important;
+    gap: 1.25rem;
+  }
+  .print-settings-layout.narrow-mode-preview .print-settings-body {
+    display: none;
+  }
+  .print-settings-layout.narrow-mode-controls .print-settings-preview-pane {
+    display: none;
+  }
+  .print-settings-layout.narrow-mode-stacked .print-settings-preview-pane {
+    order: -1;
+    max-height: clamp(220px, 38vh, 420px) !important;
   }
   .print-settings-preview-pane {
     position: relative !important;
     top: auto !important;
-    max-height: 600px !important;
+    max-height: none !important;
+    overflow: auto !important;
+  }
+  .print-settings-preview-stage {
+    max-height: 75vh;
   }
 }
-/* v1.9.9 — prevent horizontal text overflow inside setting cards. Long
-   hint paragraphs and label lines were clipping at the right edge when
-   the grid squeezed cards narrow. */
-.print-settings-body { min-width: 0; }
-.print-settings-body * { overflow-wrap: anywhere; word-break: normal; }
-.print-settings-body label,
-.print-settings-body select,
-.print-settings-body input { max-width: 100%; box-sizing: border-box; }
-.print-settings-preview-pane { overflow: hidden; }
+@media (max-width: 600px) {
+  .print-settings-panel {
+    padding: 1rem !important;
+  }
+  .print-settings-mobile-tab {
+    font-size: 0.72rem;
+    padding: 0.42rem 0.35rem;
+  }
+}
 
 /* v1.9.13 — PDF preview now consumes Typography settings the same way
    the thermal render does. Font family / size / weight / all-caps used
@@ -2336,21 +2443,31 @@ th[aria-sort="descending"] .th-sort::after { content: "\25BC"; opacity: 1; font-
   background: var(--card, #1e293b) !important;
   border: 1px solid var(--border-color, #334155);
 }
-[data-theme="dark"] .print-settings-preview-pane > div:last-child {
-  background: #ffffff !important;  /* preview canvas stays white paper */
+[data-theme="dark"] .print-settings-preview-stage {
+  background: #0f172a !important;
+}
+[data-theme="dark"] .print-preview-sheet-badge {
+  color: #cbd5e1;
 }
 [data-theme="dark"] .print-settings-preview-pane .invoice-preview-container,
 [data-theme="dark"] .print-settings-preview-pane .invoice-preview-container * {
   color-scheme: light;
 }
-/* Preset card contrast fix — the coloured swatch strip could look muddy
-   on the dark card background. Add a subtle inner divider. */
-[data-theme="dark"] .print-settings-body button[title] {
+/* Preset card contrast fix — keep miniature paper mockup in its true paper
+   palette while styling only the card's footer text in dark mode. */
+[data-theme="dark"] .print-settings-body button[title]:not(.design-preset-card) {
   background: var(--bg-secondary, #0f172a) !important;
 }
-[data-theme="dark"] .print-settings-body button[title] span,
-[data-theme="dark"] .print-settings-body button[title] strong {
+[data-theme="dark"] .print-settings-body button[title]:not(.design-preset-card) span,
+[data-theme="dark"] .print-settings-body button[title]:not(.design-preset-card) strong {
   color: var(--text, #f1f5f9);
+}
+[data-theme="dark"] .print-settings-body .design-preset-card {
+  background: #1e293b !important;
+  border-color: #334155;
+}
+[data-theme="dark"] .print-settings-body .design-preset-card > div:last-child span {
+  color: #f1f5f9;
 }
 
 /* v1.9.4 — Accessibility improvements */
@@ -4046,7 +4163,7 @@ html:not([data-theme="dark"]) .sidebar {
 html:not([data-theme="dark"]) .sidebar::-webkit-scrollbar-thumb { background: rgba(15, 23, 42, 0.22); background-clip: padding-box; }
 html:not([data-theme="dark"]) .sidebar::-webkit-scrollbar-thumb:hover { background: rgba(15, 23, 42, 0.38); background-clip: padding-box; }
 html:not([data-theme="dark"]) .sidebar-title { color: #0f172a; }
-html:not([data-theme="dark"]) .sidebar-subtitle { color: #64748b; }
+html:not([data-theme="dark"]) .sidebar-subtitle { color: #475569; }
 html:not([data-theme="dark"]) .sidebar-autohide-toggle { color: #64748b; }
 html:not([data-theme="dark"]) .sidebar-autohide-toggle:hover { background: rgba(15, 23, 42, 0.06); color: #0f172a; }
 html:not([data-theme="dark"]) .sidebar-autohide-toggle.on { background: rgba(var(--primary-rgb), 0.10); border-color: rgba(var(--primary-rgb), 0.35); color: var(--primary); }
@@ -4841,8 +4958,8 @@ button, a, summary, [role="button"], input[type="checkbox"], input[type="radio"]
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* Tablet & Mobile Responsive Layout (<= 900px) */
-@media (max-width: 900px) {
+/* Mobile Bottom Navigation Layout (<= 768px — matches .mobile-topbar & off-screen .sidebar) */
+@media (max-width: 768px) {
   .pwa-install-float {
     left: 0.75rem;
     right: 0.75rem;
@@ -5081,7 +5198,47 @@ button, a, summary, [role="button"], input[type="checkbox"], input[type="radio"]
   }
 }
 
+@media (max-height: 720px) {
+  .print-settings-preview-pane {
+    top: 3.75rem !important;
+    max-height: clamp(220px, calc(100vh / var(--ui-zoom, 1) - 180px), 620px) !important;
+  }
+}
+
+/* Keyboard accessibility: Skip link + crisp WCAG 2.4.7 focus-visible indicator */
+.skip-link {
+  position: fixed;
+  top: -100px;
+  left: 1rem;
+  z-index: 9999;
+  padding: 0.55rem 1rem;
+  background: var(--primary, #1e40af);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.85rem;
+  border-radius: 8px;
+  text-decoration: none;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.25);
+  transition: top 0.15s ease;
+}
+.skip-link:focus,
+.skip-link:focus-visible {
+  top: 0.75rem;
+  outline: 3px solid #93c5fd;
+  outline-offset: 2px;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="tab"]:focus-visible {
+  outline: 2px solid var(--primary, #2563eb);
+  outline-offset: 2px;
+}
+
 @media print {
+  .skip-link,
   .mobile-bottom-nav,
   .mobile-pane-switch,
   .pwa-install-float {

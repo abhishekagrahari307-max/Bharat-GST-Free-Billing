@@ -1,19 +1,25 @@
-// Complete Offline App Center for Computer, Laptop & Mobile (Task 3)
-// Provides 1-click Desktop/Laptop & Mobile PWA installation, Persistent Offline
-// Storage lock (`navigator.storage.persist()`), Desktop Portable Launcher download,
-// Local QR Code for instant Mobile install, and Offline Readiness verification.
+// Complete Offline App Center + Startup Health Check & Self-Heal UI
+// Provides 1-click Desktop/Laptop & Mobile PWA installation, iOS Safari guide,
+// Persistent Offline Storage lock (`navigator.storage.persist()`), Desktop
+// Portable Launcher download, lazy QR Code for Phone install, and 9-check Auto-Repair.
 import { useEffect, useState } from 'react';
 import {
-  Monitor, Smartphone, WifiOff, CheckCircle2, Download, HardDrive, Shield, QrCode,
+  Monitor, Smartphone, WifiOff, CheckCircle2, Download, HardDrive, Shield, QrCode, Activity, RefreshCw, AlertTriangle,
 } from 'lucide-react';
-import QRCode from 'qrcode';
 import { toast } from './Toast';
+import { runSelfHeal, isSafeModeActive } from '../utils/selfHeal';
 
 function isStandaloneMode() {
   if (typeof window === 'undefined') return false;
   return window.matchMedia?.('(display-mode: standalone)')?.matches
     || window.matchMedia?.('(display-mode: window-controls-overlay)')?.matches
     || window.navigator?.standalone === true;
+}
+
+function isIosSafari() {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  return /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 }
 
 export default function OfflineAppCenter() {
@@ -25,6 +31,10 @@ export default function OfflineAppCenter() {
   const [storageInfo, setStorageInfo] = useState({ usageMB: null, quotaMB: null });
   const [qrDataUrl, setQrDataUrl] = useState('');
   const [showQr, setShowQr] = useState(false);
+  const [showIosGuide, setShowIosGuide] = useState(false);
+  const [healthReport, setHealthReport] = useState(null);
+  const [healthBusy, setHealthBusy] = useState(false);
+  const safeMode = isSafeModeActive();
 
   useEffect(() => {
     const onPrompt = () => setDeferredPrompt(window.__fgsbDeferredInstallPrompt || null);
@@ -54,12 +64,6 @@ export default function OfflineAppCenter() {
       }).catch(() => {});
     }
 
-    // Generate offline QR code for opening/installing on mobile phone
-    const appUrl = window.location.origin + window.location.pathname;
-    QRCode.toDataURL(appUrl, { width: 180, margin: 1 })
-      .then(setQrDataUrl)
-      .catch(() => {});
-
     return () => {
       window.removeEventListener('fgsb:pwa-prompt-ready', onPrompt);
       window.removeEventListener('appinstalled', onInstalled);
@@ -67,6 +71,16 @@ export default function OfflineAppCenter() {
       window.removeEventListener('offline', onOffline);
     };
   }, []);
+
+  // Lazy-load qrcode chunk only when the user actually opens the Phone QR modal
+  useEffect(() => {
+    if (!showQr || qrDataUrl) return;
+    const appUrl = window.location.origin + window.location.pathname;
+    import('qrcode')
+      .then((m) => (m.default || m).toDataURL(appUrl, { width: 180, margin: 1 }))
+      .then(setQrDataUrl)
+      .catch(() => {});
+  }, [showQr, qrDataUrl]);
 
   const handleInstallApp = async () => {
     const p = deferredPrompt || window.__fgsbDeferredInstallPrompt;
@@ -82,11 +96,40 @@ export default function OfflineAppCenter() {
       } catch { /* ignore */ }
       return;
     }
+    if (isIosSafari()) {
+      setShowIosGuide(true);
+      return;
+    }
     toast(
       'To install right now: open your browser menu (⋮ or ⋯ at top-right) → "Install Bharat GST Free Billing" (or on iPhone Safari: Share → Add to Home Screen).',
       'info',
       9000
     );
+  };
+
+  const handleRunHealthCheck = async () => {
+    setHealthBusy(true);
+    try {
+      const rep = await runSelfHeal({ repair: true });
+      setHealthReport(rep);
+      if (rep.repairedCount > 0) {
+        toast(`Auto-repaired ${rep.repairedCount} item${rep.repairedCount === 1 ? '' : 's'}. All user data is intact.`, 'success');
+      } else if (rep.healthy) {
+        toast('All 9 startup & storage health checks passed!', 'success');
+      } else {
+        toast('Health check finished with warnings — review details below.', 'info');
+      }
+    } catch {
+      toast('Could not complete health check.', 'error');
+    } finally {
+      setHealthBusy(false);
+    }
+  };
+
+  const handleExitSafeMode = () => {
+    const next = new URL(window.location.href);
+    next.searchParams.delete('safe');
+    window.location.replace(next.toString());
   };
 
   const handleLockPersistentStorage = async () => {
@@ -147,6 +190,18 @@ export default function OfflineAppCenter() {
 
   return (
     <div id="section-offline-app" className="glass-panel p-6 mb-6" style={{ order: 7 }}>
+      {safeMode && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', padding: '0.75rem 1rem', marginBottom: '1rem', borderRadius: 10, background: 'rgba(245, 158, 11, 0.14)', border: '1px solid #f59e0b' }}>
+          <div style={{ fontSize: '0.82rem' }}>
+            <strong><AlertTriangle size={15} style={{ verticalAlign: '-2px', marginRight: 5, color: '#d97706' }} />Safe Mode Active (`?safe=1`):</strong>{' '}
+            Service Worker &amp; custom theme overrides are paused while keeping your data 100% safe.
+          </div>
+          <button type="button" className="btn btn-primary btn-sm" onClick={handleExitSafeMode}>
+            Return to Normal Mode
+          </button>
+        </div>
+      )}
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.9rem' }}>
         <div>
           <h3 className="section-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -203,7 +258,7 @@ export default function OfflineAppCenter() {
               </span>
             ) : (
               <button type="button" className="btn btn-primary btn-sm" onClick={handleInstallApp}>
-                <Download size={15} /> Install on Computer / Laptop
+                <Download size={15} /> {deferredPrompt ? 'Install App (1-Click)' : 'Install on Computer / Laptop'}
               </button>
             )}
             <button type="button" className="btn btn-secondary btn-sm" onClick={handleDownloadDesktopLauncher}>
@@ -234,16 +289,28 @@ export default function OfflineAppCenter() {
                 <Smartphone size={15} /> Install Mobile App
               </button>
             )}
-            {qrDataUrl && (
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowQr((v) => !v)}>
-                <QrCode size={15} /> {showQr ? 'Hide Phone QR' : 'Scan QR on Phone'}
-              </button>
-            )}
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowIosGuide((v) => !v)}>
+              {showIosGuide ? 'Hide iOS Steps' : 'iPhone / iPad Guide'}
+            </button>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowQr((v) => !v)}>
+              <QrCode size={15} /> {showQr ? 'Hide Phone QR' : 'Scan QR on Phone'}
+            </button>
           </div>
 
-          {showQr && qrDataUrl && (
+          {showIosGuide && (
+            <div style={{ marginTop: '0.4rem', padding: '0.65rem 0.75rem', borderRadius: 10, background: 'var(--bg-secondary)', border: '1px solid var(--border)', fontSize: '0.76rem', lineHeight: 1.5 }}>
+              <strong>Install on iPhone / iPad (Safari):</strong>
+              <ol style={{ margin: '0.3rem 0 0', paddingLeft: '1.15rem' }}>
+                <li>Open this page in <strong>Safari</strong> on iPhone or iPad.</li>
+                <li>Tap the <strong>Share</strong> icon (square with upward arrow ↑).</li>
+                <li>Tap <strong>Add to Home Screen</strong> → <strong>Add</strong>.</li>
+              </ol>
+            </div>
+          )}
+
+          {showQr && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.4rem', padding: '0.6rem', borderRadius: 10, background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
-              <img src={qrDataUrl} alt="Scan to open on phone" style={{ width: 88, height: 88, borderRadius: 8, background: '#fff', padding: 4 }} />
+              {qrDataUrl && <img src={qrDataUrl} alt="Scan to open on phone" style={{ width: 88, height: 88, borderRadius: 8, background: '#fff', padding: 4 }} />}
               <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
                 <strong>Scan with your Phone Camera</strong><br />
                 Opens Bharat GST Free Billing on your Android or iPhone, then tap <strong>Install App</strong> (or Share → Add to Home Screen).
@@ -253,25 +320,59 @@ export default function OfflineAppCenter() {
         </div>
       </div>
 
-      {/* Offline Storage Protection Bar */}
+      {/* Offline Storage Protection + 9-Check Self-Heal Diagnostics */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', padding: '0.75rem 0.95rem', borderRadius: 10, background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
         <div style={{ fontSize: '0.79rem' }}>
-          <strong><Shield size={14} style={{ verticalAlign: '-2px', marginRight: 5, color: 'var(--primary)' }} />Offline Data Protection:</strong>{' '}
+          <strong><Shield size={14} style={{ verticalAlign: '-2px', marginRight: 5, color: 'var(--primary)' }} />Offline Data Protection &amp; Self-Heal:</strong>{' '}
           {persisted
-            ? 'Permanent Offline Storage Lock is ACTIVE (Browser will never auto-evict your data).'
-            : 'Lock browser storage so Windows/Android never clears offline invoices during disk cleanup.'}
+            ? 'Permanent Offline Storage Lock is ACTIVE.'
+            : 'Lock browser storage so Windows/Android never clears offline invoices.'}
           {storageInfo.usageMB !== null && (
             <span style={{ color: 'var(--text-muted)', marginLeft: 6 }}>
-              (Using {storageInfo.usageMB} MB{storageInfo.quotaMB ? ` of ${storageInfo.quotaMB} MB available` : ''})
+              (Using {storageInfo.usageMB} MB{storageInfo.quotaMB ? ` of ${storageInfo.quotaMB} MB` : ''})
             </span>
           )}
         </div>
-        {!persisted && (
-          <button type="button" className="btn btn-secondary btn-sm" onClick={handleLockPersistentStorage}>
-            Lock Offline Storage
+        <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap' }}>
+          {!persisted && (
+            <button type="button" className="btn btn-secondary btn-sm" onClick={handleLockPersistentStorage}>
+              Lock Offline Storage
+            </button>
+          )}
+          <button type="button" className="btn btn-secondary btn-sm" onClick={handleRunHealthCheck} disabled={healthBusy}>
+            {healthBusy ? <RefreshCw size={14} className="spin" /> : <Activity size={14} />}
+            {' '}{healthBusy ? 'Checking…' : 'Health Check & Auto-Repair'}
           </button>
-        )}
+        </div>
       </div>
+
+      {healthReport && (
+        <div style={{ marginTop: '0.8rem', padding: '0.85rem 1rem', borderRadius: 10, background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.55rem' }}>
+            <strong style={{ fontSize: '0.82rem' }}>
+              9-Point System Health Report ({healthReport.healthy ? 'All Healthy' : `${healthReport.warnCount} Attention`})
+            </strong>
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+              Zero data deleted · Checked {new Date(healthReport.checkedAt).toLocaleTimeString('en-IN')}
+            </span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '0.45rem' }}>
+            {healthReport.checks.map((c) => {
+              const badgeColor = c.status === 'ok' ? '#16a34a' : c.status === 'repaired' ? '#2563eb' : '#d97706';
+              const badgeText = c.status === 'ok' ? 'OK' : c.status === 'repaired' ? 'REPAIRED' : 'NOTICE';
+              return (
+                <div key={c.id} style={{ padding: '0.45rem 0.6rem', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-primary, transparent)', fontSize: '0.75rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.4rem', fontWeight: 700 }}>
+                    <span>{c.label}</span>
+                    <span style={{ color: badgeColor, fontSize: '0.68rem' }}>{badgeText}</span>
+                  </div>
+                  <div style={{ color: 'var(--text-muted)', marginTop: 2 }}>{c.detail}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

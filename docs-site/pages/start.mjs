@@ -7,7 +7,7 @@ export default [
 // =============================================================================
 {
   slug: 'index',
-  title: 'Free GST Billing documentation',
+  title: 'Bharat GST Free Billing documentation',
   nav: 'Welcome',
   lead: 'Make GST invoices, keep track of who owes you, and prepare your GST returns. On your own computer, with no account and no monthly fee.',
   body: `
@@ -21,7 +21,7 @@ export default [
 
 <section id="what-it-does">
 <h2>What it does</h2>
-<p>Free GST Billing is invoicing and GST software for small businesses in India, and for anyone billing in other currencies: 20 are supported. It runs on your computer and opens in your web browser, the way a website does, but nothing leaves your machine.</p>
+<p>Bharat GST Free Billing is invoicing and GST software for small businesses in India, and for anyone billing in other currencies: 20 are supported. It runs on your computer and opens in your web browser, the way a website does, but nothing leaves your machine.</p>
 <ul>
   <li><strong>Invoices</strong>: tax invoices, bills of supply, proforma estimates, credit notes and delivery challans, with CGST, SGST, IGST and UTGST worked out for you.</li>
   <li><strong>Getting paid</strong>: record payments, print receipts, see who is overdue and by how much.</li>
@@ -49,12 +49,12 @@ export default [
 
 <section id="is-it-free">
 <h2>Is it really free?</h2>
-<p>Yes. It is open source under the MIT licence. There is no trial, no invoice limit, no feature that unlocks for money, and no advertising. The code is public on <a href="${SITE.repo}">GitHub</a>, so anyone can check what it does. Is it safe? See <a href="security.html">Security and privacy</a>.</p>
+<p>Yes. It is open source under the MIT licence. There is no trial, no invoice limit, no feature that unlocks for money, and no advertising. The code is public on GitHub, so anyone can check what it does. Is it safe? See <a href="security.html">Security and privacy</a>.</p>
 </section>
 
 <section id="get-help">
 <h2>Getting help</h2>
-<p>Every screen in the app with a ${ui('?')} button links to the matching part of these pages. If something is missing here, or the app does something these pages don't describe, <a href="${SITE.repo}/issues">open an issue on GitHub</a> with a screenshot. Many features began as someone's request.</p>
+<p>Every screen in the app with a ${ui('?')} button links to the matching part of these pages. If something is missing here, or the app does something these pages don't describe, open an issue on GitHub with a screenshot. Many features began as someone's request.</p>
 </section>
 `,
 },

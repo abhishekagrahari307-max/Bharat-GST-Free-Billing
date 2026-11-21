@@ -6,13 +6,11 @@ import App from './App.jsx'
 import AppLockGate from './components/AppLock.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import { toast } from './components/Toast.jsx'
-import { logProblem } from './utils/problemLog'
+import { logProblem, APP_VERSION } from './utils/problemLog'
 import { isChunkLoadError } from './utils/errorReport'
 import { restorePrefs, startMirroring } from './utils/prefsMirror'
 import { applyAppLook } from './utils/appLook'
-// v1.10.83 - Inter from the app's own files, not Google Fonts. Each file holds
-// every alphabet with a unicode-range, so the browser fetches only the parts it
-// needs (Latin; Latin-extended has the ₹ sign).
+import { isSafeModeActive, runSelfHeal } from './utils/selfHeal'
 import '@fontsource/inter/400.css'
 import '@fontsource/inter/500.css'
 import '@fontsource/inter/600.css'
@@ -21,6 +19,8 @@ import './index.css'
 
 installBrowserApiFallback();
 
+const SAFE_MODE = isSafeModeActive();
+
 // Capture PWA install prompt early so mobile/desktop Install App UI never misses it
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
@@ -28,155 +28,124 @@ window.addEventListener('beforeinstallprompt', (e) => {
   window.dispatchEvent(new CustomEvent('fgsb:pwa-prompt-ready'));
 });
 
-// v1.10.83 - the app's code loaded: tell public/boot-guard.js, and let it
-// try again next time something goes wrong.
+// Mark successful JS boot for public/boot-guard.js
 window.__fgsbBooted = true;
-try { sessionStorage.removeItem('fgsb-boot-retry'); } catch { /* storage blocked */ }
+try {
+  sessionStorage.removeItem('fgsb-boot-retry');
+  if (!SAFE_MODE) sessionStorage.removeItem('bharat_gst_boot_rescue_step');
+} catch { /* storage blocked */ }
 
-// v1.10.2 — Deferred SW update. Prior code called `updateSW(true)`
-// inside `onNeedRefresh` which triggers `location.reload()` immediately.
-// If the user was mid-invoice (typing line items, editing terms), that
-// state was blown away on every deploy.
-//
-// v1.10.33 — Reported "it work in incognito only ... it should auto
-// refresh hard cache after update". Root cause: v1.10.2's deferred
-// pattern only fired the update on blur, but if the user never blurred
-// the tab AND the old bundle hashes stopped matching the new
-// index.html assets, the tab served a broken bundle → white screen.
-// Now:
-//   1. onNeedRefresh: stash flag + dispatch event (existing UI hook).
-//   2. Auto-apply after 20 seconds of no user activity — long enough
-//      that a mid-form user can save/finish, short enough that we
-//      don't wait for a browser blur that may never come.
-//   3. Still auto-apply on blur (fastest safe moment).
-//   4. Also auto-apply immediately if the user is on a read-only view
-//      (dashboard, clients, reports). Detected via presence of ANY
-//      `contenteditable`, `<input>`, or `<textarea>` with a non-empty
-//      value — if none, we're not editing.
 let __updateSW = null;
+let __updateNoticeShown = false;
 window.__fgsbSwUpdateReady = false;
 
 const hasUnsavedInput = () => {
   try {
-    const inputs = document.querySelectorAll('input, textarea, [contenteditable="true"]');
+    // Check if user is actively on the invoice/purchase editor or typing in a form field
+    const activeEl = document.activeElement;
+    if (activeEl && /^(INPUT|TEXTAREA|SELECT)$/.test(activeEl.tagName)) return true;
+    const inputs = document.querySelectorAll('input:not([type="search"]):not([type="checkbox"]):not([type="radio"]):not([readonly]), textarea:not([readonly]), [contenteditable="true"]');
     for (const el of inputs) {
-      if (el.value && String(el.value).trim().length > 0) return true;
+      if (el.closest?.('.invoice-generator-container, form[data-dirty="1"]')) {
+        if (el.value && String(el.value).trim().length > 0) return true;
+      }
       if (el.getAttribute?.('contenteditable') === 'true' && el.textContent?.trim().length > 0) return true;
     }
     return false;
   } catch { return false; }
 };
 
-__updateSW = registerSW({
-  onNeedRefresh() {
-    window.__fgsbSwUpdateReady = true;
-    window.dispatchEvent(new CustomEvent('fgsb-sw-update-ready'));
-    // If user is on a read-only view, apply immediately — no white-screen
-    // risk from stale hash-mismatched bundle.
-    if (!hasUnsavedInput()) {
-      setTimeout(() => window.__fgsbApplyUpdate?.(), 500);
-      return;
-    }
-    // Otherwise wait 20s — enough to finish typing a line or two, then
-    // auto-apply. User can also blur / navigate to trigger it sooner.
-    setTimeout(() => window.__fgsbApplyUpdate?.(), 20_000);
-  },
-  onOfflineReady() {
-    // Prior console.log removed — production hygiene (v1.9.15 audit L1).
-    window.dispatchEvent(new CustomEvent('fgsb-sw-offline-ready'));
-  },
-});
+if (!SAFE_MODE) {
+  __updateSW = registerSW({
+    onNeedRefresh() {
+      window.__fgsbSwUpdateReady = true;
+      window.dispatchEvent(new CustomEvent('fgsb-sw-update-ready'));
+      if (!hasUnsavedInput()) {
+        setTimeout(() => {
+          if (!hasUnsavedInput()) window.__fgsbApplyUpdate?.();
+        }, 600);
+        return;
+      }
+      if (!__updateNoticeShown) {
+        __updateNoticeShown = true;
+        toast('A new update is ready and will apply safely once you finish editing.', 'info', 7000);
+      }
+    },
+    onOfflineReady() {
+      window.dispatchEvent(new CustomEvent('fgsb-sw-offline-ready'));
+    },
+  });
+}
 
-// Called by whichever UI component (or auto-defer logic) decides now is
-// the right moment to activate the pending SW and reload.
-window.__fgsbApplyUpdate = () => {
+// Never force-reload while the user has unsaved invoice input unless explicitly clicked
+window.__fgsbApplyUpdate = (force = false) => {
   if (!window.__fgsbSwUpdateReady) return;
+  if (!force && hasUnsavedInput()) return;
   window.__fgsbSwUpdateReady = false;
   if (__updateSW) __updateSW(true);
 };
 
-// Auto-apply on blur (user tabbed away from the app) — safe moment.
+// Auto-apply on blur/visibility hide ONLY when no unsaved invoice input exists
 window.addEventListener('blur', () => {
-  if (window.__fgsbSwUpdateReady) window.__fgsbApplyUpdate();
+  if (window.__fgsbSwUpdateReady && !hasUnsavedInput()) window.__fgsbApplyUpdate();
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden' && window.__fgsbSwUpdateReady && !hasUnsavedInput()) {
+    window.__fgsbApplyUpdate();
+  }
 });
 
-// v1.10.35 — Nuclear defensive path for the "still white screen on
-// refresh after v1.10.33" report. Root cause: users' currently-running
-// SW was installed BEFORE we set skipWaiting=true, so their SW still
-// behaves the old way — stalls in `waiting` state and never activates
-// the fresh SW that was published. Result: browser reloads → SW serves
-// stale index.html + stale bundle names → the referenced JS chunks
-// no longer exist → white screen.
-//
-// On every load:
-//   1. If a `waiting` SW registration exists, force it to skipWaiting
-//      via message post AND reload once it activates. One-time cost:
-//      one auto-reload the first time the user hits v1.10.35.
-//   2. If the loaded main bundle hits a `chunk-load` error (imports
-//      referencing files the SW's cache doesn't have), auto-reload
-//      once — belt-and-braces after case 1.
-if ('serviceWorker' in navigator) {
-  // v1.10.85 - the very first service worker taking control of a page that
-  // loaded from the network is not an update: that page is already current.
-  // Reloading then (about 3 s after the first open) closed any form already
-  // opened, on every fresh browser and in the smoke test's fresh books.
+// Gentle idle poll: check every 30 min against ./version.json for deployed updates
+if (!SAFE_MODE && typeof window !== 'undefined') {
+  const checkRemoteVersion = async () => {
+    if (!navigator.onLine) return;
+    try {
+      const r = await fetch(`./version.json?t=${Date.now()}`, { cache: 'no-store' });
+      if (!r.ok) return;
+      const data = await r.json();
+      if (data?.version && APP_VERSION && data.version !== APP_VERSION && APP_VERSION !== 'unknown') {
+        const reg = await navigator.serviceWorker?.getRegistration?.();
+        await reg?.update?.();
+      }
+    } catch { /* offline or dev mode */ }
+  };
+  setInterval(checkRemoteVersion, 30 * 60 * 1000);
+}
+
+if (!SAFE_MODE && 'serviceWorker' in navigator) {
   const hadController = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.getRegistration().then(reg => {
     if (!reg) return;
-    // Take the waiting SW live if there is one.
-    if (reg.waiting) {
+    if (reg.waiting && !hasUnsavedInput()) {
       try {
         reg.waiting.postMessage({ type: 'SKIP_WAITING' });
       } catch { /* ignore */ }
     }
-    // Any time a fresh SW takes control, reload once so the client
-    // JS matches the SW's manifest. Only fires when we didn't cause
-    // it ourselves (already-mounted app).
     let alreadyReloaded = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (alreadyReloaded || !hadController) return;
+      if (alreadyReloaded || !hadController || hasUnsavedInput()) return;
       alreadyReloaded = true;
       window.location.reload();
     });
-  }).catch(() => { /* not registered yet — first load */ });
+  }).catch(() => { /* not registered yet */ });
 
-  // Chunk-load safety net. Vite's dynamic imports produce
-  // `Failed to fetch dynamically imported module` (Chrome) or
-  // `error loading dynamically imported module` (Firefox/Safari) when
-  // the requested chunk name changed post-deploy. Reload once to
-  // fetch the current index.html + its correct chunk map.
   let chunkReloadFired = false;
-  window.addEventListener('error', (e) => {
-    const msg = String(e?.message || e?.error?.message || '');
-    if (!chunkReloadFired && /dynamically imported module|Loading chunk|Failed to fetch dynamically/i.test(msg)) {
-      chunkReloadFired = true;
-      // Small delay so we don't reload-loop on a genuine broken state.
-      setTimeout(() => window.location.reload(), 200);
-    }
-  });
-  window.addEventListener('unhandledrejection', (e) => {
-    const msg = String(e?.reason?.message || e?.reason || '');
-    if (!chunkReloadFired && /dynamically imported module|Loading chunk|Failed to fetch dynamically/i.test(msg)) {
+  const onChunkFail = (msg) => {
+    if (!chunkReloadFired && !hasUnsavedInput() && /dynamically imported module|Loading chunk|Failed to fetch dynamically/i.test(msg)) {
       chunkReloadFired = true;
       setTimeout(() => window.location.reload(), 200);
     }
-  });
+  };
+  window.addEventListener('error', (e) => onChunkFail(String(e?.message || e?.error?.message || '')));
+  window.addEventListener('unhandledrejection', (e) => onChunkFail(String(e?.reason?.message || e?.reason || '')));
 }
 
-// v1.10.83 - every other uncaught error goes to the Problem log, with a
-// toast that offers Report (Toast adds it for a just-logged problem). The
-// chunk-load case above still reloads instead. Two browser messages are
-// noise, not problems: ResizeObserver's loop notice, and "Script error."
-// from another origin, which carries no details at all.
 const NOISE = /ResizeObserver loop|^Script error\.?$/i;
 const DEV_SERVER = /\/@vite\/client|\/node_modules\/\.vite\//;
 let lastProblemToast = 0;
 const recordUncaught = (message, stack, alreadyLogged = false) => {
   const msg = String(message || '');
-  // v1.10.86 (#204) - the Vite dev server's live-reload socket (someone running
-  // `npm run dev` in a cloud editor) is not a problem in the app.
   if (!msg || NOISE.test(msg) || isChunkLoadError(msg) || DEV_SERVER.test(String(stack || ''))) return;
-  // apiFetch logs its own failures (with method, path and status) first.
   if (!alreadyLogged) logProblem({ kind: 'uncaught', message: msg, stack });
   if (Date.now() - lastProblemToast > 10_000) {
     lastProblemToast = Date.now();
@@ -184,23 +153,17 @@ const recordUncaught = (message, stack, alreadyLogged = false) => {
   }
 };
 window.addEventListener('error', (e) => {
-  try { recordUncaught(e?.error?.message || e?.message, e?.error?.stack); } catch { /* never throw from here */ }
+  try { recordUncaught(e?.error?.message || e?.message, e?.error?.stack); } catch { /* never throw */ }
 });
 window.addEventListener('unhandledrejection', (e) => {
-  try { recordUncaught(e?.reason?.message || e?.reason, e?.reason?.stack, e?.reason?.problemLogged); } catch { /* never throw from here */ }
+  try { recordUncaught(e?.reason?.message || e?.reason, e?.reason?.stack, e?.reason?.problemLogged); } catch { /* never throw */ }
 });
 
-// v1.10.77 (#84) - settings the browser has lost come back from the data
-// folder before the first render (the wizard and Region read them on start).
 restorePrefs().then((restored) => {
-  startMirroring(restored)
-  // v1.10.86 - App colour, Text size and Compact lists (Settings ->
-  // Appearance), before the first paint so the app never flashes the default.
-  applyAppLook()
+  startMirroring(restored);
+  if (!SAFE_MODE) applyAppLook();
   createRoot(document.getElementById('root')).render(
     <StrictMode>
-      {/* v1.10.83 - two last lines against a white screen: around the
-          PIN gate, and around the app inside it. */}
       <ErrorBoundary>
         <AppLockGate>
           <ErrorBoundary>
@@ -209,5 +172,9 @@ restorePrefs().then((restored) => {
         </AppLockGate>
       </ErrorBoundary>
     </StrictMode>,
-  )
-})
+  );
+  // Run non-destructive startup self-heal in idle time after first paint
+  setTimeout(() => {
+    runSelfHeal({ repair: true }).catch(() => {});
+  }, 1800);
+});

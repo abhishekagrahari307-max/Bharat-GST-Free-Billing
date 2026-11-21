@@ -4,23 +4,24 @@
 export const SITE = {
   name: 'Bharat GST Free Billing',
   folder: 'docs',
-  url: 'https://github.com/abhishekagrahari307-max/Bharat-ai-Voice/docs/',
-  publisher: { name: 'Bharat GST Free Billing', url: 'https://github.com/abhishekagrahari307-max/Bharat-ai-Voice' },
+  url: 'https://abhishekagrahari307-max.github.io/Bharat-ai-Voice/user-guide/',
+  appUrl: 'https://abhishekagrahari307-max.github.io/Bharat-ai-Voice/',
+  publisher: { name: 'Abhishek Agrahari', url: 'https://abhishekagrahari307-max.github.io/Bharat-ai-Voice/' },
   version: '1.10.86',
-  repo: 'https://github.com/abhishekagrahari307-max/Bharat-ai-Voice',
-  download: 'https://github.com/abhishekagrahari307-max/Bharat-ai-Voice/releases/latest',
+  repo: 'https://abhishekagrahari307-max.github.io/Bharat-ai-Voice/',
+  download: '../',
 };
 
 // Search-result titles and descriptions for the pages people search for most.
 // Other pages use their own title and the first ~155 characters of their lead.
 export const SEO = {
   index: {
-    title: 'Free GST Billing Software for India: documentation and user guide',
-    description: 'Free, open-source GST billing software for Windows, Mac and Linux. Make GST invoices, track payments and stock, and prepare GSTR-1 and GSTR-3B. No signup, works offline.',
+    title: 'Bharat GST Free Billing: Complete User Guide & Documentation',
+    description: 'Complete user guide for Bharat GST Free Billing (Created by Abhishek Agrahari). Make GST invoices, track payments and stock, and prepare GSTR-1 and GSTR-3B offline.',
   },
   install: {
-    title: 'How to install Free GST Billing Software on Windows, Mac and Linux',
-    description: 'Download one ZIP, extract it and click Install. Sets up everything on Windows without admin rights. Step-by-step install for Windows, macOS and Linux.',
+    title: 'How to install Bharat GST Free Billing on Mobile, Windows, Mac and Linux',
+    description: 'Install Bharat GST Free Billing as an offline PWA or desktop package on Android, iOS, Windows, macOS and Linux with zero signup.',
   },
   'first-invoice': {
     title: 'How to make your first GST invoice (step by step)',
@@ -41,7 +42,7 @@ export const SEO = {
 };
 
 export const NAV = [
-  { title: 'Start here', pages: ['index', 'install', 'install-mac', 'install-linux', 'update', 'first-run', 'first-invoice', 'gst-basics', 'security'] },
+  { title: 'Start here', pages: ['index', 'install', 'install-mac', 'install-linux', 'update', 'first-run', 'first-invoice', 'gst-basics', 'security', 'privacy'] },
   { title: 'Invoicing', pages: ['invoices', 'invoice-options', 'thermal-printing', 'dashboard'] },
   { title: 'Clients, stock and payments', pages: ['clients', 'products', 'receipts', 'cash-book', 'recurring'] },
   { title: 'Buying', pages: ['purchases', 'expenses'] },
