@@ -1,4 +1,4 @@
-# Bharat GST Free Billing: complete documentation (version 2.6.0)
+# Bharat GST Free Billing: complete documentation (version 2.7.0)
 
 Source: https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/user-guide/
 

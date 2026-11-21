@@ -1,0 +1,81 @@
+# Bharat GST Free Billing (v2.7.0 — Daily Continuous Auto-Update Edition)
+
+> 100% Free, Open-Source (MIT), Hybrid Offline PWA + Direct PC Hard-Drive Live Sync + Local Node.js Desktop GST Billing, AI Voice Invoicing, Inventory, Accounting & Tax Return Suite for India and 22 International Currencies. Created & maintained by Abhishek Agrahari.
+
+- Live Application (Instant Offline PWA & Web): https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/
+- Complete Self-Hosted Documentation (35 Pages): https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/user-guide/
+- Public Open-Source Repository (MIT License): https://github.com/abhishekagrahari307-max/Bharat-GST-Free-Billing
+- Latest Release: v2.7.0 (2026-11-21) — Daily Continuous Safe Auto-Update Channel (`version.json` + Service Worker + Desktop Updater)
+
+---
+
+## 1. Hybrid Tri-Mode Architecture & Hard-Drive Data Safety
+
+Unlike ordinary browser-only SPAs or desktop-only localhost apps, **Bharat GST Free Billing v2.7.0** combines BOTH worlds in one unified codebase:
+
+1. **Mode 1 — Zero-Install Cross-Platform Offline PWA (`browserApi.js` + Workbox Service Worker)**:
+   - Runs directly on Android, iOS, Windows, macOS, Linux, and Chromebook with zero `.exe` or Node.js installation required.
+   - Automatically requests `navigator.storage.persist()` on boot so browsers mark IndexedDB (`bharat_gst_billing_idb`) as non-evictable OS-protected storage.
+2. **Mode 2 — Real-Time Direct PC Hard-Drive Folder Mirroring (`File System Access API` — `backupManager.js`)**:
+   - Eliminates browser cache-clear / browser-uninstall data loss risk: users link any physical folder on their PC/Laptop hard drive (e.g., `D:\BharatGST-Books` or `Documents\BharatGST`) via `window.showDirectoryPicker({ mode: 'readwrite' })`.
+   - Every invoice/client/product save automatically mirrors `BharatGST-Live-Mirror.json` plus rolling dated/encrypted `.fgsb` backups directly onto the physical hard drive, alongside optional **Google Drive Auto-Backup**.
+3. **Mode 3 — Full Localhost Node.js Desktop Server & Docker (`server.js`)**:
+   - Runs locally (`npm start` / Windows Setup / macOS / Linux `.deb` & `AppImage` / Docker) storing books directly on the OS filesystem (`data/`), with automatic daily ZIP backups, **Same-Wi-Fi Phone/Tablet QR + 6-digit PIN HTTPS Pairing** (`phoneAccess.js`), Trash Bin recovery, and full Edit History audit logs.
+
+---
+
+## 2. Cryptographic Security & Multi-Staff Access Control
+
+- **WebCrypto AES-256-GCM Encrypted Vault (`src/utils/localLock.js`)**: Encrypts records at rest using **AES-256-GCM** with keys derived via **PBKDF2-SHA256 (310,000 iterations)** and authenticated additional data (AAD).
+- **Hardware Biometric / Passkey Unlock**: WebAuthn Fingerprint / Windows Hello / Touch ID unlock (`AppLockSettings.jsx`).
+- **Multi-Staff Role-Based PIN Lock**: Independent wrapped keys for **Owner**, **Billing Staff**, and **CA / Accountant** roles, plus **Per-Business PIN Lock** and hidden company profiles.
+- **24-Character Offline Recovery Key**: Printable offline emergency recovery card so forgotten PINs never cause data loss.
+- **Encrypted `.fgsb` Backup Containers**: Password-encrypted AES-256-GCM backup files for USB drives and cloud storage.
+- **Audit Trail & Safety**: Full **Edit History** of every change, **Trash Bin** to restore deleted bills, **Period Books Lock** after GST filing, and a **9-Point Startup Self-Healing Engine** (`selfHeal.js`).
+
+---
+
+## 3. Complete Functional & GST Compliance Capabilities (50+ Built-In Modules)
+
+### A. Invoicing, Document Workflow & AI Voice Billing
+- **10 Complete Document Types + 1-Click Conversion**:
+  1. Tax Invoice
+  2. Quotation / Estimate (1-click convert to Proforma, Sales Order, or Tax Invoice)
+  3. Sales Order (with dispatched vs invoiced quantity tracking)
+  4. Proforma Invoice
+  5. Bill of Supply (exempt / unregistered)
+  6. Composition Scheme Bill
+  7. Credit Note (Sales Return, linked to original invoice)
+  8. Debit Note (Supplier / Purchase Return)
+  9. Purchase Order (1-click convert to Purchase Bill)
+  10. Delivery Challan
+  - Plus **Recurring Invoices** (automated schedules) and **Receipt Vouchers** (sequential numbering).
+- **Bharat AI Voice & Fast Command Billing (`src/utils/voiceBilling.js` — 100% Offline)**:
+  - Speak or type naturally in **Hinglish**, **Hindi (`हिंदी`)**, or **Indian English** inside *New Invoice* (`🎙️ Voice Bill`) to auto-match saved Clients, Products, HSN/SAC codes, Selling Prices, Units, and GST slabs with zero cloud API keys.
+
+### B. Indian GST Filing, Reconciliation & Income Tax Suite
+- **Pre-Filing CA GST Health Auditor (`src/utils/gstAudit.js`)**: Computes a **0–100% GST Portal Readiness Score** checking 15-character B2B GSTIN Modulo-36 checksums, 4/6-digit HSN/SAC completeness, State vs Place-of-Supply consistency, CGST Rule 46 gapless invoice numbering, B2CL (`> ₹2.5L`) rules, and E-Way Bill (`> ₹50,000`) thresholds + 1-click Audit CSV export.
+- **GSTR-1 Portal-Ready JSON & CSV (`gstr1Json.js`)**: B2B, B2CL, B2CS, CDNR, EXP (Exports with/without payment under LUT/SEZ), Nil/Exempt, HSN Summary (Table 12), E-Commerce Operator (Table 14), and Document Summary (Table 13).
+- **GSTR-3B JSON & CSV**: Outward supplies (3.1), Reverse Charge inward liability (3.1(d)), eligible ITC set-off (Table 4), and net cash tax payable.
+- **GSTR-2B Purchase Reconciliation (`gstr2bBill.js`)**: Upload portal GSTR-2B JSON to match supplier bills, flag missing/mismatched ITC, and create missing purchase bills in 1 click.
+- **e-Invoice IRP JSON & Signed QR (`einvoice.js`)** + **NIC e-Way Bill JSON** generator.
+- **TDS & TCS Compliance (`tdsTcs.js`)**: Sections 194C, 194J, 194Q, 194H, 194I, 206C(1H) with **Form 26Q / Form 27EQ** quarterly reports.
+- **Income Tax Calculator (`IncomeTax.jsx` / `itr.js`)**: Tax Year 2026-27 & FY 2025-26 **Old vs New Regime** comparison, Sec 44AD / 44ADA / 44AE presumptive taxation, Sec 87A ₹12L rebate, Capital Gains (111A/112A), and **Sec 234A / 234B / 234C** interest.
+- **International Multi-Currency Billing (`fx.js`)**: 23 countries & 22 currencies (INR, USD, EUR, GBP, AED, SGD, AUD, CAD, etc.) with VAT / SST / MwSt, LUT ARN tracking, and RBI Purpose Codes.
+
+### C. Inventory, Multi-Unit, Barcodes, Industry Presets & Offline OCR
+- **Advanced Stock Management (`InventoryView.jsx`, `stock.js`)**: Multi-unit conversion (`1 Box = 12 Pcs`), wholesale/retail price levels, MRP display, low-stock alerts, and stock valuation (FIFO/COGS).
+- **Barcodes & Labels (`BarcodeLabels.jsx`, `barcode.js`)**: USB/camera barcode scanner billing, scan-to-return lookup, and A4/thermal barcode sticker sheet printing.
+- **9 Indian Industry Presets (`industryFields.js`)**: Pharmacy (*Batch No., Expiry, Drug Licence*), Mobile/Electronics (*IMEI/Serial, Warranty*), Jewellery (*Purity, HUID, Gross/Net Wt, Making Charges*), EV/Automobile (*Chassis, Motor, Battery*), Kirana POS, Optical, Garments/Textiles, Transport (*LR No., Vehicle No.*), and General/IT Services.
+- **Manufacturing BOM (`Manufacturing.jsx`)**: Bill of Materials production runs deducting raw materials and adding finished goods stock.
+- **Purchase Bills with 100% Offline Photo OCR (`BillOCR.jsx`)**: Reads supplier invoices from photos/PDFs locally using bundled Tesseract.js WebAssembly (`public/tesseract/`).
+
+### D. Accounting, Reports & Seamless Migration
+- **Direct Data Migration (`tallyXml.js`, `bulkCsv.js`)**: Import ledgers, items, and bills directly from **Tally XML**, **Vyapar**, **Excel / CSV**, and **Flipkart Seller Orders**.
+- **Complete Business Reports (`ReportsView.jsx`, `CashBook.jsx`, `BankMatching.jsx`)**: Profit & Loss (with COGS), Party-wise Outstanding & Aging (0–30, 31–60, 61–90, 90+ days), Client & Supplier Ledger Statement PDFs, Cash Book, Expense Tracker, Cost Centre P&L, and **Bank Statement CSV/XLSX Reconciliation**.
+
+### E. Printing, POS Thermal & 5 Indian Languages
+- **5 Sheet Layouts + 8 Colour Designs**: Classic (Tally-style), Modern, Corporate, Minimalist, and Compact templates with live WYSIWYG A4/Thermal preview (`PrintSettings.jsx`).
+- **Paper Sizes**: A4, A5, Letter, Custom mm, and **58mm / 80mm POS Thermal Receipt Printers** (ESC/POS & browser direct print).
+- **5 Indian Bill Languages**: Print invoice headings in **English, Hindi (`हिंदी`), Tamil (`தமிழ்`), Marathi (`मराठी`), and Bengali (`বাংলা`)**.
+- **Payments & Sharing**: 100% offline dynamic **UPI Payment QR codes** (exact bill balance + multi-bank switcher), Logo/Stamp/Signature support, Dark Mode, and 1-click **WhatsApp PDF sharing**.

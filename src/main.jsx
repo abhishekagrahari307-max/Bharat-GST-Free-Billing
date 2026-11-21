@@ -28,11 +28,16 @@ window.addEventListener('beforeinstallprompt', (e) => {
   window.dispatchEvent(new CustomEvent('fgsb:pwa-prompt-ready'));
 });
 
-// Mark successful JS boot for public/boot-guard.js
+// Mark successful JS boot for public/boot-guard.js & request OS-protected persistent IndexedDB storage
 window.__fgsbBooted = true;
 try {
   sessionStorage.removeItem('fgsb-boot-retry');
   if (!SAFE_MODE) sessionStorage.removeItem('bharat_gst_boot_rescue_step');
+  if (navigator.storage?.persist) {
+    navigator.storage.persisted().then((already) => {
+      if (!already) navigator.storage.persist().catch(() => {});
+    }).catch(() => {});
+  }
 } catch { /* storage blocked */ }
 
 let __updateSW = null;

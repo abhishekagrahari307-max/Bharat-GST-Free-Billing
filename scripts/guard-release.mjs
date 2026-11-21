@@ -51,6 +51,7 @@ step('Verifying required legal, security, SEO & update files', () => {
     '.well-known/security.txt',
     'robots.txt',
     'sitemap.xml',
+    'llms.txt',
     'version.json',
     'boot-guard.js',
     'user-guide/index.html',
@@ -60,6 +61,8 @@ step('Verifying required legal, security, SEO & update files', () => {
   for (const rel of required) {
     assert(fs.existsSync(path.join(ROOT, rel)), `Missing published root file: ${rel}`);
   }
+  const rootHtml = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  assert(rootHtml.includes('bharat-ssr-spec'), 'Pre-rendered semantic architecture spec missing in root index.html');
   const ver = JSON.parse(fs.readFileSync(path.join(ROOT, 'version.json'), 'utf8'));
   const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
   assert(ver.version === pkg.version, `version.json (${ver.version}) != package.json (${pkg.version})`);

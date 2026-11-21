@@ -412,9 +412,23 @@ function App() {
     };
 
     const initial = setTimeout(runIfDue, 8000);
+    let mirrorTimer = null;
+    const mirrorToHardDriveNow = async () => {
+      const settings = readBackupSettings();
+      if (!settings.autoSyncLocalFolder) return;
+      try {
+        const payload = await exportAllData();
+        if (payload) {
+          await writeBackupToBrowserDirectory('BharatGST-Live-Mirror.json', JSON.stringify(payload, null, 2), { interactive: false });
+        }
+      } catch { /* folder handle not granted in this session yet */ }
+    };
+
     const periodic = setInterval(runIfDue, 30 * 60 * 1000);
     const onDataSaved = () => {
       incrementBillsSinceBackup();
+      clearTimeout(mirrorTimer);
+      mirrorTimer = setTimeout(mirrorToHardDriveNow, 1500);
       clearTimeout(timer);
       timer = setTimeout(runIfDue, 4000);
     };
@@ -422,6 +436,7 @@ function App() {
     return () => {
       clearTimeout(initial);
       clearInterval(periodic);
+      clearTimeout(mirrorTimer);
       clearTimeout(timer);
       window.removeEventListener(DATA_SAVED_EVENT, onDataSaved);
     };

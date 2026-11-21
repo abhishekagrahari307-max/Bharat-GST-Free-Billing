@@ -284,7 +284,14 @@ function extractApiPath(input) {
   }
 }
 
-const BHARAT_CHANGELOG_MD = `## [2.6.0] - 2026-11-21
+const BHARAT_CHANGELOG_MD = `## [2.7.0] - 2026-11-21
+**Real-Time PC Hard-Drive Live Mirroring, Persistent Storage Lock & Pre-Rendered Architecture Spec.**
+
+### Added
+- **Real-Time PC Hard-Drive Live Mirroring**: Linking a local folder in Settings -> Data & Backups automatically mirrors \`BharatGST-Live-Mirror.json\` directly onto your PC hard drive on every bill save (surviving browser cache clears or browser uninstallation), plus automatic \`navigator.storage.persist()\` non-evictable storage protection.
+- **Pre-Rendered HTML & \`llms.txt\` Technical Specification**: Search engines and AI tools reading the live URL without executing JavaScript now receive the complete 50+ module architecture and GST compliance matrix directly from \`index.html\` and \`/llms.txt\`.
+
+## [2.6.0] - 2026-11-21
 **AI Voice Billing, CA Pre-Filing GST Auditor & Daily Continuous Auto-Update Engine.**
 
 ### Added

@@ -1,7 +1,7 @@
 {
   "name": "bharat-gst-free-billing",
-  "version": "2.6.0",
-  "description": "Bharat GST Free Billing v2.6.0 — 100% Free, Open-Source AI-Powered GST Billing, Voice Invoicing, Inventory, GSTR-1/3B/2B, e-Invoice, e-Way Bill, TDS/TCS, Income Tax & AES-256-GCM Encrypted Business Suite for India with Daily Continuous Auto-Updates.",
+  "version": "2.7.0",
+  "description": "Bharat GST Free Billing v2.7.0 — Hybrid Offline PWA + Direct PC Hard-Drive Live Sync + Node.js Desktop Suite. 100% Free Open-Source AI Voice GST Billing, CA Pre-Filing GST Auditor, 10 Document Types, GSTR-1/3B/2B, e-Invoice, e-Way Bill, TDS/TCS, Income Tax, Multi-Unit Inventory, Barcode, OCR, Thermal POS, Tally/Vyapar Import & AES-256-GCM Vault with Daily Auto-Updates.",
   "author": "Abhishek Agrahari",
   "license": "MIT",
   "repository": {

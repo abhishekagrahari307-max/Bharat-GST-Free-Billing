@@ -64,6 +64,7 @@ const guidePages = fs.existsSync(guideSource)
 
 const sitemapUrls = [
   `  <url><loc>${SITE_ORIGIN}/</loc><lastmod>${TODAY}</lastmod><priority>1.0</priority></url>`,
+  `  <url><loc>${SITE_ORIGIN}/llms.txt</loc><lastmod>${TODAY}</lastmod><priority>0.9</priority></url>`,
   `  <url><loc>${SITE_ORIGIN}/privacy.html</loc><lastmod>${TODAY}</lastmod><priority>0.7</priority></url>`,
   `  <url><loc>${SITE_ORIGIN}/terms.html</loc><lastmod>${TODAY}</lastmod><priority>0.7</priority></url>`,
   ...guidePages.map((file) => {
@@ -73,7 +74,7 @@ const sitemapUrls = [
   }),
 ];
 const sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${sitemapUrls.join('\n')}\n</urlset>\n`;
-const robotsTxt = `User-agent: *\nAllow: /\n\nSitemap: ${SITE_ORIGIN}/sitemap.xml\n`;
+const robotsTxt = `User-agent: *\nAllow: /\n\nSitemap: ${SITE_ORIGIN}/sitemap.xml\n# Machine-readable architecture & feature specification:\n# ${SITE_ORIGIN}/llms.txt\n`;
 fs.writeFileSync(path.join(ROOT, 'public', 'sitemap.xml'), sitemapXml);
 fs.writeFileSync(path.join(ROOT, 'sitemap.xml'), sitemapXml);
 fs.writeFileSync(path.join(ROOT, 'public', 'robots.txt'), robotsTxt);

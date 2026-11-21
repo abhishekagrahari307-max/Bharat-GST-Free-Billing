@@ -2,3 +2,5 @@ User-agent: *
 Allow: /
 
 Sitemap: https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/sitemap.xml
+# Machine-readable architecture & feature specification:
+# https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/llms.txt
