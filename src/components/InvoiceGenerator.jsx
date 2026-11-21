@@ -1048,7 +1048,11 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
   // mode: hide the preview so the editor gets the full width during
   // heavy data entry.
   const [previewCollapsed, setPreviewCollapsed] = useState(() => {
-    try { return localStorage.getItem('fgsb_previewCollapsed') === '1'; } catch { return false; }
+    try {
+      const saved = localStorage.getItem('fgsb_previewCollapsed');
+      if (saved === '1' || saved === '0') return saved === '1';
+      return typeof window !== 'undefined' && window.innerWidth <= 1180;
+    } catch { return false; }
   });
   useEffect(() => {
     try { localStorage.setItem('fgsb_previewCollapsed', previewCollapsed ? '1' : '0'); } catch { /* sandboxed */ }
