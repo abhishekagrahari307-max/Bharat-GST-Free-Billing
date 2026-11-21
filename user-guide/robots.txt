@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://github.com/abhishekagrahari307-max/Bharat-ai-Voice/docs/sitemap.xml

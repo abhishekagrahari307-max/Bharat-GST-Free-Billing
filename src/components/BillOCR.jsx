@@ -378,20 +378,19 @@ export default function BillOCR({ onClose, onExtracted }) {
       //   /tesseract/worker.min.js
       //   /tesseract/core/tesseract-core-*.wasm(.js)
       //   /tesseract/lang/eng.traineddata
-      worker = await Tesseract.createWorker('eng', 1, {
-        workerPath: '/tesseract/worker.min.js',
-        corePath: '/tesseract/core',
-        langPath: '/tesseract/lang',
-        // v1.10.33 — traineddata is served as raw .traineddata (not .gz);
-        // tell tesseract not to expect gzip so it doesn't try to gunzip
-        // an already-plain file and fail with "invalid magic number".
+      const hasLocalTesseract = await fetch('./tesseract/worker.min.js', { method: 'HEAD' })
+        .then((r) => r.ok && !String(r.headers.get('content-type') || '').includes('text/html'))
+        .catch(() => false);
+      const logger = (m) => {
+        if (typeof m?.progress === 'number') setProgress(Math.round(m.progress * 100));
+      };
+      worker = await Tesseract.createWorker('eng', 1, hasLocalTesseract ? {
+        workerPath: './tesseract/worker.min.js',
+        corePath: './tesseract/core',
+        langPath: './tesseract/lang',
         gzip: false,
-        logger: (m) => {
-          if (typeof m?.progress === 'number') {
-            setProgress(Math.round(m.progress * 100));
-          }
-        },
-      });
+        logger,
+      } : { logger });
       const { data } = await worker.recognize(file);
       await worker.terminate();
       worker = null;

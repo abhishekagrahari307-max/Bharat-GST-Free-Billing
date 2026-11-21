@@ -36,6 +36,7 @@ export default defineConfig({
   // src/ keeps the install folder uncluttered. publicDir + outDir are
   // resolved relative to the project root so existing public/ assets
   // and dist/ output paths keep working.
+  base: './',
   root: path.resolve(__dirname, 'src'),
   publicDir: path.resolve(__dirname, 'public'),
   plugins: [
@@ -69,8 +70,8 @@ export default defineConfig({
         // we draw the chrome ourselves) — falls back to standalone if not
         // supported. Removes the "this is just a browser" feel.
         display_override: ['window-controls-overlay', 'standalone'],
-        start_url: '/',
-        scope: '/',
+        start_url: './',
+        scope: './',
         // v1.10.2 — Was 'portrait-primary'. Locked landscape tablets to
         // portrait even though shop counters and Android POS terminals
         // often run horizontally. 'any' lets the device decide.
@@ -85,58 +86,37 @@ export default defineConfig({
             name: 'New Invoice',
             short_name: 'New Invoice',
             description: 'Create a new tax invoice',
-            url: '/?view=new',
-            // v1.10.6 — audit L16: SVG at fixed `sizes:96x96` confused
-            // Windows jumplist. `any` lets the OS render at whatever
-            // size it wants (SVG is scalable).
-            icons: [{ src: '/favicon.svg', sizes: 'any', type: 'image/svg+xml' }],
+            url: './?view=new',
+            icons: [{ src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml' }],
           },
           {
             name: 'Dashboard',
             short_name: 'Dashboard',
             description: 'See invoices and stats',
-            url: '/?view=dashboard',
-            // v1.10.6 — audit L16: SVG at fixed `sizes:96x96` confused
-            // Windows jumplist. `any` lets the OS render at whatever
-            // size it wants (SVG is scalable).
-            icons: [{ src: '/favicon.svg', sizes: 'any', type: 'image/svg+xml' }],
+            url: './?view=dashboard',
+            icons: [{ src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml' }],
           },
           {
             name: 'GST Returns',
             short_name: 'GST Returns',
             description: 'GSTR-1 / 3B / 2B reconciliation',
-            url: '/?view=filing',
-            // v1.10.6 — audit L16: SVG at fixed `sizes:96x96` confused
-            // Windows jumplist. `any` lets the OS render at whatever
-            // size it wants (SVG is scalable).
-            icons: [{ src: '/favicon.svg', sizes: 'any', type: 'image/svg+xml' }],
+            url: './?view=filing',
+            icons: [{ src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml' }],
           },
           {
             name: 'Settings',
             short_name: 'Settings',
             description: 'Business profile, accounts, modules',
-            url: '/?view=settings',
-            // v1.10.6 — audit L16: SVG at fixed `sizes:96x96` confused
-            // Windows jumplist. `any` lets the OS render at whatever
-            // size it wants (SVG is scalable).
-            icons: [{ src: '/favicon.svg', sizes: 'any', type: 'image/svg+xml' }],
+            url: './?view=settings',
+            icons: [{ src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml' }],
           },
         ],
-        // v1.10.2 — Icon set matches Android + iOS "Add to Home Screen"
-        // requirements. Prior manifest had ONE entry — favicon.svg with
-        // `purpose: 'any maskable'`. Chrome/Android needs distinct 192
-        // and 512 PNGs for the app drawer + splash; iOS silently ignores
-        // SVG apple-touch-icons and falls back to a generated screenshot.
-        //
-        // The SVG entry stays as a scalable fallback for browsers that
-        // handle it (all modern desktop). The PNG entries point at files
-        // that MUST be dropped into public/icons/ — see README.
         icons: [
-          { src: '/favicon.svg', sizes: 'any',       type: 'image/svg+xml' },
-          { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-          { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-          { src: '/icons/maskable-192.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
-          { src: '/icons/maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          { src: 'favicon.svg', sizes: 'any',       type: 'image/svg+xml' },
+          { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: 'icons/maskable-192.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
+          { src: 'icons/maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
       workbox: {

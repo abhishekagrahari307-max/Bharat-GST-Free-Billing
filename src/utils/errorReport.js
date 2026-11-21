@@ -8,7 +8,7 @@
 // business or a person may survive into it.
 
 export const ISSUE_NEW_URL = 'https://github.com/abhishekagrahari307-max/Bharat-ai-Voice/issues/new';
-export const TROUBLESHOOTING_URL = '/docs/troubleshooting.html';
+export const TROUBLESHOOTING_URL = './user-guide/troubleshooting.html';
 export const MAX_ISSUE_URL = 7500;
 export const MAX_LOG_ENTRIES = 50;
 

@@ -85,6 +85,7 @@
     "dev": "node scripts/bundle-tesseract-assets.mjs && node server.js & vite",
     "dev:win": "node scripts/bundle-tesseract-assets.mjs && (start /b node server.js) && vite",
     "build": "vite build",
+    "build:pages": "npm run build && node scripts/publish-static-pages.mjs",
     "start": "vite build && node server.js --web",
     "lint": "eslint .",
     "preview": "vite preview",

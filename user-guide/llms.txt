@@ -1,0 +1,64 @@
+# Bharat GST Free Billing
+
+> Free, open-source GST billing and invoicing software for small businesses in India, also usable in 20 currencies. It runs on the user's own Windows, macOS or Linux computer and opens in the web browser; there is no account, no subscription and no cloud. Version 1.10.86, made by Bharat GST Free Billing.
+
+It makes GST tax invoices, bills of supply, proforma estimates, credit notes and delivery challans; works out CGST, SGST, UTGST and IGST; tracks payments, clients, products and stock, purchases and expenses; and prepares GSTR-1 and GSTR-3B JSON for the GST portal. It does not file returns itself and does not generate e-invoice IRNs.
+
+- Download (always the latest version): https://github.com/abhishekagrahari307-max/Bharat-ai-Voice/releases/latest
+- Source code and issues: https://github.com/abhishekagrahari307-max/Bharat-ai-Voice
+- Everything in one file: https://github.com/abhishekagrahari307-max/Bharat-ai-Voice/docs/llms-full.txt
+
+## Start here
+
+- [Free GST Billing documentation](https://github.com/abhishekagrahari307-max/Bharat-ai-Voice/docs/): Make GST invoices, keep track of who owes you, and prepare your GST returns. On your own computer, with no account and no monthly fee.
+- [Install on Windows, step by step](https://github.com/abhishekagrahari307-max/Bharat-ai-Voice/docs/install.html): Download the Setup program and double-click it: it installs like any other Windows program, in about 2 minutes, with no administrator password. Every step below says what to press and what you will…
+- [Install on a Mac, step by step](https://github.com/abhishekagrahari307-max/Bharat-ai-Voice/docs/install-mac.html): Paste one line into Terminal: no warning, nothing to allow, and the app is in your Applications. About 3 minutes. Every step says what you will see.
+- [Install on Linux or a NAS, step by step](https://github.com/abhishekagrahari307-max/Bharat-ai-Voice/docs/install-linux.html): Ubuntu, Linux Mint and Debian: install the .deb package like any other program. Any other Linux: the AppImage, one file you double-click. Or paste one line into the Terminal. Each step is explained.
+- [Updating the app, step by step](https://github.com/abhishekagrahari307-max/Bharat-ai-Voice/docs/update.html): A new version comes out every Saturday. Updating keeps all your invoices, clients and settings, and the app backs them up first. The easiest way is one button inside the app.
+- [The first-run setup](https://github.com/abhishekagrahari307-max/Bharat-ai-Voice/docs/first-run.html): The screens you see the first time the app opens: one four-step welcome that asks what kind of business you run, your business details and your bank details. You can skip it and change everything…
+- [Your first invoice](https://github.com/abhishekagrahari307-max/Bharat-ai-Voice/docs/first-invoice.html): From a blank app to a GST tax invoice you can send, in about five minutes.
+- [GST basics for new business owners](https://github.com/abhishekagrahari307-max/Bharat-ai-Voice/docs/gst-basics.html): GST in plain words for a first-time shop owner, freelancer or small manufacturer: whether you need to register, which rate to charge, how to find your HSN or SAC code, which bill to give, returns and…
+- [Is it safe? Security and privacy](https://github.com/abhishekagrahari307-max/Bharat-ai-Voice/docs/security.html): Plain answers for anyone who has heard "open source" and wonders whether it is safe to keep their business books in it: where your data is, what the app connects to, and how to check it yourself.
+
+## Invoicing
+
+- [Making an invoice](https://github.com/abhishekagrahari307-max/Bharat-ai-Voice/docs/invoices.html): Every card of the New Invoice screen, from top to bottom: the toolbar, the document type, the client, invoice details, ship-to and order details, the items, discounts, GST, TDS and TCS, terms, extra…
+- [Customize: what prints and how](https://github.com/abhishekagrahari307-max/Bharat-ai-Voice/docs/invoice-options.html): The Customize panel on the invoice screen: title, currency, style, colour, every show-or-hide option, paper size and thermal settings, and exactly what each part of the printed invoice shows.
+- [Thermal receipt printing](https://github.com/abhishekagrahari307-max/Bharat-ai-Voice/docs/thermal-printing.html): Printing bills on a 58 mm or 80 mm receipt printer at a shop counter, from setting it up to what the receipt shows.
+- [Dashboard](https://github.com/abhishekagrahari307-max/Bharat-ai-Voice/docs/dashboard.html): Your invoices at a glance: what you have sold, what you are owed, what is overdue, and every action you can take on an invoice.
+
+## Clients, stock and payments
+
+- [Clients](https://github.com/abhishekagrahari307-max/Bharat-ai-Voice/docs/clients.html): Everyone you bill, what each one owes, their account statement, and how quickly they pay.
+- [Products and stock](https://github.com/abhishekagrahari307-max/Bharat-ai-Voice/docs/products.html): Save what you sell once, then pick it on every invoice. Stock goes down as you sell and up as you buy.
+- [Payment receipts](https://github.com/abhishekagrahari307-max/Bharat-ai-Voice/docs/receipts.html): Receipts for money you have received, whether against an invoice or not, ready to print.
+- [Cash book](https://github.com/abhishekagrahari307-max/Bharat-ai-Voice/docs/cash-book.html): Every rupee that comes in or goes out in cash, with names and notes, and how much cash you should have in the drawer right now.
+- [Recurring invoices](https://github.com/abhishekagrahari307-max/Bharat-ai-Voice/docs/recurring.html): Invoices that repeat on a schedule, such as a monthly retainer, rent or an annual maintenance contract.
+
+## Buying
+
+- [Purchase bills](https://github.com/abhishekagrahari307-max/Bharat-ai-Voice/docs/purchases.html): Record every supplier bill, so the GST you paid comes back as input tax credit and your stock stays right. Includes reading a bill from a photo, importing bills from a CSV file, and purchase orders…
+- [Expenses](https://github.com/abhishekagrahari307-max/Bharat-ai-Voice/docs/expenses.html): Costs that are not stock, such as rent, electricity, software or travel, for your profit and loss, your income tax and the GST credit on them.
+
+## Tax and reports
+
+- [GST returns](https://github.com/abhishekagrahari307-max/Bharat-ai-Voice/docs/gst-returns.html): GSTR-1 and GSTR-3B built from the invoices, purchases and expenses you have already entered, checked against GSTR-2B, and ready to upload to the GST portal.
+- [Reports](https://github.com/abhishekagrahari307-max/Bharat-ai-Voice/docs/reports.html): Profit and loss, who owes you and for how long, party outstanding by month, your best clients, your best-selling products, closing stock with its value, TDS and TCS, and profit by branch or project.…
+- [Income tax helper](https://github.com/abhishekagrahari307-max/Bharat-ai-Voice/docs/income-tax.html): Estimate your income tax under the old and new regimes, presumptive taxation (44AD, 44ADA, 44AE), advance tax, bank statement import, and an ITR-4 summary to file from.
+
+## Setting up
+
+- [Settings](https://github.com/abhishekagrahari307-max/Bharat-ai-Voice/docs/settings.html): Every tab of Settings, card by card, in the order the tabs appear: Company, Print & PDF, Features, Privacy & Security, Data & Backups, Appearance and App & updates. Each card in the app has a ? next…
+- [Print and PDF settings](https://github.com/abhishekagrahari307-max/Bharat-ai-Voice/docs/print-settings.html): The app-wide defaults for how every invoice looks on paper and in a PDF: business-type presets, designs, thermal receipts, copies, watermarks, fonts, colours, languages and formats. Each part of the…
+- [Backups, updates and moving PC](https://github.com/abhishekagrahari307-max/Bharat-ai-Voice/docs/backup.html): Your data is plain files on your own computer. Here is how it is backed up, how to keep a copy somewhere safe, update the app, and move to a new computer.
+- [Control Panel (moved to Settings)](https://github.com/abhishekagrahari307-max/Bharat-ai-Voice/docs/control-panel.html): Since version 1.10.86 the Control Panel is part of Settings and no longer in the menu. Every button is still there.
+- [Use on a phone or tablet](https://github.com/abhishekagrahari307-max/Bharat-ai-Voice/docs/phone.html): Open the app on your phone or tablet while your books stay on your PC: on the same Wi-Fi only, over an encrypted connection, with each device paired once using a QR code and the app's PIN.
+
+## Help
+
+- [Getting around the app](https://github.com/abhishekagrahari307-max/Bharat-ai-Voice/docs/shortcuts.html): The sidebar, switching business, notifications, quick search with Ctrl + K, keyboard shortcuts and dark mode.
+- [Troubleshooting and questions](https://github.com/abhishekagrahari307-max/Bharat-ai-Voice/docs/troubleshooting.html): Every message the app, the launcher and the installer can show, what it means, and the steps to fix it yourself.
+- [Using the Terminal, for beginners](https://github.com/abhishekagrahari307-max/Bharat-ai-Voice/docs/terminal.html): Some fixes ask you to type a command. The Terminal (Command Prompt on Windows) is just a window where you type an instruction and press Enter. This page shows how, on every computer.
+- [What the app does not do](https://github.com/abhishekagrahari307-max/Bharat-ai-Voice/docs/limitations.html): So you can plan around them: the things this app leaves to the government portals, your CA, or other tools.
+- [Glossary](https://github.com/abhishekagrahari307-max/Bharat-ai-Voice/docs/glossary.html): The GST and tax terms used in the app and in these pages, in plain words.
+- [Support & About](https://github.com/abhishekagrahari307-max/Bharat-ai-Voice/docs/support.html): Who makes Free GST Billing, how you can help it grow, and what DiceCodes builds for businesses.
