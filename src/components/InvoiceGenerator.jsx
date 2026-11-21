@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
 import { Maximize2, ArrowLeft, Plus, Trash2, Download, UserPlus, Pencil, Settings, ChevronUp, ChevronDown, MessageCircle, Check, Loader, Truck, Printer, Eye, EyeOff, QrCode } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
-import { saveBill, saveProduct, deleteBill, applyStockChanges, getNextInvoiceNumber, typedNumberInSeries, raiseInvoiceCounter, getTermsTemplates, getAllClients, saveClient, getProfile, getAllProducts, getInvoiceDisplayOptions, saveInvoiceDisplayOptions, getAllProfiles, getRegionMode, saveRecurring, getAllRecurring, getAllBills, getEnabledModules, getBusinessType, activePriceLevels, saveReceipt, deleteReceipt, reserveReceiptNo } from '../store';
+import { saveBill, saveProduct, deleteBill, applyStockChanges, getNextInvoiceNumber, typedNumberInSeries, raiseInvoiceCounter, getTermsTemplates, getAllClients, saveClient, getProfile, saveProfile, getAllProducts, getInvoiceDisplayOptions, saveInvoiceDisplayOptions, getAllProfiles, getRegionMode, saveRecurring, getAllRecurring, getAllBills, getEnabledModules, getBusinessType, activePriceLevels, saveReceipt, deleteReceipt, reserveReceiptNo } from '../store';
 import { trackedStock, clientPaperPrefs, clientPaperOptions, INVOICE_TYPES, isModuleEnabled, businessKeyOf, GST_DOC_NUMBER, COUNTRIES, deliveryChargeLine, stockEffect, appliedStock, stockDelta, generateEWayBillJSON, formatCurrency, getCountryConfig, getStatesForCountry, getAllUnits, addCustomUnit, removeCustomUnit, getCountriesForRegion, TDS_SECTIONS, TCS_SECTIONS, REMOVED_TCS_SECTIONS, TDS_SECTIONS_2025, TCS_SECTIONS_2025, tdsSectionsFor, tcsSectionsFor, movedSection, sectionOptionLabel, TERMS_PRESETS, getActiveAccounts, getDefaultAccount, getAccountById, getDefaultUnitForMode, filterUnitsByMode, PAPER_SIZES, getPaperSize, computeInvoiceTotals, clientYearToDate, htmlHasText, ORDER_DETAIL_FIELDS, customFieldsOf, invoiceOptionOn, DEFAULT_DECLARATION, decodeGstin, safePageBoundaries, localToday, toLocalIsoDate, parseLocalDate, paymentStatusFor, getStateCode, SALES_INVOICE_TYPES, spreadBillDiscount, amountDue, withReceivedNow, receivedNowPayment } from '../utils';
 import { receiptForPayment, withNextReceiptNo } from '../utils/bankMatch';
 import { PAID_MODES, lastPaidMode, rememberPaidMode } from './askPaidMode';
@@ -44,6 +44,8 @@ import { START_KEY, lastInvoiceType, rememberInvoiceType, startTypeFor, startDue
 import CreditLimitWarning from './CreditLimitWarning';
 import { useInvoiceCards, InvoiceCard } from './InvoiceCards';
 import { validateGstinForCountry, validatePinCode } from '../utils/profileValidation';
+import IndustrySpecsEditor from './IndustrySpecsEditor';
+import { readIndustryConfig, saveIndustryConfig } from '../utils/industryFields';
 
 // Rich text editor component that works with contentEditable properly
 function RichEditor({ value, onChange, placeholder, toolbar = false }) {
@@ -555,7 +557,7 @@ const LineItem = memo(function LineItem({
   onFieldChange, onSelectProduct, onSetProductSearch,
   onAddCustomUnit, onRemoveCustomUnit, onRemove, clampNonNeg,
   isLastRow, onAddRow, isOnlyRow, onSizeChange, sizeLines, onRftChange, notInProducts, onSaveAsProduct,
-  lineAmount, lineTax,
+  lineAmount, lineTax, itemSpecDefs, onItemSpecChange, readOnly,
 }) {
   // v1.10.37 — Keyboard shortcut: Enter on any input inside the LAST
   // row adds a new row. Muscle-memory for POS users — reported: "if
@@ -790,6 +792,38 @@ const LineItem = memo(function LineItem({
             onChange={(e) => onFieldChange(item.id, 'cessPercent', clampNonNeg(e.target.value))} />
         </div>
       )}
+      {/* Per-item industry specification fields (IMEI, Serial No, Batch, Expiry, HUID, Size, Warranty) */}
+      {(() => {
+        const defs = Array.isArray(itemSpecDefs) ? itemSpecDefs : [];
+        const savedList = Array.isArray(item.itemSpecs) ? item.itemSpecs : [];
+        const extraSaved = savedList.filter(
+          (s) => s?.label && String(s?.value || '').trim() && !defs.some((d) => d.id === s.id || d.label.toLowerCase() === String(s.label).toLowerCase())
+        );
+        const allFields = [...defs, ...extraSaved];
+        if (allFields.length === 0) return null;
+        return (
+          <div className="line-item-specs-row">
+            {allFields.map((def) => {
+              const found = savedList.find((s) => s.id === def.id || String(s.label || '').toLowerCase() === def.label.toLowerCase());
+              const val = found ? (found.value || '') : (def.value || '');
+              return (
+                <div key={def.id || def.label} className="line-item-spec-field">
+                  <label className="form-label" style={{ fontSize: '0.7rem', marginBottom: 2 }}>{def.label}</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={val}
+                    disabled={readOnly}
+                    placeholder={def.placeholder || def.label}
+                    onChange={(e) => onItemSpecChange?.(item.id, def, e.target.value)}
+                    style={{ fontSize: '0.8rem', padding: '0.32rem 0.55rem' }}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
       {/* v1.10.86 - the row's foot: + Add description on the left; the line's
           total and the delete button lined up at the right of every row (the
           delete button used to wrap onto a line of its own). */}
@@ -857,7 +891,10 @@ const sheetZoom = (el) => { try { return Number(getComputedStyle(el).zoom) || 1;
 // copy of the page it is put back on-screen so the capture is not blank.
 function showHiddenPaneInClone(clonedDoc) {
   const pane = clonedDoc.querySelector('.preview-pane');
-  if (pane) Object.assign(pane.style, { left: '0px', top: '0px', opacity: '1' });
+  if (pane) {
+    pane.classList.remove('mobile-pane-offscreen');
+    Object.assign(pane.style, { left: '0px', top: '0px', opacity: '1' });
+  }
 }
 
 // Test hook for tests/smoke.mjs (ERR-024): where the things a PDF page must
@@ -1811,6 +1848,52 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
   const [clientMoreOpen, setClientMoreOpen] = useState(false);
   // v1.10.86 - the cards of this screen: their order and which are closed (InvoiceCards.jsx).
   const cards = useInvoiceCards();
+  // Mobile smooth switcher ("Edit Bill" vs "Live Preview") + Industry Spec Fields
+  const [mobilePane, setMobilePane] = useState('edit');
+  const [industryConfig, setIndustryConfig] = useState(() => readIndustryConfig(activeProfile));
+
+  useEffect(() => {
+    if (profile?.industryFieldConfig) {
+      setIndustryConfig(readIndustryConfig(profile));
+    }
+  }, [profile]);
+
+  useEffect(() => {
+    const onCfg = (e) => {
+      if (e?.detail) setIndustryConfig(e.detail);
+      else setIndustryConfig(readIndustryConfig(profile));
+    };
+    window.addEventListener('fgsb:industry-config-changed', onCfg);
+    return () => window.removeEventListener('fgsb:industry-config-changed', onCfg);
+  }, [profile]);
+
+  const handleIndustryConfigChange = useCallback((nextCfg) => {
+    const saved = saveIndustryConfig(nextCfg);
+    setIndustryConfig(saved);
+    if (profile?.businessName) {
+      const nextProfile = { ...profile, industryFieldConfig: saved };
+      setActiveProfile(nextProfile);
+      saveProfile(nextProfile).catch(() => {});
+    }
+  }, [profile]);
+
+  const enabledItemSpecs = useMemo(
+    () => (industryConfig?.itemFields || []).filter((f) => f.enabled !== false),
+    [industryConfig]
+  );
+
+  const handleItemSpecChange = useCallback((itemId, def, value) => {
+    setItems((prev) => prev.map((it) => {
+      if (it.id !== itemId) return it;
+      const existing = Array.isArray(it.itemSpecs) ? it.itemSpecs : [];
+      const idx = existing.findIndex((s) => s.id === def.id || String(s.label || '').toLowerCase() === def.label.toLowerCase());
+      const entry = { id: def.id, label: def.label, value };
+      const nextSpecs = idx >= 0
+        ? existing.map((s, j) => (j === idx ? entry : s))
+        : [...existing, entry];
+      return { ...it, itemSpecs: nextSpecs };
+    }));
+  }, []);
   const handleClientGstinBlur = () => {
     const raw = (client.gstin || '').trim();
     if (!raw) { setGstinHint(null); return; }
@@ -4437,8 +4520,34 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
         </div>
       </div>
 
-      <div className={`split-view ${previewCollapsed ? 'split-view-focus' : ''}`}>
-        <div className="editor-pane">
+      {/* Mobile Edit / Live Preview smooth tab switcher (visible on <= 900px) */}
+      <div className="mobile-pane-switch no-print" role="tablist" aria-label="Invoice view mode">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mobilePane === 'edit'}
+          className={`mobile-pane-btn${mobilePane === 'edit' ? ' active' : ''}`}
+          onClick={() => setMobilePane('edit')}
+        >
+          <Pencil size={14} /> Edit Bill
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mobilePane === 'preview'}
+          className={`mobile-pane-btn${mobilePane === 'preview' ? ' active' : ''}`}
+          onClick={() => {
+            setMobilePane('preview');
+            setPreviewCollapsed(false);
+            setTimeout(() => { setPreviewFit(true); handleFitToWidth(); }, 50);
+          }}
+        >
+          <Eye size={14} /> Live Preview ({formatCurrency(totals.total || 0, invoiceOptions.currency || 'INR')})
+        </button>
+      </div>
+
+      <div className={`split-view ${previewCollapsed ? 'split-view-focus' : ''} mobile-active-${mobilePane}`}>
+        <div className={`editor-pane${mobilePane === 'preview' ? ' mobile-editor-hidden' : ''}`}>
           {/* v1.10.67 (#66 item 6) — the "Billing From (Business Profile)"
               card was removed. The company picker at the top of the sidebar
               already sets which business an invoice belongs to; a second
@@ -5408,6 +5517,9 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
                 onSaveAsProduct={saveLineAsProduct}
                 lineAmount={lineAmountOf(idx)}
                 lineTax={lineTaxOf(idx)}
+                itemSpecDefs={enabledItemSpecs}
+                onItemSpecChange={handleItemSpecChange}
+                readOnly={readOnlyDoc}
               />
             ))}
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -5679,6 +5791,17 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
                     onChange={(e) => setDetails({ ...details, originalInvoiceRef: e.target.value })} placeholder="e.g. INV/2025-26/0001" />
                 </div>
               )}
+
+              {/* Industry / Business Specification Fields (Chassis/Engine, IMEI, Batch/Expiry, HUID, etc.) */}
+              <div className="form-group full-width">
+                <IndustrySpecsEditor
+                  config={industryConfig}
+                  onConfigChange={handleIndustryConfigChange}
+                  details={details}
+                  setDetails={setDetails}
+                  readOnly={readOnlyDoc}
+                />
+              </div>
 
               {/* v1.10.73 - order, dispatch and reference details: the boxes on a
                   Tally-style invoice. Optional; closed unless one is filled.
@@ -5962,7 +6085,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
             dimensions so html2canvas can snapshot it, but it's invisible
             to the user and out of the flex flow (so the editor still
             takes the full viewport width in focus mode). */}
-        <div ref={previewPaneRef} className="preview-pane" style={previewCollapsed
+        <div ref={previewPaneRef} className={`preview-pane${mobilePane === 'edit' ? ' mobile-pane-offscreen' : ''}`} style={previewCollapsed
           ? { position: 'absolute', left: '-99999px', top: 0, width: '794px', pointerEvents: 'none', opacity: 0 }
           : undefined}>
           {/* v1.10.37 — Preview label + zoom control bar redesign.

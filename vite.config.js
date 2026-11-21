@@ -77,38 +77,39 @@ export default defineConfig({
         // often run horizontally. 'any' lets the device decide.
         orientation: 'any',
         lang: 'en-IN',
+        prefer_related_applications: false,
         categories: ['business', 'productivity', 'finance'],
-        // Manifest shortcuts — right-click the pinned PWA icon (Windows
-        // taskbar / Start Menu / Edge app launcher) to jump directly to
-        // the most-used flows without a full Dashboard hop.
+        // Manifest shortcuts — right-click / long-press the pinned PWA icon
+        // (Android home screen, Windows taskbar / Edge app launcher) to jump
+        // directly to the most-used flows without a full Dashboard hop.
         shortcuts: [
           {
             name: 'New Invoice',
             short_name: 'New Invoice',
             description: 'Create a new tax invoice',
             url: './?view=new',
-            icons: [{ src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml' }],
+            icons: [{ src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' }],
           },
           {
             name: 'Dashboard',
             short_name: 'Dashboard',
             description: 'See invoices and stats',
             url: './?view=dashboard',
-            icons: [{ src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml' }],
+            icons: [{ src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' }],
           },
           {
             name: 'GST Returns',
             short_name: 'GST Returns',
             description: 'GSTR-1 / 3B / 2B reconciliation',
             url: './?view=filing',
-            icons: [{ src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml' }],
+            icons: [{ src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' }],
           },
           {
             name: 'Settings',
             short_name: 'Settings',
             description: 'Business profile, accounts, modules',
             url: './?view=settings',
-            icons: [{ src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml' }],
+            icons: [{ src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' }],
           },
         ],
         icons: [

@@ -48,6 +48,7 @@ const PurchaseBills = lazy(() => import('./components/PurchaseBills'));
 const SupportView = lazy(() => import('./components/SupportView'));
 import StarBanner from './components/StarBanner';
 import AppFooter from './components/AppFooter';
+import MobileBottomBar from './components/MobileBottomBar';
 import OfflineModeButton from './components/OfflineModeButton';
 import PhonePairButton from './components/PhonePairButton';
 import { isOfflineMode } from './utils/offlineMode';
@@ -1344,6 +1345,22 @@ function App() {
           </div>
         </div>
       )}
+
+      <MobileBottomBar
+        currentView={currentView}
+        navOpen={navOpen}
+        onNavigate={(view) => {
+          setNavOpen(false);
+          setEditingBill(null);
+          setCurrentView(view);
+        }}
+        onNewInvoice={() => {
+          setNavOpen(false);
+          handleNewInvoice();
+        }}
+        onOpenMore={() => setNavOpen((v) => !v)}
+        inventoryEnabled={isModuleEnabled(enabledModules, 'inventory')}
+      />
 
       <ToastContainer />
       <ConfirmModalContainer />
