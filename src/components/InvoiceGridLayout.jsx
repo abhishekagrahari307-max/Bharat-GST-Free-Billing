@@ -18,6 +18,7 @@ import { filledOrderDetails, getStateCode, printedSubtotal, roundQty, sectionPri
 import SignatureImages from './SignatureImages';
 import { purposeCodeText } from '../utils/purposeCodes';
 import { sizeLabel, sizePieces, lineSqft, sizeHasDims } from '../utils/glass';
+import { filledIndustrySpecs, formatItemSpecsLine } from '../utils/industryFields';
 
 // #140 - the size of a glass / mirror line, under its name in the grid designs.
 const sizeLine = (item) => `Size ${sizeLabel(item.size)} in, ${sizePieces(item)} pcs = ${lineSqft(item).toFixed(2)} sq.ft`;
@@ -64,6 +65,31 @@ function RichBlock({ title, html, className = '' }) {
     <div {...blockProps} style={{ marginBottom: 4 }}>
       <div style={label}>{title}</div>
       <div className={`inv-rich ${className}`} style={small} dangerouslySetInnerHTML={{ __html: html }} />
+    </div>
+  );
+}
+
+function SpecGridBlock({ details, boxed = false }) {
+  const spec = filledIndustrySpecs(details || {});
+  if (!spec.fields.length) return null;
+  return (
+    <div {...blockProps} style={{
+      border: boxed ? 'none' : B,
+      borderTop: 'none',
+      borderBottom: boxed ? B : B,
+      padding: '4px 6px',
+    }}>
+      <div style={{ fontWeight: 700, fontSize: '0.88em', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 3 }}>
+        {spec.title}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '3px 12px' }}>
+        {spec.fields.map((f) => (
+          <div key={f.key} style={{ minWidth: 0 }}>
+            <span style={small}>{f.label}: </span>
+            <strong>{f.value}</strong>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -291,6 +317,7 @@ function TallyLayout({ ctx }) {
       {orderMap.workDetails && (
         <div {...blockProps} style={{ ...cell, borderTop: 'none' }}><span style={label}>Work Details: </span>{orderMap.workDetails}</div>
       )}
+      <SpecGridBlock details={ctx.details} />
 
       <table className="inv-table grid-items" style={{ width: '100%', borderCollapse: 'collapse', margin: '-1px 0 0' }}>
         <thead>
@@ -314,6 +341,7 @@ function TallyLayout({ ctx }) {
                 <td style={{ ...vc, ...center }}>{i + 1}</td>
                 <td className="grid-desc" style={vc}>
                   <strong>{item.name || '-'}</strong>
+                  {formatItemSpecsLine(item) && <div style={small}>{formatItemSpecsLine(item)}</div>}
                   {item.description && <div style={{ ...small, whiteSpace: 'pre-wrap' }}>{item.description}</div>}
                   {item.size && sizeHasDims(item.size) && <div style={small}>{sizeLine(item)}</div>}
                 </td>
@@ -468,6 +496,7 @@ function BoxedLayout({ ctx }) {
         {workDetails && (
           <div {...blockProps} style={{ padding: '5px 6px', borderBottom: B }}><span style={label}>Work Details:</span> {workDetails.value}</div>
         )}
+        <SpecGridBlock details={ctx.details} boxed />
         <table className="inv-table grid-items" style={{ width: '100%', borderCollapse: 'collapse', margin: 0 }}>
           <thead>
             <tr>
@@ -490,6 +519,7 @@ function BoxedLayout({ ctx }) {
                   <td style={{ ...cell, ...center, borderLeft: 'none' }}>{i + 1}</td>
                   <td className="grid-desc" style={cell}>
                     {item.name || '-'}
+                    {formatItemSpecsLine(item) && <div style={small}>{formatItemSpecsLine(item)}</div>}
                     {item.description && <div style={{ ...small, whiteSpace: 'pre-wrap' }}>{item.description}</div>}
                   {item.size && sizeHasDims(item.size) && <div style={small}>{sizeLine(item)}</div>}
                   </td>

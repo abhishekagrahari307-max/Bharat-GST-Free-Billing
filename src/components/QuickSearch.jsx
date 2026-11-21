@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Search, Command, ExternalLink, HelpCircle, BookOpen } from 'lucide-react';
 import { getAllBills, getAllClients, getAllProducts } from '../store';
-import { docsLink, trackedStock } from '../utils';
+import { docsLink, trackedStock, filledOrderDetails } from '../utils';
+import { allBillSpecSearchValues } from '../utils/industryFields';
 import { HOW_TO, VIEW_LABELS, matchHowTo, matchHelp, whereLabel } from '../utils/howTo';
 import HELP_INDEX from '../utils/helpIndex.json';
 import { openCustomiseMenu } from './MenuCustomise';
@@ -131,24 +132,35 @@ export default function QuickSearch({
 
   const records = useMemo(() => ({
     // v1.10.5 - an invoice opens for editing, as a Dashboard row click does.
-    invoices: corpus.bills.map((b) => ({
-      name: b.invoiceNumber || '', label: `📄 ${b.invoiceNumber || 'INV-?'} — ${b.clientName || 'No client'}`,
-      hint: b.invoiceDate ? new Date(b.invoiceDate).toLocaleDateString('en-IN') : '', run: () => onEditInvoice(b),
-    })),
+    invoices: corpus.bills.map((b) => {
+      const specs = allBillSpecSearchValues(b);
+      const c = b?.data?.client || {};
+      const orderVals = filledOrderDetails(b?.data?.details || {}).map((f) => `${f.label}: ${f.value}`);
+      return {
+        name: b.invoiceNumber || '',
+        label: `📄 ${b.invoiceNumber || 'INV-?'} — ${b.clientName || 'No client'}`,
+        sub: specs.length ? specs.slice(0, 3).join(' · ') : '',
+        searchText: [b.invoiceNumber, b.clientName, c.phone, c.gstin, ...specs, ...orderVals].filter(Boolean).join(' ').toLowerCase(),
+        hint: b.invoiceDate ? new Date(b.invoiceDate).toLocaleDateString('en-IN') : '',
+        run: () => onEditInvoice(b),
+      };
+    }),
     clients: corpus.clients.map((c) => ({
       name: c.name || '', label: `👤 ${c.name} — client${c.gstin ? ' · GSTIN: ' + c.gstin : ''}`,
+      searchText: [c.name, c.gstin, c.phone, c.email, c.city].filter(Boolean).join(' ').toLowerCase(),
       hint: c.phone || c.email || '', run: () => onView('clients'),
     })),
     // v1.10.83 - a product result opens Products, so none while it is hidden.
     products: navItems.some((i) => i.id === 'inventory') ? corpus.products.map((p) => ({
       name: p.name || '', label: `📦 ${p.name} — product${p.hsn ? ' · HSN: ' + p.hsn : ''}`,
+      searchText: [p.name, p.hsn, p.barcode, p.sku].filter(Boolean).join(' ').toLowerCase(),
       hint: trackedStock(p) === null ? '' : trackedStock(p) + ' in stock', run: () => onView('inventory'),
     })) : [],
   }), [corpus, navItems, onEditInvoice, onView]);
 
   const groups = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const has = (a) => !q || a.label.toLowerCase().includes(q);
+    const has = (a) => !q || a.label.toLowerCase().includes(q) || (a.searchText && a.searchText.includes(q));
     const screens = actions.filter(has);
     const settings = SETTINGS_JUMPS.map(([s, id]) => ({ label: `⚙️ Settings → ${s}`, run: () => onSettings(id) })).filter(has);
     const howTo = matchHowTo(q).map((h) => ({

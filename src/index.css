@@ -4459,3 +4459,633 @@ html[data-compact] .client-card-header .client-avatar { width: 32px; height: 32p
 .btn-sm { padding: 0.35rem 0.75rem; font-size: 0.8rem; }
 .btn-link, .link-btn { background: none; border: 0; padding: 0; color: var(--primary); cursor: pointer; font: inherit; text-decoration: underline; }
 .stat-icon-red { background: var(--danger-light); color: var(--danger); }
+
+/* =========================================================================
+   Industry Presets & Custom Specification Fields (Invoice + Per-Item)
+   ========================================================================= */
+.industry-specs-box {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.9rem 1rem;
+  background: var(--bg-secondary);
+  margin-top: 0.35rem;
+}
+
+.industry-specs-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.industry-specs-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.industry-specs-emoji {
+  font-size: 1.25rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.industry-specs-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.25;
+}
+
+.industry-specs-subtitle {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+.industry-specs-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.industry-preset-strip {
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  padding: 0.6rem 0 0.2rem;
+  margin-top: 0.25rem;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.industry-preset-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.34rem 0.68rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface, var(--card-bg, #fff));
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform 0.14s ease, border-color 0.14s ease, background 0.14s ease, color 0.14s ease;
+}
+
+.industry-preset-chip:hover:not(:disabled) {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.industry-preset-chip.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(var(--primary-rgb, 37, 99, 235), 0.25);
+}
+
+.industry-manage-panel {
+  margin-top: 0.75rem;
+  padding: 0.85rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface, var(--card-bg, #fff));
+}
+
+.industry-manage-top {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto;
+  gap: 0.75rem;
+  align-items: end;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+@media (max-width: 640px) {
+  .industry-manage-top {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+}
+
+.industry-field-group {
+  margin-top: 0.75rem;
+}
+
+.industry-field-group-title {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 0.45rem;
+}
+
+.industry-field-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.38rem;
+}
+
+.industry-field-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+}
+
+.industry-field-row.is-off {
+  opacity: 0.6;
+}
+
+.industry-field-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.industry-add-form {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 9px;
+  border: 1px dashed var(--primary);
+  background: var(--primary-light, rgba(37, 99, 235, 0.05));
+}
+
+.industry-fill-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(195px, 1fr));
+  gap: 0.65rem 0.8rem;
+  margin-top: 0.75rem;
+}
+
+.industry-fill-item {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.industry-fill-item.has-value .form-input {
+  border-color: rgba(var(--primary-rgb, 37, 99, 235), 0.45);
+}
+
+.industry-fill-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  font-size: 0.73rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0.25rem;
+}
+
+.industry-fill-label-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0.75;
+}
+
+.industry-mini-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.14s ease, color 0.14s ease, border-color 0.14s ease;
+}
+
+.industry-mini-icon-btn:hover {
+  background: var(--bg-secondary);
+  border-color: var(--border);
+  color: var(--primary);
+}
+
+.industry-mini-icon-btn.danger:hover {
+  color: var(--danger);
+  background: var(--danger-light);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+/* Per-Item Specification Fields inside LineItem */
+.line-item-specs-row {
+  flex-basis: 100%;
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+  gap: 0.45rem 0.65rem;
+  padding: 0.5rem 0.6rem;
+  margin-top: 0.2rem;
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  border: 1px dashed var(--border);
+}
+
+.line-item-spec-cell {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.line-item-spec-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.line-item-spec-input {
+  font-size: 0.78rem !important;
+  padding: 0.32rem 0.5rem !important;
+  height: auto !important;
+}
+
+/* =========================================================================
+   Smooth Mobile UX + Native-Feel PWA Shell
+   ========================================================================= */
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+button, a, summary, [role="button"], input[type="checkbox"], input[type="radio"], select {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (display-mode: standalone) {
+  body {
+    overscroll-behavior-y: none;
+    user-select: none;
+  }
+  input, textarea, [contenteditable="true"], .invoice-preview-wrapper, table {
+    user-select: text;
+  }
+}
+
+/* Desktop defaults: hide mobile-only bars */
+.mobile-bottom-nav,
+.mobile-pane-switch {
+  display: none;
+}
+
+/* Floating PWA Install Card */
+.pwa-install-float {
+  position: fixed;
+  right: 1rem;
+  bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  z-index: 1080;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  max-width: min(400px, calc(100vw - 1.5rem));
+  padding: 0.65rem 0.85rem;
+  border-radius: 14px;
+  background: var(--surface, var(--card-bg, #ffffff));
+  border: 1px solid var(--border);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.16);
+  animation: mobileFloatIn 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+[data-theme="dark"] .pwa-install-float {
+  background: #1e293b;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+.pwa-install-float-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--primary-light, rgba(37, 99, 235, 0.12));
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.pwa-install-float-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.pwa-install-float-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.pwa-install-float-sub {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  line-height: 1.25;
+  margin-top: 1px;
+}
+
+.pwa-install-float-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.42rem 0.78rem;
+  border-radius: 999px;
+  border: none;
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: 0 3px 10px rgba(var(--primary-rgb, 37, 99, 235), 0.3);
+}
+
+.pwa-install-float-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+@keyframes mobileFloatIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Tablet & Mobile Responsive Layout (<= 900px) */
+@media (max-width: 900px) {
+  .pwa-install-float {
+    left: 0.75rem;
+    right: 0.75rem;
+    max-width: none;
+    bottom: calc(4.6rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Make room above the fixed 5-tab bottom bar */
+  .main-content {
+    padding-bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  /* Native-feel 5-tab bottom navigation bar */
+  .mobile-bottom-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1050;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    align-items: center;
+    height: calc(3.9rem + env(safe-area-inset-bottom, 0px));
+    padding: 0.25rem 0.35rem env(safe-area-inset-bottom, 0px);
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -4px 20px rgba(15, 23, 42, 0.06);
+  }
+
+  [data-theme="dark"] .mobile-bottom-nav {
+    background: rgba(15, 23, 42, 0.92);
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.35);
+  }
+
+  .mobile-bottom-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.67rem;
+    font-weight: 600;
+    padding: 0.3rem 0.15rem;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: color 0.15s ease, transform 0.12s ease;
+  }
+
+  .mobile-bottom-tab:active {
+    transform: scale(0.93);
+  }
+
+  .mobile-bottom-tab.active {
+    color: var(--primary);
+    font-weight: 700;
+  }
+
+  .mobile-bottom-fab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    border: none;
+    background: transparent;
+    color: var(--primary);
+    font-size: 0.67rem;
+    font-weight: 700;
+    padding: 0;
+    margin-top: -0.95rem;
+    cursor: pointer;
+    transition: transform 0.14s ease;
+  }
+
+  .mobile-bottom-fab:active {
+    transform: scale(0.92);
+  }
+
+  .mobile-bottom-fab-circle {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 16px rgba(var(--primary-rgb, 37, 99, 235), 0.38);
+    border: 3px solid var(--surface, var(--card-bg, #fff));
+  }
+
+  [data-theme="dark"] .mobile-bottom-fab-circle {
+    border-color: #0f172a;
+  }
+
+  /* Smooth Edit Bill / Live Preview segmented switcher inside InvoiceGenerator */
+  .mobile-pane-switch {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.3rem;
+    padding: 0.3rem;
+    margin: 0 0 0.75rem;
+    border-radius: 12px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+  }
+
+  .mobile-pane-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.52rem 0.65rem;
+    border-radius: 9px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+  }
+
+  .mobile-pane-btn.active {
+    background: var(--surface, var(--card-bg, #fff));
+    color: var(--primary);
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+  }
+
+  /* Keep preview rendered at 794px offscreen while editing so html2canvas PDF/WhatsApp works anytime! */
+  .preview-pane.mobile-pane-offscreen {
+    position: absolute !important;
+    left: -99999px !important;
+    top: 0 !important;
+    width: 794px !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    overflow: hidden !important;
+  }
+
+  .editor-pane.mobile-editor-hidden {
+    display: none !important;
+  }
+
+  .split-view.mobile-active-preview .preview-pane {
+    display: flex !important;
+    position: relative !important;
+    left: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    overflow-x: auto !important;
+  }
+}
+
+/* Phone-specific touch ergonomics & zero auto-zoom (<= 768px) */
+@media (max-width: 768px) {
+  /* Safe-area top bar support on notched phones */
+  .mobile-topbar {
+    padding-top: max(0.55rem, env(safe-area-inset-top, 0px));
+    height: auto;
+    min-height: 3.25rem;
+  }
+
+  /* Prevent iOS Safari auto-zoom on input focus without affecting A4 invoice preview */
+  .main-content input.form-input,
+  .main-content select.form-input,
+  .main-content select.form-select,
+  .main-content textarea.form-input,
+  .main-content textarea.form-textarea,
+  .main-content .search-input,
+  .modal-content input.form-input,
+  .modal-content select.form-input,
+  .modal-content textarea.form-input {
+    font-size: 16px;
+  }
+
+  .line-item-spec-input {
+    font-size: 15px !important;
+  }
+
+  /* Smooth momentum horizontal scrolling on data tables & pill bars */
+  .table-container,
+  .filters-bar,
+  .settings-jump-bar {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Cleaner 2-column grid for specification fill inputs on phones */
+  .industry-fill-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.55rem;
+  }
+}
+
+@media (max-width: 560px) {
+  .industry-fill-grid,
+  .line-item-specs-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Comfortable 2-column numeric fields inside LineItem on compact phones */
+  .line-item-row {
+    gap: 0.5rem !important;
+    padding: 0.75rem !important;
+  }
+
+  .line-item-row > .line-item-field:not(.line-item-name-field) {
+    flex: 1 1 calc(50% - 0.35rem);
+    min-width: 110px;
+  }
+
+  /* Bottom-sheet feel for modals on phones */
+  .modal-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .modal-overlay > .modal-content {
+    width: 100%;
+    max-width: 100% !important;
+    max-height: 90dvh;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    padding-bottom: calc(1.1rem + env(safe-area-inset-bottom, 0px));
+    margin: 0;
+  }
+}
+
+@media print {
+  .mobile-bottom-nav,
+  .mobile-pane-switch,
+  .pwa-install-float {
+    display: none !important;
+  }
+}
+

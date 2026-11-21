@@ -10,6 +10,7 @@ import { exportDeclaration } from '../utils/lut';
 import { purposeCodeText } from '../utils/purposeCodes';
 import { sizeLabel, sizePieces, lineSqft, sizeHasDims, rftLabel } from '../utils/glass';
 import { fitItemTable } from '../utils/invoiceFit';
+import { filledIndustrySpecs, formatItemSpecsLine } from '../utils/industryFields';
 
 // v1.10.36 — Optional `previewOnly` prop suppresses the internal
 // `id="invoice-preview"`. The parent's on-screen preview keeps the id
@@ -329,7 +330,13 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
   const showCustomerSeal = invoiceOptionOn(options, 'showCustomerSeal', pdfStyleForOptions);
   const declarationText = options.declarationText ?? DEFAULT_DECLARATION;
   const totalTax = Number(totals.totalTaxAmount) || ((totals.cgst || 0) + (totals.sgst || 0) + (totals.utgst || 0) + (totals.igst || 0) + (totals.cess || 0));
-  const orderDetails = filledOrderDetails(details || {});
+  const industrySpec = filledIndustrySpecs(details || {});
+  const orderDetails = [
+    ...filledOrderDetails(details || {}),
+    ...(industrySpec.fields.length > 0 && industrySpec.showSpecBox === false
+      ? industrySpec.fields.map((f) => ({ key: `ispec_${f.key}`, label: f.label, value: f.value }))
+      : []),
+  ];
 
   // Header renderers per style
   const renderModernHeader = () => (
@@ -728,6 +735,15 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
           </div>
         )}
 
+        {industrySpec.fields.length > 0 && (
+          <div style={{ padding: secPad, fontSize: '0.88em', ...dashLine }}>
+            <div style={{ fontWeight: strongWeight, marginBottom: 2 }}>{cap(industrySpec.title)}</div>
+            {industrySpec.fields.map((f) => (
+              <div key={f.key}><strong style={{ fontWeight: strongWeight }}>{cap(f.label)}: </strong>{cap(f.value)}</div>
+            ))}
+          </div>
+        )}
+
         {/* ================= ITEMS =================
              CSS Grid with a FIXED-WIDTH amount column so every amount lines
              up vertically no matter how long the qty/rate text is. Fixes the
@@ -766,11 +782,17 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
                   : item.rft ? rftLabel(item)
                   : item.unit === 'NA' ? '' : `${qty}${unitBit}`;
                 const showLineRate = showRate && !item.size?.manual;
+                const itemSpecsStr = formatItemSpecsLine(item, ' | ');
                 return (
                   <div key={idx} style={{ marginBottom: 5, fontSize: '0.95em' }}>
                     <div style={{ fontWeight: strongWeight, wordBreak: 'break-word' }}>
                       {(idx + 1) + '. ' + cap(item.name || item.description || 'Item')}
                     </div>
+                    {itemSpecsStr && (
+                      <div style={{ fontSize: '0.85em', paddingLeft: thermalCompact ? 0 : 8, wordBreak: 'break-word' }}>
+                        {cap(itemSpecsStr)}
+                      </div>
+                    )}
                     <div style={{
                       display: 'grid', gridTemplateColumns: gridCols, gap: '4px',
                       fontSize: '0.92em', paddingLeft: thermalCompact ? 0 : 8, fontWeight: baseWeight,
@@ -1226,6 +1248,48 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
         </div>
       )}
 
+      {/* Dedicated Industry / Product Specification Box (e.g. Vehicle Chassis/Motor/Battery, Prescription, Bullion) */}
+      {industrySpec.fields.length > 0 && industrySpec.showSpecBox !== false && (
+        <div className="inv-spec-box" data-pdf-page-boundary=""
+          style={{
+            margin: pdfStyle === 'classic' ? '0 0 0.8rem' : '0 2rem 0.8rem',
+            border: '1px solid #cbd5e1',
+            borderRadius: 4,
+            overflow: 'hidden',
+          }}>
+          <div style={{
+            background: accent || '#1e40af',
+            color: '#ffffff',
+            fontWeight: 700,
+            fontSize: '0.72rem',
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase',
+            padding: '0.32rem 0.65rem',
+          }}>
+            {industrySpec.title}
+          </div>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(145px, 1fr))',
+            gap: '0.4rem 0.9rem',
+            padding: '0.48rem 0.65rem',
+            background: '#f8fafc',
+            fontSize: '0.74rem',
+          }}>
+            {industrySpec.fields.map((f) => (
+              <div key={f.key} style={{ minWidth: 0 }}>
+                <div style={{ fontSize: '0.62rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  {f.label}
+                </div>
+                <div style={{ fontWeight: 700, color: '#0f172a', wordBreak: 'break-word' }}>
+                  {f.value}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Items table */}
       <table className="inv-table" style={{ tableLayout: 'auto', ...(pdfStyle === 'modern' ? { margin: '0 2rem', width: 'calc(100% - 4rem)' } : pdfStyle === 'minimal' ? { margin: '0 2rem', width: 'calc(100% - 4rem)', borderTop: 'none' } : {}) }}>
         <thead>
@@ -1321,6 +1385,11 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
                 <td className="inv-td inv-td-muted">{index + 1}</td>
                 <td className="inv-td inv-td-name">
                   {item.name || '-'}
+                  {formatItemSpecsLine(item) && (
+                    <div style={{ fontSize: '0.76em', color: '#334155', fontWeight: 500, marginTop: 2, wordBreak: 'break-word' }}>
+                      {formatItemSpecsLine(item)}
+                    </div>
+                  )}
                   {/* v1.10.22 — optional per-line description shown under the
                       name in a smaller, muted font. Renders only when set so
                       pre-existing invoices without a description look

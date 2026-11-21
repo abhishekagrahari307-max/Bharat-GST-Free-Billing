@@ -21,6 +21,13 @@ import './index.css'
 
 installBrowserApiFallback();
 
+// Capture PWA install prompt early so mobile/desktop Install App UI never misses it
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  window.__fgsbDeferredInstallPrompt = e;
+  window.dispatchEvent(new CustomEvent('fgsb:pwa-prompt-ready'));
+});
+
 // v1.10.83 - the app's code loaded: tell public/boot-guard.js, and let it
 // try again next time something goes wrong.
 window.__fgsbBooted = true;

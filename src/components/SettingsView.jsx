@@ -34,6 +34,8 @@ import { getBackupsList, restoreBackup, triggerBackup, deleteBackup, getTrashedB
 import { AppAndUpdates, BackupFiles, useAppStatus } from './AppSettings';
 import { QUICK_TERMS } from '../utils/termsDefaults';
 import ComboInput from './ComboInput';
+import IndustrySpecsEditor from './IndustrySpecsEditor';
+import { readIndustryConfig, saveIndustryConfig } from '../utils/industryFields';
 
 // v1.10.36 — Section order for the jump-nav pill bar. Keeping this at
 // module scope so the scroll-spy effect below can reference it without
@@ -1327,6 +1329,28 @@ export default function SettingsView({ onSaved }) {
             </div>
           );
         })()}
+
+        {/* ---- Business Presets & Custom Invoice / Item Specification Fields ---- */}
+        <div style={{ marginTop: '2rem' }}>
+          <h3 className="section-title" style={{ margin: '0 0 0.25rem' }}>
+            Industry Presets &amp; Custom Specification Fields
+          </h3>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0 0 0.85rem' }}>
+            Choose a business preset (EV / Automobile, Mobile &amp; Electronics, Medical, Jewellery, Optical, Garments, or General) or add, edit, and delete your own invoice-level and per-item specification fields.
+          </p>
+          <IndustrySpecsEditor
+            configOnly
+            config={readIndustryConfig(profile)}
+            onConfigChange={(nextCfg) => {
+              const saved = saveIndustryConfig(nextCfg);
+              const nextProfile = { ...profile, industryFieldConfig: saved };
+              setProfile(nextProfile);
+              if (nextProfile.businessName) {
+                saveProfile(nextProfile).catch(() => {});
+              }
+            }}
+          />
+        </div>
 
         {/* ---- Payment Accounts ---- */}
         {(() => {
