@@ -418,12 +418,12 @@ export default function PrintSettings() {
         </div>
       </div>
 
-      {/* Responsive view switcher for laptops (<= 1180px), tablets & phones — prevents cramping/overlap */}
+      {/* Responsive view switcher for laptops (<= 1320px / panel <= 980px), tablets & phones */}
       <div className="print-settings-mobile-tabs" role="tablist" aria-label="Print settings view mode">
         {[
-          ['stacked', '⊞ Controls + Preview'],
+          ['stacked', '⊞ Controls + Live Preview'],
           ['controls', '⚙️ Controls Only'],
-          ['preview', '👁️ Full Preview'],
+          ['preview', '👁️ Full Live Preview'],
         ].map(([id, label]) => (
           <button
             key={id}
@@ -1447,11 +1447,17 @@ export default function PrintSettings() {
 
 // Scales a fixed-mm paper sheet (794px A4 or 302px 80mm thermal) to fit inside
 // any container width without CSS `zoom` quirks, horizontal clipping, or height
-// overlap. Reserves exact post-scale width × height on the layout wrapper.
+// overlap. Locks the inner paper at its true 1:1 pixel width (`naturalWidthPx`)
+// before scaling so `.invoice-paper { width: 100% }` never double-shrinks or
+// leaves empty white space below the scaled sheet.
 function ScaledPaperStage({ naturalWidthPx = 794, children }) {
   const outerRef = useRef(null);
   const innerRef = useRef(null);
-  const [box, setBox] = useState({ scale: 0.5, w: Math.round(naturalWidthPx * 0.5), h: 520 });
+  const [box, setBox] = useState(() => ({
+    scale: 0.48,
+    w: Math.round(naturalWidthPx * 0.48),
+    h: naturalWidthPx > 450 ? 480 : 380,
+  }));
 
   useEffect(() => {
     const outer = outerRef.current;
@@ -1460,21 +1466,29 @@ function ScaledPaperStage({ naturalWidthPx = 794, children }) {
 
     const recompute = () => {
       const availW = Math.max(180, outer.clientWidth - 4);
-      const natW = Math.max(200, inner.scrollWidth || inner.offsetWidth || naturalWidthPx);
-      const natH = Math.max(160, inner.scrollHeight || inner.offsetHeight || 500);
+      const natW = naturalWidthPx;
       const scale = Math.min(1, availW / natW);
+      const rawH = Math.max(180, inner.offsetHeight || inner.scrollHeight || 520);
       const w = Math.round(natW * scale);
-      const h = Math.round(natH * scale);
-      setBox((prev) => (Math.abs(prev.scale - scale) < 0.005 && Math.abs(prev.w - w) < 2 && Math.abs(prev.h - h) < 2 ? prev : { scale, w, h }));
+      const h = Math.round(rawH * scale);
+      setBox((prev) => (
+        Math.abs(prev.scale - scale) < 0.004 && Math.abs(prev.w - w) < 2 && Math.abs(prev.h - h) < 2
+          ? prev
+          : { scale, w, h }
+      ));
     };
 
     recompute();
-    if (typeof ResizeObserver === 'undefined') return undefined;
+    const raf = requestAnimationFrame(recompute);
+    if (typeof ResizeObserver === 'undefined') return () => cancelAnimationFrame(raf);
     const ro = new ResizeObserver(recompute);
     ro.observe(outer);
     ro.observe(inner);
-    return () => ro.disconnect();
-  }, [naturalWidthPx]);
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
+  }, [naturalWidthPx, children]);
 
   return (
     <div ref={outerRef} style={{ width: '100%', overflow: 'hidden', display: 'flex', justifyContent: 'center' }}>
@@ -1494,7 +1508,9 @@ function ScaledPaperStage({ naturalWidthPx = 794, children }) {
         <div
           ref={innerRef}
           style={{
-            width: 'fit-content',
+            width: `${naturalWidthPx}px`,
+            minWidth: `${naturalWidthPx}px`,
+            maxWidth: `${naturalWidthPx}px`,
             transform: `scale(${box.scale})`,
             transformOrigin: 'top left',
           }}
