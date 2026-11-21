@@ -27,6 +27,8 @@ export default function AppFooter({ onOpenSupport }) {
       }}>
         <span>Bharat GST Free Billing{version ? ` v${version}` : ''}</span>
         <span aria-hidden="true">·</span>
+        <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Created by Abhishek Agrahari</span>
+        <span aria-hidden="true">·</span>
         <span style={{ fontWeight: 500 }}>Made for Bharat 🇮🇳</span>
         <span aria-hidden="true">·</span>
         <button type="button" onClick={onOpenSupport}

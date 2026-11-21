@@ -212,7 +212,48 @@ export async function uploadJSON(fileName, jsonString, folderId) {
   return await res.json();
 }
 
-// v1.10.6 — audit L6: `listBackupsInFolder()` and `downloadFileText()`
-// had no importers. The "Restore from Drive" UI they were built for
-// never landed; the current Drive integration is upload-only. Reintroduce
-// when the restore-from-Drive feature does.
+// List backup files (.json and .fgsb) inside a Google Drive folder, newest first.
+export async function listBackupsInFolder(folderId, pageSize = 30) {
+  if (!accessToken) throw new Error('Not connected to Google Drive');
+  const parentClause = folderId ? `'${folderId}' in parents and ` : '';
+  const q = `${parentClause}trashed=false and (name contains 'backup' or name contains 'BharatGST' or name contains '.fgsb' or mimeType='application/json')`;
+  const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&orderBy=createdTime desc&pageSize=${pageSize}&fields=files(id,name,size,createdTime,modifiedTime,webViewLink)`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || 'Failed to list Google Drive backups');
+  }
+  const data = await res.json();
+  return Array.isArray(data.files) ? data.files : [];
+}
+
+// Download the raw text of a backup file (.json or .fgsb) from Google Drive for Restore.
+export async function downloadFileText(fileId) {
+  if (!accessToken) throw new Error('Not connected to Google Drive');
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || 'Failed to download backup from Google Drive');
+  }
+  return await res.text();
+}
+
+// Delete an old backup file from Google Drive (used by retention rotation or manual delete).
+export async function deleteDriveFile(fileId) {
+  if (!accessToken) throw new Error('Not connected to Google Drive');
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}`,
+    { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  if (!res.ok && res.status !== 404) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || 'Failed to delete Drive backup');
+  }
+  return true;
+}
+

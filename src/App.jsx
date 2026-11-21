@@ -1,7 +1,28 @@
 import { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
 import { Home, FileText, Settings, Plus, Users, Package, BarChart3, Wallet, RefreshCw, Receipt, BookOpen, Moon, Sun, Download, X, ShoppingCart, ChevronDown, Building2, Pencil, HelpCircle, Search, Command, Bell, Calculator, Menu, Heart, Banknote } from 'lucide-react';
-import { getAllProfilesWithHidden, saveProfile, getEnabledModules, getMenuOrder, getMenuHidden, getMenuDots, onMenuChanged, getAllBills, getAllProducts, getAllRecurring, getStockAlertSettings, runUpdateNow, getLockStatus, visibleProfiles, hasHiddenProfiles, openHiddenCompanies, hideCompaniesAgain, isOpenedHidden, DATA_SAVED_EVENT } from './store';
-import { isModuleEnabled, localToday, DOCS_URL, trackedStock } from './utils';
+import { getAllProfilesWithHidden, saveProfile, getEnabledModules, getMenuOrder, getMenuHidden, getMenuDots, onMenuChanged, getAllBills, getAllProducts, getAllRecurring, getStockAlertSettings, runUpdateNow, getLockStatus, visibleProfiles, hasHiddenProfiles, openHiddenCompanies, hideCompaniesAgain, isOpenedHidden, exportAllData, getBackupsList, DATA_SAVED_EVENT } from './store';
+import { isModuleEnabled, localToday, DOCS_URL } from './utils';
+import NotificationCenter from './components/NotificationCenter';
+import {
+  readNotifPrefs,
+  readSnoozedMap,
+  readSystemNotifFeed,
+  buildUnifiedNotifications,
+  NOTIF_EVENT,
+} from './utils/notificationSystem';
+import {
+  readBackupSettings,
+  readBackupMeta,
+  computeBackupHealth,
+  incrementBillsSinceBackup,
+  recordBackupCompleted,
+  serializeBackupPayload,
+  writeBackupToBrowserDirectory,
+  BACKUP_EVENT,
+} from './utils/backupManager';
+import { isConnected as isDriveConnected, findOrCreateFolder, uploadJSON } from './services/googleDrive';
+import { getActiveStaffUser, LOCK_EVENT, STAFF_USER_EVENT } from './utils/appLock';
+import { STAFF_ROLES } from './utils/localLock';
 import { orderedMenu } from './utils/businessTypes';
 import SidebarMenu, { NavDot } from './components/SidebarMenu';
 import MenuCustomise, { onOpenCustomiseMenu } from './components/MenuCustomise';
@@ -217,30 +238,57 @@ function App() {
   const [dismissed, setDismissed] = useState(() => {
     try { return JSON.parse(localStorage.getItem(DISMISS_KEY) || '{}'); } catch { return {}; }
   });
+  const [notifPrefs, setNotifPrefs] = useState(readNotifPrefs);
+  const [snoozedMap, setSnoozedMap] = useState(readSnoozedMap);
+  const [notifFeed, setNotifFeed] = useState(readSystemNotifFeed);
+  const [backupHealthState, setBackupHealthState] = useState(() => computeBackupHealth(readBackupMeta(), readBackupSettings()));
+  const [activeStaff, setActiveStaff] = useState(getActiveStaffUser);
 
-  const notifSignatures = useMemo(() => ({
-    overdue: notifications.overdue.map(b => b.invoiceNumber || b.id).sort().join('|'),
-    dueSoon: notifications.dueSoon.map(b => b.invoiceNumber || b.id).sort().join('|'),
-    lowStock: notifications.lowStock.map(p => `${p.id || p.name}:${p.stock ?? ''}`).sort().join('|'),
-    filings: notifications.filings.map(f => f.label || f.id || String(f)).sort().join('|'),
-    autoFire: notifications.autoFire?.count > 0 ? `autofire:${notifications.autoFire.count}` : '',
-    recurringDue: notifications.recurringDue.map(t => `${t.id}:${t.nextDate}`).sort().join('|'),
-  }), [notifications]);
+  useEffect(() => {
+    const syncNotif = () => {
+      setNotifPrefs(readNotifPrefs());
+      setSnoozedMap(readSnoozedMap());
+      setNotifFeed(readSystemNotifFeed());
+    };
+    const syncStaff = () => setActiveStaff(getActiveStaffUser());
+    const onRoleDenied = (e) => {
+      toast(e?.detail?.error || 'Your staff role does not have permission for this action.', 'warning', 5500);
+    };
+    window.addEventListener(NOTIF_EVENT, syncNotif);
+    window.addEventListener(STAFF_USER_EVENT, syncStaff);
+    window.addEventListener(LOCK_EVENT, syncStaff);
+    window.addEventListener('fgsb:role-denied', onRoleDenied);
+    return () => {
+      window.removeEventListener(NOTIF_EVENT, syncNotif);
+      window.removeEventListener(STAFF_USER_EVENT, syncStaff);
+      window.removeEventListener(LOCK_EVENT, syncStaff);
+      window.removeEventListener('fgsb:role-denied', onRoleDenied);
+    };
+  }, []);
+
+  const unifiedNotifs = useMemo(() => buildUnifiedNotifications({
+    attention: notifications,
+    backupHealth: backupHealthState,
+    prefs: notifPrefs,
+    dismissed,
+    snoozed: snoozedMap,
+    feed: notifFeed,
+  }), [notifications, backupHealthState, notifPrefs, dismissed, snoozedMap, notifFeed]);
+
+  const notifSignatures = unifiedNotifs.signatures;
 
   // A section counts toward the badge only when it has content AND that
   // content is not the exact thing the user already dismissed.
   const isLive = (key) => !!notifSignatures[key] && dismissed[key] !== notifSignatures[key];
 
-  const notifTotal = (isLive('overdue') ? notifications.overdue.length : 0)
-    + (isLive('dueSoon') ? notifications.dueSoon.length : 0)
-    + (isLive('lowStock') ? notifications.lowStock.length : 0)
-    + (isLive('filings') ? notifications.filings.length : 0)
-    + (isLive('autoFire') ? 1 : 0)
-    + (isLive('recurringDue') ? notifications.recurringDue.length : 0);
+  const notifTotal = unifiedNotifs.totalUnread;
 
-  // How many sections are currently showing something that could be cleared.
-  const dismissableCount = ['overdue', 'dueSoon', 'lowStock', 'filings', 'autoFire', 'recurringDue']
-    .filter(isLive).length;
+  const dismissSingleNotifKey = (key) => {
+    const sig = notifSignatures[key] || 'dismissed';
+    const next = { ...dismissed, [key]: sig };
+    setDismissed(next);
+    try { localStorage.setItem(DISMISS_KEY, JSON.stringify(next)); } catch { /* private mode */ }
+  };
 
   const markAllNotifsRead = () => {
     const next = { ...dismissed, ...notifSignatures };
@@ -259,23 +307,19 @@ function App() {
     let saveTimer = null;
     const compute = async () => {
       try {
-        const [bills, products, stockAlertCfg, templates] = await Promise.all([
+        const [bills, products, stockAlertCfg, templates, backups] = await Promise.all([
           getAllBills().catch(() => []),
           getAllProducts().catch(() => []),
           getStockAlertSettings().catch(() => ({ enabled: true, threshold: 5 })),
           getAllRecurring().catch(() => []),
+          getBackupsList().catch(() => []),
         ]);
         if (cancelled) return;
-        // Local dates: toISOString() is UTC (yesterday in India until 05:30),
-        // while the server stamps lastRecurringAutoFire with its local date.
         const today = localToday();
         const prof = profileRef.current;
         const { overdue, dueSoon, lowStock, filings, recurringDue } = findAttention({
           bills, products, stockCfg: stockAlertCfg, templates, profile: prof, filed: readFiledMarks(prof),
         });
-        // Recurring auto-fire breadcrumb — set by server.js processDueRecurring().
-        // Only "fresh" (today's) auto-fires count as a notification; older ones
-        // would otherwise stay sticky forever.
         let autoFire = null;
         try {
           const r = await fetch('/api/meta/lastRecurringAutoFire');
@@ -285,16 +329,102 @@ function App() {
           }
         } catch { /* fine */ }
         setNotifications({ overdue, dueSoon, lowStock, filings, autoFire, recurringDue });
+        setBackupHealthState(computeBackupHealth(readBackupMeta(), readBackupSettings(), {
+          billCount: Array.isArray(bills) ? bills.length : 0,
+          serverBackups: Array.isArray(backups) ? backups : [],
+        }));
       } catch { /* offline / server down — leave previous counts */ }
     };
     compute();
     const interval = setInterval(compute, 10 * 60 * 1000);
-    // Not while an invoice is open: its auto-save would redraw the app
-    // between keystrokes. Leaving the editor looks again anyway.
     const onSaved = () => { if (currentView === 'new') return; clearTimeout(saveTimer); saveTimer = setTimeout(compute, 1500); };
+    const onBackupEvt = () => { clearTimeout(saveTimer); saveTimer = setTimeout(compute, 300); };
     window.addEventListener(DATA_SAVED_EVENT, onSaved);
-    return () => { cancelled = true; clearInterval(interval); clearTimeout(saveTimer); window.removeEventListener(DATA_SAVED_EVENT, onSaved); };
-  }, [currentView, profileKey]); // recompute on view change so the bell stays fresh after the user records a payment
+    window.addEventListener(BACKUP_EVENT, onBackupEvt);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      clearTimeout(saveTimer);
+      window.removeEventListener(DATA_SAVED_EVENT, onSaved);
+      window.removeEventListener(BACKUP_EVENT, onBackupEvt);
+    };
+  }, [currentView, profileKey]);
+
+  // ---- Background Scheduled Auto-Backup Runner (Task 5) ----
+  const autoBackupRunningRef = useRef(false);
+  useEffect(() => {
+    let timer = null;
+    const runIfDue = async () => {
+      if (autoBackupRunningRef.current) return;
+      const settings = readBackupSettings();
+      if (!settings.autoBackupEnabled) return;
+      try {
+        const [bills, backups] = await Promise.all([
+          getAllBills().catch(() => []),
+          getBackupsList().catch(() => []),
+        ]);
+        const billCount = Array.isArray(bills) ? bills.length : 0;
+        if (billCount === 0) return; // don't spam empty auto-backups on fresh installs
+        const health = computeBackupHealth(readBackupMeta(), settings, {
+          billCount,
+          serverBackups: Array.isArray(backups) ? backups : [],
+        });
+        if (!health.isAutoDue) return;
+
+        autoBackupRunningRef.current = true;
+        await fetch('/api/backups/now', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ keepLastCount: settings.keepLastCount }),
+        }).catch(() => {});
+
+        const destinations = ['On-Device Vault'];
+        if (settings.autoSyncLocalFolder || (settings.autoSyncGoogleDrive && isDriveConnected())) {
+          const payload = await exportAllData().catch(() => null);
+          if (payload) {
+            const { fileName, content } = await serializeBackupPayload(payload, { encrypt: false });
+            if (settings.autoSyncLocalFolder) {
+              try {
+                const folderName = await writeBackupToBrowserDirectory(fileName, content, { interactive: false });
+                destinations.push(`PC Folder (${folderName})`);
+              } catch { /* folder needs interactive re-grant next time */ }
+            }
+            if (settings.autoSyncGoogleDrive && isDriveConnected() && !settings.encryptAutoDrive) {
+              try {
+                const folderLabel = String(profileRef.current?.googleDriveFolder || 'Bharat GST Backups').trim();
+                const folderId = await findOrCreateFolder(folderLabel);
+                await uploadJSON(fileName, content, folderId);
+                destinations.push('Google Drive');
+              } catch { /* offline or token expired */ }
+            }
+          }
+        }
+
+        recordBackupCompleted({
+          kind: 'scheduled-auto',
+          destination: destinations.join(' + '),
+          billCount,
+        });
+      } finally {
+        autoBackupRunningRef.current = false;
+      }
+    };
+
+    const initial = setTimeout(runIfDue, 8000);
+    const periodic = setInterval(runIfDue, 30 * 60 * 1000);
+    const onDataSaved = () => {
+      incrementBillsSinceBackup();
+      clearTimeout(timer);
+      timer = setTimeout(runIfDue, 4000);
+    };
+    window.addEventListener(DATA_SAVED_EVENT, onDataSaved);
+    return () => {
+      clearTimeout(initial);
+      clearInterval(periodic);
+      clearTimeout(timer);
+      window.removeEventListener(DATA_SAVED_EVENT, onDataSaved);
+    };
+  }, []);
 
   // ---- Keyboard shortcuts + command palette ----
   // Ctrl+K opens a Spotlight-style command palette; Ctrl+N starts a new
@@ -816,7 +946,7 @@ function App() {
         <img src="/icons/icon-192.png" alt="" width={72} height={72} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
         <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 600 }}>Bharat GST Free Billing</h2>
         <div className="server-down-waiting"><div className="server-down-spinner" /><span>Starting again…</span></div>
-        <p style={{ position: 'absolute', bottom: 28, margin: 0, fontSize: '0.8rem', color: darkMode ? '#94a3b8' : '#64748b' }}>Made for Bharat</p>
+        <p style={{ position: 'absolute', bottom: 28, margin: 0, fontSize: '0.8rem', color: darkMode ? '#94a3b8' : '#64748b' }}>Created by Abhishek Agrahari · Made for Bharat</p>
       </div>
     );
   }
@@ -997,6 +1127,16 @@ function App() {
                 }} />
               </button>
             )}
+            {typeof window !== 'undefined' && !window.matchMedia?.('(display-mode: standalone)')?.matches && (
+              <button
+                type="button"
+                className="nav-btn"
+                onClick={() => openSettingsSection('section-offline-app')}
+                title="Install 100% Offline App on Computer, Laptop or Mobile"
+              >
+                <Download size={18} /> Install Offline App
+              </button>
+            )}
             {/* v1.10.83 - in the order chosen in Settings → Features; switched-off
                 ones are already left out of bottomIds. */}
             {bottomIds.filter(id => !menuHidden.includes(id)).map(id => ({
@@ -1021,6 +1161,37 @@ function App() {
                 </button>
               ),
             })[id])}
+
+            {activeStaff?.name && (
+              <button
+                type="button"
+                className="nav-btn"
+                onClick={() => lockNow()}
+                title="Signed in staff profile — click to lock or switch staff user"
+                style={{ fontSize: '0.78rem', opacity: 0.92 }}
+              >
+                <span>{STAFF_ROLES.find((r) => r.id === activeStaff.role)?.badge || '👤'}</span>
+                <span style={{ flex: 1, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {activeStaff.name} · {STAFF_ROLES.find((r) => r.id === activeStaff.role)?.label || activeStaff.role}
+                </span>
+              </button>
+            )}
+
+            <div
+              className="sidebar-creator-credit"
+              onClick={() => setCurrentView('support')}
+              title="About Bharat GST Free Billing — Created by Abhishek Agrahari"
+              style={{
+                padding: '0.45rem 0.65rem 0.15rem',
+                fontSize: '0.68rem',
+                color: 'var(--text-muted)',
+                textAlign: 'center',
+                cursor: 'pointer',
+                letterSpacing: '0.01em',
+              }}
+            >
+              Created by <strong style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Abhishek Agrahari</strong>
+            </div>
           </div>
         </nav>
       </div>
@@ -1106,109 +1277,21 @@ function App() {
       </div>
 
       {/* Update modal — release notes + Export-backup-first nudge + Update Now */}
-      {/* Notification popover — rendered as a click-out modal so it works on
-          tablets too. Grouped by category with a navigate-to button per group. */}
-      {showNotifs && (
-        <div className="modal-overlay" onClick={() => setShowNotifs(false)}>
-          <div className="modal-content" style={{ maxWidth: '480px' }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <h3 className="section-title" style={{ margin: 0 }}>Notifications <HelpButton title="Notifications" doc="shortcuts#notifications" size={16} /></h3>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                {/* v1.10.62 (#53) — clears everything currently shown. Each
-                    section remembers exactly WHAT was cleared, so a genuinely
-                    new overdue invoice or a different product running low
-                    brings the alert back by itself. */}
-                {dismissableCount > 0 && (
-                  <button
-                    type="button"
-                    className="btn"
-                    onClick={markAllNotifsRead}
-                    style={{ fontSize: '0.78rem', padding: '0.3rem 0.6rem' }}
-                    title="Clear these notifications. They return if something new happens.">
-                    Mark all as read
-                  </button>
-                )}
-                <button className="icon-btn" onClick={() => setShowNotifs(false)} title="Close"><X size={18} /></button>
-              </span>
-            </div>
-            {notifTotal === 0 ? (
-              <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '1.5rem 0', margin: 0 }}>
-                All clear ✨ — nothing needs your attention right now.
-              </p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                {isLive('autoFire') && (
-                  <button type="button" className="notice notice-info" onClick={() => { setShowNotifs(false); setCurrentView('dashboard'); }} style={{ cursor: 'pointer', border: 'none', textAlign: 'left' }}>
-                    <span className="notice-icon">🔁</span>
-                    <div style={{ flex: 1 }}>
-                      <strong>{notifications.autoFire.count} recurring invoice{notifications.autoFire.count !== 1 ? 's' : ''} auto-generated today</strong>
-                      <div style={{ fontSize: '0.72rem', opacity: 0.85, marginTop: '0.2rem' }}>
-                        Check the Dashboard for the new bills · review and download PDFs as needed
-                      </div>
-                    </div>
-                  </button>
-                )}
-                {/* v1.10.86 - a due template the server did not make (the app was off, or it failed). */}
-                {isLive('recurringDue') && (
-                  <button type="button" className="notice notice-warn" onClick={() => { setShowNotifs(false); setCurrentView('recurring'); }} style={{ cursor: 'pointer', border: 'none', textAlign: 'left' }}>
-                    <span className="notice-icon">🔁</span>
-                    <div style={{ flex: 1 }}>
-                      <strong>{notifications.recurringDue.length} recurring invoice{notifications.recurringDue.length !== 1 ? 's' : ''} due to be made</strong>
-                      <div style={{ fontSize: '0.72rem', opacity: 0.85, marginTop: '0.2rem' }}>
-                        {notifications.recurringDue.slice(0, 3).map(t => t.clientName || 'No client').join(' · ')} · open Recurring and use Generate Now
-                      </div>
-                    </div>
-                  </button>
-                )}
-                {isLive('overdue') && (
-                  <button type="button" className="notice notice-danger" onClick={() => { setShowNotifs(false); setCurrentView('dashboard'); }} style={{ cursor: 'pointer', border: 'none', textAlign: 'left' }}>
-                    <span className="notice-icon">⚠</span>
-                    <div style={{ flex: 1 }}>
-                      <strong>{notifications.overdue.length} overdue invoice{notifications.overdue.length !== 1 ? 's' : ''}</strong>
-                      <div style={{ fontSize: '0.72rem', opacity: 0.85, marginTop: '0.2rem' }}>
-                        {notifications.overdue.slice(0, 3).map(b => b.invoiceNumber).join(' · ')}{notifications.overdue.length > 3 ? ` · +${notifications.overdue.length - 3} more` : ''}
-                      </div>
-                    </div>
-                  </button>
-                )}
-                {isLive('dueSoon') && (
-                  <button type="button" className="notice notice-warn" onClick={() => { setShowNotifs(false); setCurrentView('dashboard'); }} style={{ cursor: 'pointer', border: 'none', textAlign: 'left' }}>
-                    <span className="notice-icon">⏰</span>
-                    <div style={{ flex: 1 }}>
-                      <strong>{notifications.dueSoon.length} invoice{notifications.dueSoon.length !== 1 ? 's' : ''} due in next 3 days</strong>
-                      <div style={{ fontSize: '0.72rem', opacity: 0.85, marginTop: '0.2rem' }}>
-                        {notifications.dueSoon.slice(0, 3).map(b => `${b.invoiceNumber} (${b.clientName})`).join(' · ')}
-                      </div>
-                    </div>
-                  </button>
-                )}
-                {isLive('filings') && (
-                  <button type="button" className="notice notice-info" onClick={() => { setShowNotifs(false); setCurrentView('filing'); }} style={{ cursor: 'pointer', border: 'none', textAlign: 'left' }}>
-                    <span className="notice-icon">📋</span>
-                    <div style={{ flex: 1 }}>
-                      <strong>{notifications.filings.length} GST filing{notifications.filings.length !== 1 ? 's' : ''} due in next 10 days</strong>
-                      <div style={{ fontSize: '0.72rem', opacity: 0.85, marginTop: '0.2rem' }}>
-                        {notifications.filings.slice(0, 3).map(f => `${f.label} (${f.daysAway === 0 ? 'today' : f.daysAway + 'd'})`).join(' · ')}
-                      </div>
-                    </div>
-                  </button>
-                )}
-                {isLive('lowStock') && (
-                  <button type="button" className="notice notice-note" onClick={() => { setShowNotifs(false); setCurrentView('inventory'); }} style={{ cursor: 'pointer', border: 'none', textAlign: 'left' }}>
-                    <span className="notice-icon">📦</span>
-                    <div style={{ flex: 1 }}>
-                      <strong>{notifications.lowStock.length} product{notifications.lowStock.length !== 1 ? 's' : ''} low on stock</strong>
-                      <div style={{ fontSize: '0.72rem', opacity: 0.85, marginTop: '0.2rem' }}>
-                        {notifications.lowStock.slice(0, 3).map(p => `${p.name} (${trackedStock(p)} left)`).join(' · ')}
-                      </div>
-                    </div>
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      {/* Complete Notification Center (Task 4) */}
+      <NotificationCenter
+        open={showNotifs}
+        onClose={() => setShowNotifs(false)}
+        cards={unifiedNotifs.cards}
+        feed={notifFeed}
+        prefs={notifPrefs}
+        onPrefsChange={setNotifPrefs}
+        onDismissKey={dismissSingleNotifKey}
+        onSnoozeChanged={setSnoozedMap}
+        onFeedChanged={setNotifFeed}
+        onMarkAllRead={markAllNotifsRead}
+        onNavigate={(view) => { setShowNotifs(false); setCurrentView(view); }}
+        onOpenSettingsSection={(sec) => { setShowNotifs(false); openSettingsSection(sec); }}
+      />
 
       {/* Quick search - Ctrl/Cmd+K or the search box (v1.10.86: components/QuickSearch.jsx). */}
       {showPalette && (
