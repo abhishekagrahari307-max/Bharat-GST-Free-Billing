@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { getProfile, saveProfile, exportAllData, importData, inspectBackup, getTermsTemplates, saveTermsTemplate, deleteTermsTemplate, getAllProfiles, saveBusinessProfile, deleteBusinessProfile, getRegionMode, setRegionMode, getStockAlertSettings, saveStockAlertSettings, renameNumberSeries, getInvoiceDisplayOptions, saveInvoiceDisplayOptions, getCostCentres, saveCostCentres, setCompanyHidePin, keepOpened, hideCompaniesAgain } from '../store';
 import { ensureToken, findOrCreateFolder, uploadJSON } from '../services/googleDrive';
 import { getCountryConfig, getStatesForCountry, validateTaxId, gstinFill, getCountriesForRegion, isModuleEnabled, getPaymentAccounts, createEmptyAccount, maskAccountNumber, reorderAccounts, setDefaultAccount, isValidUpiId, findSameBusiness, businessKeyOf, localToday, decodeGstin } from '../utils';
+import { validateBusinessProfile, validateBankFields, validateGstinForCountry } from '../utils/profileValidation';
 import { normaliseLutArn, isLikelyLutArn, lutFyOptions, fyOf } from '../utils/lut';
 // v1.10.36 — lucide's `Image` icon was imported as `Image`, which
 // SHADOWED the browser's `HTMLImageElement` constructor. Reported:
@@ -229,9 +230,16 @@ export default function SettingsView({ onSaved }) {
   const loadTemplates = async () => setTermsTemplates(await getTermsTemplates());
   const loadBusinessProfiles = async () => setBusinessProfiles(await getAllProfiles());
 
+  const [profileErrors, setProfileErrors] = useState({});
+  const [accountErrors, setAccountErrors] = useState({});
+
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name } = e.target;
+    let { value } = e.target;
+    if (name === 'gstin' || name === 'pan') value = value.toUpperCase().replace(/\s+/g, '');
+    if (name === 'pin' && (profile.country || 'India') === 'India') value = value.replace(/[^\d]/g, '').slice(0, 6);
     setProfile(prev => ({ ...prev, [name]: value }));
+    setProfileErrors(prev => (prev[name] ? { ...prev, [name]: '' } : prev));
   };
 
   // ---- Payment Accounts manager ----
@@ -286,23 +294,39 @@ export default function SettingsView({ onSaved }) {
     if (existing.length === 0) fresh.isDefault = true;
     setEditingAccount(fresh);
     setAccountUpiWarning('');
+    setAccountErrors({});
   };
 
   const openEditAccount = (acc) => {
     setEditingAccount({ ...acc });
     setAccountUpiWarning('');
+    setAccountErrors({});
   };
 
-  const cancelAccount = () => { setEditingAccount(null); setAccountUpiWarning(''); };
+  const cancelAccount = () => { setEditingAccount(null); setAccountUpiWarning(''); setAccountErrors({}); };
 
   const saveAccountForm = () => {
     if (!editingAccount) return;
+    const accErrs = validateBankFields(editingAccount, profile.country);
+    if (Object.keys(accErrs).length > 0) {
+      setAccountErrors(accErrs);
+      toast(Object.values(accErrs)[0], 'error', 6000);
+      return;
+    }
+    setAccountErrors({});
+    const normalizedAcc = {
+      ...editingAccount,
+      accountNumber: (editingAccount.accountNumber || '').trim(),
+      ifsc: (editingAccount.ifsc || '').trim().toUpperCase(),
+      swift: (editingAccount.swift || '').trim().toUpperCase(),
+      upiId: (editingAccount.upiId || '').trim(),
+    };
     const existing = getPaymentAccounts(profile).filter(a => a.id !== 'legacy');
-    const idx = existing.findIndex(a => a.id === editingAccount.id);
-    const next = idx >= 0 ? existing.map((a, i) => i === idx ? editingAccount : a) : [...existing, editingAccount];
+    const idx = existing.findIndex(a => a.id === normalizedAcc.id);
+    const next = idx >= 0 ? existing.map((a, i) => i === idx ? normalizedAcc : a) : [...existing, normalizedAcc];
     // Enforce: exactly one default (or zero if list empty).
-    if (editingAccount.isDefault) {
-      next.forEach(a => { if (a.id !== editingAccount.id) a.isDefault = false; });
+    if (normalizedAcc.isDefault) {
+      next.forEach(a => { if (a.id !== normalizedAcc.id) a.isDefault = false; });
     } else if (!next.some(a => a.isDefault) && next.length > 0) {
       next[0].isDefault = true;
     }
@@ -444,6 +468,16 @@ export default function SettingsView({ onSaved }) {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    const check = validateBusinessProfile(profile, { requireState: true });
+    if (!check.ok) {
+      setProfileErrors(check.errors);
+      if (check.errors.gstin) setTaxIdWarning(check.errors.gstin);
+      setActiveSection('section-company');
+      setTimeout(() => companyFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 40);
+      toast(check.firstError, 'error', 6000);
+      return;
+    }
+    setProfileErrors({});
     try {
       setSaving(true);
       await saveProfile(profile);
@@ -681,7 +715,16 @@ export default function SettingsView({ onSaved }) {
     businessProfiles.find((bp) => bp.id === loadedProfileId.current));
 
   const handleSaveAsProfile = async () => {
-    if (!profile.businessName.trim()) { toast('Business name required', 'warning'); return; }
+    const check = validateBusinessProfile(profile, { requireState: true });
+    if (!check.ok) {
+      setProfileErrors(check.errors);
+      if (check.errors.gstin) setTaxIdWarning(check.errors.gstin);
+      setActiveSection('section-company');
+      setTimeout(() => companyFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 40);
+      toast(check.firstError, 'error', 6000);
+      return;
+    }
+    setProfileErrors({});
     // Update the saved profile of this same business, or create a new one
     const existing = sameSavedBusiness();
     await saveBusinessProfile({ ...profile, id: existing?.id || undefined });
@@ -767,6 +810,13 @@ export default function SettingsView({ onSaved }) {
   const handleAddNewProfile = async () => {
     const current = profile.businessName?.trim();
     if (current) {
+      const check = validateBusinessProfile(profile, { requireState: true });
+      if (!check.ok) {
+        setProfileErrors(check.errors);
+        setActiveSection('section-company');
+        toast(`Fix current company details first: ${check.firstError}`, 'error', 6000);
+        return;
+      }
       const existing = sameSavedBusiness();
       try {
         await saveBusinessProfile({ ...profile, id: existing?.id || undefined });
@@ -826,8 +876,8 @@ export default function SettingsView({ onSaved }) {
 
   const [taxIdWarning, setTaxIdWarning] = useState('');
   const handleTaxIdBlur = () => {
-    const result = validateTaxId(profile.country, profile.gstin);
-    setTaxIdWarning(result.ok ? '' : result.message);
+    const msg = validateGstinForCountry(profile.country, profile.gstin, profile.state) || (validateTaxId(profile.country, profile.gstin).message || '');
+    setTaxIdWarning(msg);
   };
 
 
@@ -1102,7 +1152,10 @@ export default function SettingsView({ onSaved }) {
             <div className="grid grid-cols-2 gap-4">
               <div className="form-group full-width">
                 <label className="form-label">Business Name *</label>
-                <input required type="text" name="businessName" className="form-input" value={profile.businessName} onChange={handleChange} />
+                <input required type="text" name="businessName" className="form-input"
+                  style={profileErrors.businessName ? { borderColor: '#dc2626' } : undefined}
+                  value={profile.businessName} onChange={handleChange} />
+                {profileErrors.businessName && <small style={{ color: '#dc2626', fontSize: '0.72rem', display: 'block', marginTop: '0.2rem' }}>⚠ {profileErrors.businessName}</small>}
               </div>
               <div className="form-group">
                 <label className="form-label">Country</label>
@@ -1116,34 +1169,48 @@ export default function SettingsView({ onSaved }) {
               </div>
               <div className="form-group full-width">
                 <label className="form-label">Address</label>
-                <textarea rows="2" name="address" className="form-input" value={profile.address} onChange={handleChange} />
+                <textarea rows="2" name="address" className="form-input"
+                  style={profileErrors.address ? { borderColor: '#dc2626' } : undefined}
+                  value={profile.address} onChange={handleChange} />
+                {profileErrors.address && <small style={{ color: '#dc2626', fontSize: '0.72rem', display: 'block', marginTop: '0.2rem' }}>⚠ {profileErrors.address}</small>}
               </div>
               <div className="form-group">
                 <label className="form-label">City</label>
-                <input type="text" name="city" className="form-input" value={profile.city || ''} onChange={handleChange} placeholder="e.g. Mumbai" />
+                <input type="text" name="city" className="form-input"
+                  style={profileErrors.city ? { borderColor: '#dc2626' } : undefined}
+                  value={profile.city || ''} onChange={handleChange} placeholder="e.g. Mumbai" />
+                {profileErrors.city && <small style={{ color: '#dc2626', fontSize: '0.72rem', display: 'block', marginTop: '0.2rem' }}>⚠ {profileErrors.city}</small>}
               </div>
               <div className="form-group">
                 <label className="form-label">{cc.postalLabel}</label>
-                <input type="text" name="pin" className="form-input" value={profile.pin || ''} onChange={handleChange} placeholder={cc.postalLabel} />
+                <input type="text" name="pin" className="form-input"
+                  style={profileErrors.pin ? { borderColor: '#dc2626' } : undefined}
+                  value={profile.pin || ''} onChange={handleChange} placeholder={cc.postalLabel} />
+                {profileErrors.pin && <small style={{ color: '#dc2626', fontSize: '0.72rem', display: 'block', marginTop: '0.2rem' }}>⚠ {profileErrors.pin}</small>}
               </div>
               <div className="form-group">
-                <label className="form-label">{cc.stateLabel}</label>
+                <label className="form-label">{cc.stateLabel}{(profile.country || 'India') === 'India' ? ' *' : ''}</label>
                 {(() => {
                   const stateOpts = getStatesForCountry(profile.country || 'India');
                   return stateOpts.length > 0 ? (
-                    <select name="state" className="form-input" value={profile.state} onChange={handleChange}>
+                    <select name="state" className="form-input"
+                      style={profileErrors.state ? { borderColor: '#dc2626' } : undefined}
+                      value={profile.state} onChange={handleChange}>
                       <option value="">Select {cc.stateLabel}</option>
                       {stateOpts.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                   ) : (
-                    <input type="text" name="state" className="form-input" value={profile.state || ''} onChange={handleChange} placeholder={cc.stateLabel} />
+                    <input type="text" name="state" className="form-input"
+                      style={profileErrors.state ? { borderColor: '#dc2626' } : undefined}
+                      value={profile.state || ''} onChange={handleChange} placeholder={cc.stateLabel} />
                   );
                 })()}
+                {profileErrors.state && <small style={{ color: '#dc2626', fontSize: '0.72rem', display: 'block', marginTop: '0.2rem' }}>⚠ {profileErrors.state}</small>}
               </div>
               <div className="form-group">
                 <label className="form-label">{cc.taxIdLabel}</label>
                 <input type="text" name="gstin" className="form-input"
-                  style={taxIdWarning ? { borderColor: '#f59e0b' } : undefined}
+                  style={profileErrors.gstin ? { borderColor: '#dc2626' } : taxIdWarning ? { borderColor: '#f59e0b' } : undefined}
                   value={profile.gstin}
                   onChange={(e) => {
                     handleChange(e);
@@ -1153,16 +1220,26 @@ export default function SettingsView({ onSaved }) {
                     if ((profile.country || 'India') === 'India') setProfile(prev => ({ ...prev, ...gstinFill(prev, v) }));
                   }}
                   onBlur={handleTaxIdBlur}
-                  placeholder={cc.taxIdPlaceholder} maxLength={20} />
-                {taxIdWarning && <small style={{ color: '#d97706', fontSize: '0.7rem', display: 'block', marginTop: '0.2rem' }}>⚠ {taxIdWarning}</small>}
+                  placeholder={cc.taxIdPlaceholder} maxLength={(profile.country || 'India') === 'India' ? 15 : 20} />
+                {(profileErrors.gstin || taxIdWarning) && (
+                  <small style={{ color: profileErrors.gstin ? '#dc2626' : '#d97706', fontSize: '0.72rem', display: 'block', marginTop: '0.2rem' }}>
+                    ⚠ {profileErrors.gstin || taxIdWarning}
+                  </small>
+                )}
               </div>
               <div className="form-group">
                 <label className="form-label">Email</label>
-                <input type="email" name="email" className="form-input" value={profile.email} onChange={handleChange} />
+                <input type="email" name="email" className="form-input"
+                  style={profileErrors.email ? { borderColor: '#dc2626' } : undefined}
+                  value={profile.email} onChange={handleChange} />
+                {profileErrors.email && <small style={{ color: '#dc2626', fontSize: '0.72rem', display: 'block', marginTop: '0.2rem' }}>⚠ {profileErrors.email}</small>}
               </div>
               <div className="form-group">
                 <label className="form-label">Phone</label>
-                <input type="text" name="phone" className="form-input" value={profile.phone} onChange={handleChange} />
+                <input type="text" name="phone" className="form-input"
+                  style={profileErrors.phone ? { borderColor: '#dc2626' } : undefined}
+                  value={profile.phone} onChange={handleChange} />
+                {profileErrors.phone && <small style={{ color: '#dc2626', fontSize: '0.72rem', display: 'block', marginTop: '0.2rem' }}>⚠ {profileErrors.phone}</small>}
               </div>
               {/* v1.10.43 — GST-specific fields: AATO band + turnover
                   numbers. Drive the GSTR-1 export's HSN digit-length
@@ -1187,13 +1264,20 @@ export default function SettingsView({ onSaved }) {
                   {/* v1.10.86 (#209) - the Flipkart import puts this on each
                       invoice it makes (E-commerce operator GSTIN, Table 14). */}
                   <label className="form-label" htmlFor="flipkart-gstin" style={{ fontSize: '0.72rem' }}>Flipkart's GSTIN (for GSTR-1 Table 14) <HelpButton title="Flipkart's GSTIN" doc="gst-returns#table-14" size={14} /></label>
-                  <input id="flipkart-gstin" type="text" className="form-input" maxLength={15} style={{ maxWidth: 260, ...(profile.flipkartGstin && !decodeGstin(profile.flipkartGstin)?.checksumOk ? { borderColor: '#f59e0b' } : {}) }}
+                  <input id="flipkart-gstin" type="text" className="form-input" maxLength={15} style={{ maxWidth: 260, ...(profileErrors.flipkartGstin ? { borderColor: '#dc2626' } : profile.flipkartGstin && !decodeGstin(profile.flipkartGstin)?.checksumOk ? { borderColor: '#f59e0b' } : {}) }}
                     value={profile.flipkartGstin || ''}
-                    onChange={(e) => setProfile(p => ({ ...p, flipkartGstin: e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, '') }))}
+                    onChange={(e) => {
+                      setProfile(p => ({ ...p, flipkartGstin: e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, '') }));
+                      setProfileErrors(er => ({ ...er, flipkartGstin: '' }));
+                    }}
                     placeholder="From your Flipkart seller panel" />
                   <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0.3rem 0 0' }}>
                     Only if you sell on Flipkart. Type the GSTIN shown in your Flipkart seller panel or TCS certificate for your state.
-                    {profile.flipkartGstin && !decodeGstin(profile.flipkartGstin)?.checksumOk && <span style={{ color: '#d97706' }}> ⚠ This is not a valid GSTIN. Check for a typo.</span>}
+                    {(profileErrors.flipkartGstin || (profile.flipkartGstin && !decodeGstin(profile.flipkartGstin)?.checksumOk)) && (
+                      <span style={{ color: profileErrors.flipkartGstin ? '#dc2626' : '#d97706' }}>
+                        {' '}⚠ {profileErrors.flipkartGstin || 'This is not a valid GSTIN. Check for a typo.'}
+                      </span>
+                    )}
                   </p>
                 </div>
               )}
@@ -1210,10 +1294,15 @@ export default function SettingsView({ onSaved }) {
                       <label className="form-label" htmlFor="lut-arn" style={{ fontSize: '0.72rem' }}>LUT ARN (acknowledgement number)</label>
                       <input id="lut-arn" type="text" name="lutArn" className="form-input" maxLength={20}
                         value={profile.lutArn || ''}
-                        onChange={(e) => setProfile(p => ({ ...p, lutArn: normaliseLutArn(e.target.value) }))}
-                        placeholder="e.g. AD290426123456X" style={profile.lutArn && !isLikelyLutArn(profile.lutArn) ? { borderColor: '#f59e0b' } : undefined} />
-                      {profile.lutArn && !isLikelyLutArn(profile.lutArn) && (
-                        <small style={{ color: '#d97706', fontSize: '0.7rem', display: 'block', marginTop: '0.2rem' }}>⚠ An ARN is usually 15 letters and digits, starting with AD. Check it against the portal's acknowledgement.</small>
+                        onChange={(e) => {
+                          setProfile(p => ({ ...p, lutArn: normaliseLutArn(e.target.value) }));
+                          setProfileErrors(er => ({ ...er, lutArn: '' }));
+                        }}
+                        placeholder="e.g. AD290426123456X" style={profileErrors.lutArn ? { borderColor: '#dc2626' } : profile.lutArn && !isLikelyLutArn(profile.lutArn) ? { borderColor: '#f59e0b' } : undefined} />
+                      {(profileErrors.lutArn || (profile.lutArn && !isLikelyLutArn(profile.lutArn))) && (
+                        <small style={{ color: profileErrors.lutArn ? '#dc2626' : '#d97706', fontSize: '0.7rem', display: 'block', marginTop: '0.2rem' }}>
+                          ⚠ {profileErrors.lutArn || "An ARN is usually 15 letters and digits, starting with AD. Check it against the portal's acknowledgement."}
+                        </small>
                       )}
                     </div>
                     <div>
@@ -1329,7 +1418,10 @@ export default function SettingsView({ onSaved }) {
               {isIndia && (
                 <div className="form-group" style={{ marginTop: '1rem', maxWidth: '300px' }}>
                   <label className="form-label">PAN Number (business-level)</label>
-                  <input type="text" name="pan" className="form-input" value={profile.pan || ''} onChange={handleChange} placeholder="e.g. AAAAA1234A" maxLength={10} />
+                  <input type="text" name="pan" className="form-input"
+                    style={profileErrors.pan ? { borderColor: '#dc2626' } : undefined}
+                    value={profile.pan || ''} onChange={handleChange} placeholder="e.g. AAAAA1234A" maxLength={10} />
+                  {profileErrors.pan && <small style={{ color: '#dc2626', fontSize: '0.72rem', display: 'block', marginTop: '0.2rem' }}>⚠ {profileErrors.pan}</small>}
                 </div>
               )}
 
@@ -1378,20 +1470,29 @@ export default function SettingsView({ onSaved }) {
                       </div>
                       <div className="form-group">
                         <label className="form-label">Account Number {!isIndia && '/ IBAN'}</label>
-                        <input type="text" className="form-input" value={editingAccount.accountNumber}
-                          onChange={e => setEditingAccount(a => ({ ...a, accountNumber: e.target.value }))} />
+                        <input type="text" className="form-input"
+                          style={accountErrors.accountNumber ? { borderColor: '#dc2626' } : undefined}
+                          value={editingAccount.accountNumber}
+                          onChange={e => { setEditingAccount(a => ({ ...a, accountNumber: e.target.value })); setAccountErrors(er => ({ ...er, accountNumber: '' })); }} />
+                        {accountErrors.accountNumber && <small style={{ color: '#dc2626', fontSize: '0.72rem', display: 'block', marginTop: '0.2rem' }}>⚠ {accountErrors.accountNumber}</small>}
                       </div>
                       <div className="form-group">
                         <label className="form-label">{bankCC.bankLabel || 'IFSC Code'}</label>
-                        <input type="text" className="form-input" value={editingAccount.ifsc}
-                          onChange={e => setEditingAccount(a => ({ ...a, ifsc: e.target.value }))}
+                        <input type="text" className="form-input"
+                          style={accountErrors.ifsc ? { borderColor: '#dc2626' } : undefined}
+                          value={editingAccount.ifsc}
+                          onChange={e => { setEditingAccount(a => ({ ...a, ifsc: e.target.value.toUpperCase() })); setAccountErrors(er => ({ ...er, ifsc: '' })); }}
                           placeholder={bankCC.bankLabel} />
+                        {accountErrors.ifsc && <small style={{ color: '#dc2626', fontSize: '0.72rem', display: 'block', marginTop: '0.2rem' }}>⚠ {accountErrors.ifsc}</small>}
                       </div>
                       <div className="form-group">
                         <label className="form-label">SWIFT / BIC (optional)</label>
-                        <input type="text" className="form-input" value={editingAccount.swift}
-                          onChange={e => setEditingAccount(a => ({ ...a, swift: e.target.value }))}
+                        <input type="text" className="form-input"
+                          style={accountErrors.swift ? { borderColor: '#dc2626' } : undefined}
+                          value={editingAccount.swift}
+                          onChange={e => { setEditingAccount(a => ({ ...a, swift: e.target.value.toUpperCase() })); setAccountErrors(er => ({ ...er, swift: '' })); }}
                           placeholder="e.g. HDFCINBB" />
+                        {accountErrors.swift && <small style={{ color: '#dc2626', fontSize: '0.72rem', display: 'block', marginTop: '0.2rem' }}>⚠ {accountErrors.swift}</small>}
                       </div>
                       {/* v1.10.83 - getting paid from abroad. */}
                       <div className="form-group">
@@ -1417,15 +1518,19 @@ export default function SettingsView({ onSaved }) {
                       <div className="form-group" style={{ gridColumn: 'span 2' }}>
                         <label className="form-label">UPI ID (optional — drives the QR for this account)</label>
                         <input type="text" className="form-input"
-                          style={accountUpiWarning ? { borderColor: '#f59e0b' } : undefined}
+                          style={accountErrors.upiId ? { borderColor: '#dc2626' } : accountUpiWarning ? { borderColor: '#f59e0b' } : undefined}
                           value={editingAccount.upiId}
-                          onChange={e => { setEditingAccount(a => ({ ...a, upiId: e.target.value })); if (accountUpiWarning) setAccountUpiWarning(''); }}
+                          onChange={e => { setEditingAccount(a => ({ ...a, upiId: e.target.value })); if (accountUpiWarning) setAccountUpiWarning(''); setAccountErrors(er => ({ ...er, upiId: '' })); }}
                           onBlur={() => {
                             const v = (editingAccount.upiId || '').trim();
                             setAccountUpiWarning(v && !isValidUpiId(v) ? "Doesn't look like a UPI ID. Expected like merchant@hdfcbank or 9876543210@paytm." : '');
                           }}
                           placeholder="e.g. yourbusiness@hdfcbank" />
-                        {accountUpiWarning && <small style={{ color: '#d97706', fontSize: '0.7rem', display: 'block', marginTop: '0.2rem' }}>⚠ {accountUpiWarning}</small>}
+                        {(accountErrors.upiId || accountUpiWarning) && (
+                          <small style={{ color: accountErrors.upiId ? '#dc2626' : '#d97706', fontSize: '0.72rem', display: 'block', marginTop: '0.2rem' }}>
+                            ⚠ {accountErrors.upiId || accountUpiWarning}
+                          </small>
+                        )}
                       </div>
                       <div className="form-group" style={{ gridColumn: 'span 2' }}>
                         <label className="form-label">Internal notes (not printed on the PDF)</label>

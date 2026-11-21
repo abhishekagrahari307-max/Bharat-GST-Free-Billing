@@ -1931,9 +1931,23 @@ export const hsnUqc = (item) => (/^99/.test(String(item?.hsn || '').trim()) ? 'N
 // Returns { ok: boolean, message: string }. Empty value is treated as ok (field is optional).
 export const validateTaxId = (countryName, value) => {
   if (!value || !value.trim()) return { ok: true, message: '' };
+  const cleaned = value.trim().toUpperCase();
+  if ((countryName || 'India') === 'India') {
+    if (cleaned.length !== 15) {
+      return { ok: false, message: `GSTIN must be 15 characters (currently ${cleaned.length}).` };
+    }
+    const decoded = decodeGstin(cleaned);
+    if (!decoded || !/^\d{2}[A-Z]{5}\d{4}[A-Z][0-9A-Z]{3}$/.test(cleaned)) {
+      return { ok: false, message: 'Invalid GSTIN format. Expected like: 22AAAAA0000A1Z5' };
+    }
+    if (!decoded.checksumOk) {
+      return { ok: false, message: 'Invalid GSTIN — official checksum check failed. Check for a typo.' };
+    }
+    return { ok: true, message: '' };
+  }
   const cc = getCountryConfig(countryName);
   if (!cc.taxIdRegex) return { ok: true, message: '' };
-  const ok = cc.taxIdRegex.test(value.trim().toUpperCase());
+  const ok = cc.taxIdRegex.test(cleaned);
   return ok
     ? { ok: true, message: '' }
     : { ok: false, message: `${cc.taxIdLabel} format looks unusual. Expected like: ${cc.taxIdPlaceholder}` };
