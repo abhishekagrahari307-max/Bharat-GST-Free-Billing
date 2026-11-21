@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
-import { Maximize2, ArrowLeft, Plus, Trash2, Download, UserPlus, Pencil, Settings, ChevronUp, ChevronDown, MessageCircle, Check, Loader, Truck, Printer, Eye, EyeOff, QrCode } from 'lucide-react';
+import { Maximize2, ArrowLeft, Plus, Trash2, Download, UserPlus, Pencil, Settings, ChevronUp, ChevronDown, MessageCircle, Check, Loader, Truck, Printer, Eye, EyeOff, QrCode, Mic } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import { saveBill, saveProduct, deleteBill, applyStockChanges, getNextInvoiceNumber, typedNumberInSeries, raiseInvoiceCounter, getTermsTemplates, getAllClients, saveClient, getProfile, saveProfile, getAllProducts, getInvoiceDisplayOptions, saveInvoiceDisplayOptions, getAllProfiles, getRegionMode, saveRecurring, getAllRecurring, getAllBills, getEnabledModules, getBusinessType, activePriceLevels, saveReceipt, deleteReceipt, reserveReceiptNo } from '../store';
@@ -33,6 +33,7 @@ import ComboInput from './ComboInput';
 import { getClientCredit, planCreditApplication } from '../utils/clientCredit';
 import ClientModal from './ClientModal';
 import { EInvoiceEditorModal } from './EInvoiceModal';
+import VoiceBillingModal from './VoiceBillingModal';
 import { toast } from './Toast';
 import { phoneDigits, findClientByPhone, newPhoneClient } from '../utils/phoneClients';
 import { changeSize, itemWithUnit, sizeSqft, sizeHasDims, SIZE_STEPS, withRftLines, rftSources, perimeterRft } from '../utils/glass';
@@ -1163,6 +1164,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
     } catch { return draft?.invoiceOptions || { ...DEFAULT_OPTIONS, ...psDefaults }; }
   });
   const [showOptions, setShowOptions] = useState(false);
+  const [showVoiceModal, setShowVoiceModal] = useState(false);
   // v1.10.36 — Portal-based print preview modal state. Only opens for
   // thermal receipts; A4 users hit Print → OS dialog directly since the
   // OS dialog already shows a preview. See directPrint + executePrint.
@@ -4474,6 +4476,15 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
         {/* v1.10.83 - wraps onto a second line on a narrower screen; it ran off
             the right edge at 900-1100px and hid Customize and the preview button. */}
         <div className="flex gap-2 generator-actions">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => setShowVoiceModal(true)}
+            title="Bharat AI Voice & Fast Command Billing — Speak or type items in Hinglish, Hindi or English"
+            style={{ borderColor: 'rgba(124,58,237,0.45)', color: '#6d28d9', background: 'rgba(124,58,237,0.08)' }}
+          >
+            <Mic size={16} /> Voice Bill
+          </button>
           {/* v1.10.37 — Explicit Save button. Reported: "invoice page
               needs a Save button". Previously only Download PDF was
               the primary action, forcing users who wanted to save
@@ -4587,6 +4598,51 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
               company other than the one on screen. */}
           {/* Client Modal */}
           <ClientModal show={showClientModal} onClose={() => setShowClientModal(false)} onSave={handleClientModalSave} client={modalClient} isEditing={isEditingClient} defaultCountry={profile?.country} businessKey={businessKeyOf(profile)} />
+
+          {/* Bharat AI Voice & Smart Command Billing Modal */}
+          <VoiceBillingModal
+            open={showVoiceModal}
+            onClose={() => setShowVoiceModal(false)}
+            products={products}
+            clients={savedClients}
+            defaultGst={18}
+            currency={invoiceOptions.currency || 'INR'}
+            onApply={(parsed) => {
+              if (parsed.matchedClient) {
+                setClient((prev) => ({
+                  ...prev,
+                  name: parsed.matchedClient.name || prev.name,
+                  address: parsed.matchedClient.address || prev.address,
+                  city: parsed.matchedClient.city || prev.city,
+                  pin: parsed.matchedClient.pin || prev.pin,
+                  state: parsed.matchedClient.state || prev.state,
+                  gstin: parsed.matchedClient.gstin || prev.gstin,
+                  phone: parsed.matchedClient.phone || prev.phone,
+                  email: parsed.matchedClient.email || prev.email,
+                }));
+              } else if (parsed.clientName) {
+                setClient((prev) => ({ ...prev, name: parsed.clientName }));
+              }
+              if (parsed.items?.length) {
+                const newRows = parsed.items.map((it, idx) => ({
+                  id: `${Date.now()}-${idx}`,
+                  name: it.description,
+                  hsn: it.hsn || '',
+                  quantity: it.quantity || 1,
+                  unit: it.unit || 'Nos',
+                  rate: it.rate || 0,
+                  discount: it.discount || 0,
+                  taxPercent: it.gstRate ?? 18,
+                  cessPercent: 0,
+                }));
+                setItems((prev) => {
+                  const hasOnlyBlank = prev.length === 1 && !String(prev[0]?.name || '').trim() && !(Number(prev[0]?.rate) > 0);
+                  return hasOnlyBlank ? newRows : [...prev, ...newRows];
+                });
+                toast(`Added ${newRows.length} item${newRows.length === 1 ? '' : 's'} via Voice Billing!`, 'success');
+              }
+            }}
+          />
 
           {/* v1.10.86 - the cards, in the order this browser keeps (InvoiceCards.jsx). */}
           {cards.order.map((cardId) => {

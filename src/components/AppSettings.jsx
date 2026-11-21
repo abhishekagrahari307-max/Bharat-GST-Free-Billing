@@ -29,7 +29,14 @@ const platformName = (platform, arch) => {
 
 // v1.10.86 (maintainer: "why we are showing these") - how this copy was
 // installed, in plain words.
-const INSTALL_NAMES = { deb: 'Installed from the .deb package', appimage: 'The AppImage', docker: 'Running in Docker', macapp: 'The Mac app' };
+const INSTALL_NAMES = {
+  deb: 'Installed from the .deb package',
+  appimage: 'The AppImage',
+  docker: 'Running in Docker',
+  macapp: 'The Mac app',
+  pwa: 'Live Offline-Ready Web / PWA Edition — Daily Continuous Auto-Updates Enabled',
+  web: 'Live Offline-Ready Web / PWA Edition — Daily Continuous Auto-Updates Enabled',
+};
 const installedWith = (s) => (s.installed ? 'Installed with the Windows Setup' : INSTALL_NAMES[s.installKind] || 'Installed from the ZIP');
 
 const ACTION_NAMES = {
@@ -145,10 +152,12 @@ export function AppAndUpdates({ status }) {
         {act.lastResult?.action === 'update' && <ResultPanel result={act.lastResult} />}
         {status && !status.error && <TechDetails status={status} />}
       </div>
-      <div id="section-app" className="glass-panel p-6 mb-6" style={{ order: 11 }}>
-        <h3 className="section-title">Restart, stop or remove the app <HelpButton title="Restart, stop or remove the app" doc="settings#restart" size={16} style={{ marginLeft: 6 }} /></h3>
-        {pcOnly ? <PcOnly /> : <AppActions act={act} status={status} />}
-      </div>
+        {!status?.webMode && (
+          <div id="section-app" className="glass-panel p-6 mb-6" style={{ order: 11 }}>
+            <h3 className="section-title">Restart, stop or remove the app <HelpButton title="Restart, stop or remove the app" doc="settings#restart" size={16} style={{ marginLeft: 6 }} /></h3>
+            {pcOnly ? <PcOnly /> : <AppActions act={act} status={status} />}
+          </div>
+        )}
     </>
   );
 }
@@ -184,24 +193,62 @@ function TechDetails({ status }) {
 function UpdateRow({ act, status }) {
   const [info, setInfo] = useState(null);
   const [checking, setChecking] = useState(false);
+  const [autoIdleUpdate, setAutoIdleUpdate] = useState(() => {
+    try { return localStorage.getItem('bharat_auto_update_enabled') !== '0'; } catch { return true; }
+  });
   const { busy, setBusy, setLastResult, can, label } = act;
+
+  const toggleAutoIdle = (enabled) => {
+    setAutoIdleUpdate(enabled);
+    try { localStorage.setItem('bharat_auto_update_enabled', enabled ? '1' : '0'); } catch { /* ignore */ }
+    toast(enabled ? 'Daily automatic idle updates enabled!' : 'Automatic updates paused (manual Check for Updates still works).', 'info');
+  };
 
   const check = async () => {
     setChecking(true);
     try {
       const data = await (await fetch('/api/check-update?now=1')).json();
       setInfo(data);
-      if (data.updateAvailable) toast(`Update available: v${data.latest}`, 'info');
+      if (data.updateAvailable) toast(`New daily update ready: v${data.latest}`, 'info');
       else if (data.error) toast('Could not check for updates. Check internet connection.', 'warning');
-      else toast('You are on the latest version!', 'success');
+      else toast(`Up to date on v${data.current || status?.version || 'latest'} (Daily Release Channel)!`, 'success');
     } catch {
       toast('Could not check for updates.', 'error');
     }
     setChecking(false);
   };
+
+  // Web/PWA safe 1-click live refresh: updates Service Worker + clears stale asset caches while preserving 100% of IndexedDB books
+  const applyWebUpdateNow = async () => {
+    setBusy('update');
+    try {
+      if ('serviceWorker' in navigator) {
+        const reg = await navigator.serviceWorker.getRegistration();
+        await reg?.update?.();
+        if (reg?.waiting) {
+          reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+        }
+      }
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      }
+      toast('Applying latest daily build — your invoices & settings stay 100% safe!', 'success');
+      setTimeout(() => window.location.reload(), 650);
+    } catch {
+      window.location.reload();
+    } finally {
+      setBusy(null);
+    }
+  };
+
   // v1.10.84 - Windows Setup copy: the new Setup installs the update.
   // A copy that cannot update itself keeps its message (hint) and download link.
   const updateNow = async () => {
+    if (status?.webMode) {
+      await applyWebUpdateNow();
+      return;
+    }
     setBusy('update');
     setLastResult(null);
     const r = await runUpdateNow();
@@ -213,7 +260,7 @@ function UpdateRow({ act, status }) {
   const pcOnly = status?.code === 'pc-only';
   return (
     <>
-      {status && !status.error && !status.controlScriptsAvailable && !status.installed && (
+      {status && !status.error && !status.webMode && !status.controlScriptsAvailable && !status.installed && (
         <div className="notice notice-warn" style={{ marginBottom: '1rem' }}>
           <AlertCircle size={18} />
           <div>
@@ -224,22 +271,50 @@ function UpdateRow({ act, status }) {
           </div>
         </div>
       )}
+
+      {/* Daily Continuous Auto-Update Status Strip */}
+      <div style={{
+        display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem',
+        padding: '0.75rem 0.95rem', marginBottom: '0.9rem', borderRadius: 10,
+        background: 'rgba(22, 163, 74, 0.08)', border: '1px solid rgba(22, 163, 74, 0.28)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', flexWrap: 'wrap' }}>
+          <CheckCircle size={18} style={{ color: '#16a34a', flexShrink: 0 }} />
+          <span style={{ fontSize: '0.84rem', fontWeight: 700 }}>
+            Daily Continuous Auto-Update Channel
+          </span>
+          <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '0.14rem 0.55rem', borderRadius: 999, background: '#16a34a', color: '#fff' }}>
+            ACTIVE · v{status?.version || info?.current || '2.6.0'}
+          </span>
+        </div>
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={autoIdleUpdate}
+            onChange={(e) => toggleAutoIdle(e.target.checked)}
+          />
+          Auto-install daily updates when idle
+        </label>
+      </div>
+
       <div className="flex gap-4 items-center" style={{ flexWrap: 'wrap' }}>
         <button type="button" className="btn btn-secondary" disabled={checking} onClick={check}>
           <RefreshCw size={18} className={checking ? 'spin' : ''} /> {checking ? 'Checking...' : 'Check for Updates'}
         </button>
         {!pcOnly && !info?.updateHint && (
-          <button type="button" className="btn btn-primary" disabled={!!busy || !can('update')} onClick={updateNow}>
-            <Download size={18} /> {label('update', 'Update Now', 'Updating…')}
+          <button type="button" className="btn btn-primary" disabled={!!busy || (!status?.webMode && !can('update'))} onClick={updateNow}>
+            <Download size={18} /> {status?.webMode ? (busy === 'update' ? 'Refreshing…' : 'Sync Latest Daily Build') : label('update', 'Update Now', 'Updating…')}
           </button>
         )}
         {info && (
           <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-            Current: v{info.current}{info.latest ? ` | Latest: v${info.latest}` : ''}
+            Current: v{info.current}{info.latest ? ` | Latest: v${info.latest}` : ''}{info.checkedAt ? ` · Checked ${new Date(info.checkedAt).toLocaleTimeString('en-IN')}` : ''}
           </span>
         )}
       </div>
-      <p className="field-hint" style={{ marginBottom: 0 }}>Your data is backed up first and is never touched by an update.</p>
+      <p className="field-hint" style={{ marginBottom: 0 }}>
+        Safe Daily Auto-Update: new features &amp; GST rules sync automatically in the background without ever interrupting an open invoice or touching your saved IndexedDB / folder data.
+      </p>
       {info?.updateAvailable && (
         <div className="update-available-box">
           <p><strong>New version v{info.latest} is available!</strong></p>

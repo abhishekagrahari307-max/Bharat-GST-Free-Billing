@@ -46,7 +46,7 @@ const hasUnsavedInput = () => {
     if (activeEl && /^(INPUT|TEXTAREA|SELECT)$/.test(activeEl.tagName)) return true;
     const inputs = document.querySelectorAll('input:not([type="search"]):not([type="checkbox"]):not([type="radio"]):not([readonly]), textarea:not([readonly]), [contenteditable="true"]');
     for (const el of inputs) {
-      if (el.closest?.('.invoice-generator-container, form[data-dirty="1"]')) {
+      if (el.closest?.('.generator-container, .invoice-generator-container, form[data-dirty="1"]')) {
         if (el.value && String(el.value).trim().length > 0) return true;
       }
       if (el.getAttribute?.('contenteditable') === 'true' && el.textContent?.trim().length > 0) return true;
@@ -60,7 +60,9 @@ if (!SAFE_MODE) {
     onNeedRefresh() {
       window.__fgsbSwUpdateReady = true;
       window.dispatchEvent(new CustomEvent('fgsb-sw-update-ready'));
-      if (!hasUnsavedInput()) {
+      let autoEnabled = true;
+      try { autoEnabled = localStorage.getItem('bharat_auto_update_enabled') !== '0'; } catch { /* ignore */ }
+      if (autoEnabled && !hasUnsavedInput()) {
         setTimeout(() => {
           if (!hasUnsavedInput()) window.__fgsbApplyUpdate?.();
         }, 600);
@@ -68,7 +70,7 @@ if (!SAFE_MODE) {
       }
       if (!__updateNoticeShown) {
         __updateNoticeShown = true;
-        toast('A new update is ready and will apply safely once you finish editing.', 'info', 7000);
+        toast('A new daily update is ready — open Settings → App & updates (or finish your current invoice) to apply safely.', 'info', 8000);
       }
     },
     onOfflineReady() {

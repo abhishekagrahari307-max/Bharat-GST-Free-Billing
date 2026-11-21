@@ -17,14 +17,18 @@ Your invoices never leave your computer, there is no account to make, and nothin
 - [Make your first invoice From a blank app to a GST tax invoice you can send, in five minutes.](https://abhishekagrahari307-max.github.io/Bharat-ai-Voice/user-guide/first-invoice.html)
 - [Something isn't working The common problems, what causes each one, and the fix.](https://abhishekagrahari307-max.github.io/Bharat-ai-Voice/user-guide/troubleshooting.html)
 
-## What it does
+## Complete Feature Suite (v2.6.0 — Daily Auto-Update Edition)
 
-Bharat GST Free Billing is invoicing and GST software for small businesses in India, and for anyone billing in other currencies: 20 are supported. It runs on your computer and opens in your web browser, the way a website does, but nothing leaves your machine.
+**Bharat GST Free Billing (v2.6.0)** — Created by **Abhishek Agrahari** — is a complete offline-first, AES-256-GCM encrypted GST invoicing, AI voice billing, inventory, accounting, and tax return platform for Indian businesses and international exporters (23 countries, 22 currencies).
 
-- **Invoices**: tax invoices, bills of supply, proforma estimates, credit notes and delivery challans, with CGST, SGST, IGST and UTGST worked out for you.
-- **Getting paid**: record payments, print receipts, see who is overdue and by how much.
-- **GST returns**: GSTR-1 and GSTR-3B built from your invoices and purchases, as files you upload to the GST portal.
-- **The rest of the books**: clients, products and stock, purchases, expenses, recurring invoices, profit and loss, and an income tax calculator.
+- **🎙️ Bharat AI Voice & Fast Command Billing**: Speak or type naturally in Hinglish, Hindi (हिंदी), or English inside New Invoice to auto-match saved Clients, Products, HSN/SAC codes, Rates, Units, and GST slabs 100% offline.
+- **All 10 GST & Business Document Types**: Tax Invoice, Proforma Invoice, Quotation / Estimate, Credit Note, Debit Note, Bill of Supply, Composition Bill, Sales Order, Purchase Order, and Delivery Challan — with automatic CGST+SGST, IGST, UTGST, Cess, Reverse Charge (RCM), SEZ & LUT Export handling.
+- **🩺 Pre-Filing CA GST Health Auditor + Full GST Suite**: 0–100% GST Portal Readiness Score, portal-ready **GSTR-1 JSON & CSV**, **GSTR-3B JSON & CSV**, **GSTR-2B ITC Reconciliation**, **e-Invoice IRP JSON & QR**, **e-Way Bill JSON**, **TDS / TCS (Form 26Q / 27EQ)**, **Income Tax Calculator (Old vs New Regime, 87A, 234B/234C)**, and Period Books Lock after filing.
+- **9 Specialized Indian Industry Presets**: Pharmacy & Medical (Batch, Expiry, Drug Licence), Mobile & Electronics (IMEI/Serial, Warranty), Jewellery (Purity, Gross/Net Wt, Making Charges), Retail/Kirana POS, Transport (LR/Vehicle), Textiles, Auto Parts, Hardware, and Freelance/IT.
+- **5 Print Layouts, 8 Colour Designs, 5 Bill Languages & Thermal POS**: Print on A4, A5, Letter, or **58mm / 80mm thermal receipt printers** with headings in **English, Hindi, Tamil, Marathi, or Bengali**, Dark Mode, dynamic UPI QR codes, logo, stamp, and signature.
+- **Complete Stock, Barcode, OCR & Migration Tools**: Multi-unit conversion (1 Box = 12 Pcs), barcode scanner & label printing, serial/IMEI tracking, low-stock alerts, Manufacturing BOM, Purchase Bills with **offline Tesseract photo OCR**, and 1-click import from **Vyapar, Tally XML, Excel/CSV, and Flipkart orders**.
+- **Full Reports, Cash Book & Bank Reconciliation**: Profit & Loss, Party-wise Outstanding & Aging, Client & Supplier PDF Statements, Stock Valuation, Receipt Vouchers, Cash Book, Expense Tracker, Cost Centres, and Bank Statement CSV/XLSX matching.
+- **AES-256-GCM Security, Multi-Business & Daily Auto-Updates**: WebCrypto AES-256-GCM + PBKDF2 (310,000 rounds) Vault, Fingerprint/Passkey unlock, Multi-Staff Role PINs, Per-Business PIN lock, Edit History audit trail, Trash Bin recovery, Same-Wi-Fi Phone QR Pairing, Google Drive auto-backup, and **Daily Continuous Safe Auto-Updates**.
 
 ## What you need
 
@@ -1215,14 +1219,13 @@ Your invoices, clients and settings are saved as files on your own computer. The
 
 **Don't take our word for it:** switch off your internet and use the app (it all works), or turn on Offline mode so it never goes online by itself. See Check it yourself.
 
-## Your data stays on your computer
+## Your data stays on your device — with real AES-256-GCM Vault Encryption
 
-- **Saved as files on your PC.** Every invoice, client, product, payment and setting is a file in the _system\data folder inside the app's folder. Saved invoice PDFs go in the **Saved Invoices** folder next to it.
-- **No account, no login, no signup.** The app never asks for an email address or a password to use it.
-- **No cloud server.** We do not run a server that holds your books. There is nothing of yours on our side to leak or to lose.
-- **Google Drive only if you set it up.** If you choose to connect your own Google Drive (Settings → Data & Backups → Google Drive), copies of your invoice PDFs and backups go to your Drive. Nothing goes there until you do. See [Google Drive](https://abhishekagrahari307-max.github.io/Bharat-ai-Voice/user-guide/settings.html#google-drive).
-
-One honest limit: the data files are not encrypted. Anyone who can sign in to your Windows or Mac account can open that folder, the same as your other documents. Protect the computer with its own password, and see What you should do.
+- **100% Local-First Storage.** In Web / PWA mode, your books live in your browser's persistent IndexedDB storage on your own device; in Desktop server mode, they live in the local data/ folder on your PC (bound strictly to 127.0.0.1).
+- **Real WebCrypto AES-256-GCM Encryption Vault.** When you enable the App PIN & Encrypted Vault in **Settings → Privacy & Security**, your books are encrypted at rest using browser-native **AES-256-GCM** with a key derived via **PBKDF2-SHA256 (310,000 iterations)**, paired with optional **WebAuthn Fingerprint / Passkey unlock**, **Multi-Staff Role PINs** (Owner, Billing Staff, CA / Accountant), and a downloadable **24-character offline Recovery Key**.
+- Encrypted .fgsb Backups. Exported backup archives can be password-encrypted with AES-256-GCM so copies on USB pen drives or cloud folders stay protected too. (In unencrypted Desktop folder mode without Vault PIN enabled, local JSON files follow your Windows/macOS user-account permissions.)
+- **No account, no login server, no cloud database of ours.** Bharat GST Free Billing never asks for an email or phone number to start, and we operate zero servers that receive your business data.
+- **Google Drive only if you connect your own account.** If you choose to connect Google Drive (Settings → Data & Backups → Google Drive), copies of invoice PDFs and backups go directly to your Drive. See [Google Drive](https://abhishekagrahari307-max.github.io/Bharat-ai-Voice/user-guide/settings.html#google-drive).
 
 ## It works without internet
 
@@ -1288,7 +1291,7 @@ There is no catch, and your data is not the product.
 
 - **It stays free, forever.** There will be no paid version, no locked features, no ads and no tracking. And because the code is open source under the MIT licence, the app you have today can always be used, copied and kept by anyone, even if we stopped working on it. Nobody can take it away or start charging you for it.
 - **It costs very little to keep going.** The app runs on your computer, so there are no servers and no cloud bills for us to pay.
-- **How we earn.** Bharat GST Free Billing is made Created by Abhishek Agrahari, a small software company in India. We earn from paid work for businesses that want it (custom features, setup and moving data in, support plans) and from people who choose to support the project. See [Support & About](https://abhishekagrahari307-max.github.io/Bharat-ai-Voice/user-guide/support.html).
+- **Maintained with Daily Continuous Auto-Updates.** Bharat GST Free Billing is created and maintained by **Abhishek Agrahari** for businesses across India, shipping continuous improvements and safe idle auto-updates while keeping every single feature 100% free forever. See [About & Support](https://abhishekagrahari307-max.github.io/Bharat-ai-Voice/user-guide/support.html).
 - **Tracking you would gain us nothing.** We do not sell ads or data, so there is nothing to collect. Collecting your data would also break the one promise the app is built on.
 - **The code is public**, so this can be checked, not just believed.
 

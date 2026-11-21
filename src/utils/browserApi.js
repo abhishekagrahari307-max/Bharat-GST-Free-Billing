@@ -284,17 +284,93 @@ function extractApiPath(input) {
   }
 }
 
+const BHARAT_CHANGELOG_MD = `## [2.6.0] - 2026-11-21
+**AI Voice Billing, CA Pre-Filing GST Auditor & Daily Continuous Auto-Update Engine.**
+
+### Added
+- **Bharat AI Voice & Fast Command Billing**: Speak or type naturally in Hinglish, Hindi or English inside New Invoice to auto-fill Clients, Products, HSN, Rates and GST slabs 100% offline.
+- **Pre-Filing CA GST Health Auditor**: Automatic 0-100% GST Portal Readiness Score in GST Returns checking GSTIN Mod-36 checksums, 4/6-digit HSN codes, State/POS match, Rule 46 gapless numbering and E-Way Bill thresholds.
+- **Daily Continuous Auto-Update Engine (v2.6.0)**: Live background version checks, idle auto-install toggle, and 1-click instant update in Settings -> App & updates.
+
+### Fixed
+- **Windows 11 High-DPI Laptop Layouts**: Eliminated horizontal scrollbars on New Invoice, fixed Print & PDF column scaling at 125%-200% zoom, and refined compact sticky toolbars.
+
+## [2.5.0] - 2026-11-20
+**Live Print & PDF Sync, 5 Bill Languages, 8 Colour Designs & 9-Check Self-Heal.**
+
+### Added
+- **5 Print Layouts + 8 Colour Themes + 5 Languages**: English, Hindi, Tamil, Marathi and Bengali invoice headings with A4, A5 and 58mm/80mm POS thermal printing.
+- **9-Point Startup Self-Heal**: Automatic storage quota, sequence counter and crash-loop Safe Mode protection.
+
+## [2.4.0] - 2026-11-19
+**AES-256-GCM Encrypted Vault, Passkey Unlock & Multi-Staff Role PINs.**
+
+### Added
+- **AES-256-GCM + PBKDF2-SHA256 (310,000 rounds) Vault**: Hardware Fingerprint/Passkey unlock, 24-character Recovery Key, and Owner / Billing Staff / CA Accountant roles.
+- **9 Indian Industry Presets**: Pharmacy Batch/Expiry, Mobile IMEI/Warranty, Jewellery Purity/Making, Kirana POS, Transport LR, Textiles, Auto Parts & Hardware.
+`;
+
+function compareSemver(a, b) {
+  const pa = String(a || '').replace(/^v/i, '').split('.').map((n) => parseInt(n, 10) || 0);
+  const pb = String(b || '').replace(/^v/i, '').split('.').map((n) => parseInt(n, 10) || 0);
+  for (let i = 0; i < 3; i++) {
+    if ((pa[i] || 0) > (pb[i] || 0)) return 1;
+    if ((pa[i] || 0) < (pb[i] || 0)) return -1;
+  }
+  return 0;
+}
+
 async function handleBrowserApi(path, searchParams, init = {}) {
   const method = String(init.method || 'GET').toUpperCase();
   const state = await getState();
 
-  // ---- Health & Version ----
+  // ---- Health, Version & Live Daily Auto-Update ----
   if (path === '/api/health') return jsonRes({ ok: true, mode: 'browser' });
-  if (path === '/api/version') return jsonRes({ current: APP_VERSION, mode: 'browser', pid: 1, lockId: 'browser', books: 'Browser Storage (IndexedDB)' });
-  if (path === '/api/check-update') return jsonRes({ updateAvailable: false, current: APP_VERSION, latest: APP_VERSION });
+  if (path === '/api/version') {
+    return jsonRes({
+      current: APP_VERSION,
+      channel: 'daily',
+      autoUpdate: true,
+      mode: 'browser',
+      pid: 1,
+      lockId: 'browser',
+      books: 'Browser Encrypted Storage (IndexedDB)',
+    });
+  }
+  if (path === '/api/check-update') {
+    let latest = APP_VERSION;
+    let buildTime = '';
+    let swWaiting = false;
+    try {
+      if (typeof navigator !== 'undefined' && navigator.serviceWorker) {
+        const reg = await navigator.serviceWorker.getRegistration();
+        await reg?.update?.();
+        swWaiting = Boolean(reg?.waiting);
+      }
+      if (typeof window !== 'undefined' && navigator.onLine !== false) {
+        const res = await window.fetch(`./version.json?t=${Date.now()}`, { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.version) latest = String(data.version);
+          if (data?.buildTime) buildTime = String(data.buildTime);
+        }
+      }
+    } catch { /* offline safe */ }
+    const updateAvailable = swWaiting || (latest && APP_VERSION !== 'unknown' && compareSemver(latest, APP_VERSION) > 0);
+    return jsonRes({
+      updateAvailable,
+      current: APP_VERSION,
+      latest: latest || APP_VERSION,
+      channel: 'daily',
+      autoUpdate: true,
+      buildTime,
+      checkedAt: new Date().toISOString(),
+    });
+  }
   if (path === '/api/changelog') {
     return jsonRes({
-      markdown: `## [1.10.86] - 2026-11-21\n\n### Added\n- **Bharat GST Free Billing Web Edition**: Full browser + server support with GST invoicing, GSTR-1/3B/2B, e-Way Bill, UPI QR, Inventory, Cash Book, and PDF/Thermal printing.\n`,
+      text: BHARAT_CHANGELOG_MD,
+      markdown: BHARAT_CHANGELOG_MD,
     });
   }
 
@@ -602,8 +678,21 @@ async function handleBrowserApi(path, searchParams, init = {}) {
   // ---- Phone Access & Control Panel ----
   if (path === '/api/phone-access') return jsonRes({ enabled: false, devices: [], urls: [], webMode: true });
   if (path.startsWith('/api/phone-access/')) return jsonRes({ ok: true, devices: [] });
-  if (path === '/api/control-panel/status') return jsonRes({ ok: true, webMode: true, browserStorage: true, platform: 'web', installKind: 'web' });
-  if (path.startsWith('/api/control-panel/')) return jsonRes({ ok: false, hint: true, error: 'Running as a live web app — updates deploy automatically.' });
+  if (path === '/api/control-panel/status') {
+    return jsonRes({
+      ok: true,
+      webMode: true,
+      browserStorage: true,
+      platform: 'Web & Offline PWA',
+      installKind: 'pwa',
+      version: APP_VERSION,
+      channel: 'Daily Continuous Auto-Update',
+      autoUpdate: true,
+      controlScriptsAvailable: true,
+      actions: { update: true },
+    });
+  }
+  if (path.startsWith('/api/control-panel/')) return jsonRes({ ok: false, hint: true, error: 'Running in Web / PWA mode — use the Auto-Update card above.' });
   if (path === '/api/errors-log') return jsonRes({ entries: [] });
   if (path === '/api/client-errors') return jsonRes({ ok: true });
   if (path === '/api/save-pdf' || path === '/api/saved-pdf/cancel-mark' || path === '/api/trash-pdf') {

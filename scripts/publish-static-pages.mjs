@@ -47,6 +47,9 @@ for (const entry of fs.readdirSync(DIST, { withFileTypes: true })) {
 // Generate fresh version.json (in both public/ and published root)
 const versionPayload = JSON.stringify({
   version: pkg.version,
+  channel: 'daily',
+  autoUpdate: true,
+  releaseDate: TODAY,
   buildTime: new Date().toISOString(),
   minSupportedSchema: 1,
 }, null, 2) + '\n';

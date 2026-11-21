@@ -8,6 +8,7 @@ import { formatCurrency, INVOICE_TYPES, getStateCode, formatDateGST, getFilingPe
 import { toast } from './Toast';
 import HelpButton from './HelpButton';
 import PageHeader, { BarButton } from './PageHeader';
+import GstHealthAuditor from './GstHealthAuditor';
 import { billInInr } from '../utils/fx';
 import { zeroRatedTotals, withoutZeroRated } from '../utils/lut';
 // v1.10.86 - (#175) a "2B only" row opens a purchase bill filled in from 2B.
@@ -1580,6 +1581,9 @@ export default function GSTReturns({ onOpenPurchases } = {}) {
         secondary={<BarButton icon={ExternalLink} label="GST Portal" href="https://gst.gov.in" target="_blank" rel="noopener noreferrer"
           title="GST Portal: open gst.gov.in in your browser" />}
       />
+
+      {/* Pre-Filing CA GST Audit & Portal Readiness Score */}
+      <GstHealthAuditor bills={allFilteredBills} />
 
       {/* Warnings — collapsed by default, only errors show */}
       {warnings.filter(w => w.type === 'error').length > 0 && (
