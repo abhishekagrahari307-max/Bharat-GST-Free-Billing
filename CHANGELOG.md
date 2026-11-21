@@ -5,6 +5,17 @@ Bharat GST Free Billing follows a **Daily Continuous Release & Safe Auto-Update*
 
 ---
 
+## [2.7.0] - 2026-11-21
+
+**Real-Time PC Hard-Drive Live Mirroring, Non-Evictable Storage Lock & Pre-Rendered Technical Specification (`llms.txt`).**
+
+### Added
+- **Real-Time PC Hard-Drive Live Mirroring (`BharatGST-Live-Mirror.json`)**: When a local folder is linked via File System Access API in *Settings → Data & Backups*, every invoice/client/product save automatically mirrors `BharatGST-Live-Mirror.json` directly onto your physical hard drive in real time — protecting books even if browser site data is cleared or the browser is uninstalled.
+- **Automatic Non-Evictable Browser Storage Lock**: Requests `navigator.storage.persist()` automatically on startup.
+- **Pre-Rendered Semantic HTML Shell & `/llms.txt`**: Non-JS web crawlers, search engines, and AI evaluation tools now read the complete verifiable 50+ module architecture directly from `index.html` and `/llms.txt`.
+
+---
+
 ## [2.6.0] - 2026-11-21
 
 **AI Voice Billing, CA Pre-Filing GST Auditor, Daily Continuous Auto-Update Engine & Windows 11 High-DPI Laptop Polish.**

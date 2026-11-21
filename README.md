@@ -1,17 +1,22 @@
-# Bharat GST Free Billing 🇮🇳 (`v2.6.0` · Daily Continuous Auto-Update Edition)
+# Bharat GST Free Billing 🇮🇳 (`v2.7.0` · Hybrid Offline PWA + Hard-Drive Live Sync + Desktop Suite)
 
 **100% Free, Open-Source, Offline-First & AES-256-GCM Encrypted AI Voice GST Billing, Inventory, Accounting & Tax Filing Suite for Bharat.**
 
 Created & maintained by **Abhishek Agrahari** — built for Indian retail shops, kirana stores, pharmacies, mobile/electronics dealers, jewellers, wholesalers, manufacturers, restaurants, freelancers, exporters, and Chartered Accountants. **Zero subscriptions, zero ads, zero signup, and zero locked features — forever.**
 
 🌐 **Live Web & Installable Offline PWA:** [https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/](https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/)  
-📖 **Complete Self-Hosted User Guide (35 Pages, EN + GST Guides):** [https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/user-guide/](https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/user-guide/)
+📖 **Complete Self-Hosted User Guide (35 Pages, EN + GST Guides):** [https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/user-guide/](https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/user-guide/)  
+📄 **Machine-Readable Architecture Spec (`llms.txt`):** [https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/llms.txt](https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/llms.txt)
 
 ---
 
-## 🚀 Exclusive Next-Gen Capabilities in `v2.6.0`
+## 🚀 Exclusive Next-Gen Capabilities in `v2.7.0`
 
-1. **🎙️ Bharat AI Voice & Fast Command Billing (`100% Offline`)**
+1. **💾 Hybrid Tri-Mode Storage + Real-Time PC Hard-Drive Live Mirroring (`Zero Browser-Cache Risk`)**
+   - **Instant Offline PWA** with automatic `navigator.storage.persist()` non-evictable storage lock on Android, iOS, Windows, macOS & Linux.
+   - **Real-Time Direct PC Hard-Drive Folder Sync (`File System Access API`)**: Link any physical folder on your PC/Laptop (`D:\BharatGST-Books` or `Documents\BharatGST`) in *Settings → Data & Backups* — every bill save automatically mirrors `BharatGST-Live-Mirror.json` + dated/encrypted `.fgsb` backups directly onto your hard disk (safe even if browser cache is cleared or the browser is uninstalled!), plus optional **Google Drive Auto-Sync**.
+   - **Full Localhost Node.js Desktop Server (`server.js` / Docker)**: Native OS filesystem `data/` storage, daily ZIP backups, and **Same-Wi-Fi Phone/Tablet QR + 6-Digit PIN Pairing**.
+2. **🎙️ Bharat AI Voice & Fast Command Billing (`100% Offline`)**
    - Speak or type naturally in **Hinglish**, **Hindi (`हिंदी`)**, or **Indian English** inside *New Invoice* (`🎙️ Voice Bill`) — e.g. *"Client Sharma Medical, 3 Dolo 650 strip rate 32 gst 12%, 2 Basmati Rice 5kg rate 450 gst 5%"*.
    - Automatically matches saved Clients, Products, HSN/SAC codes, Selling Prices, Units, and GST slabs with zero cloud API keys and 100% privacy.
 2. **🩺 Pre-Filing CA GST Health & Portal Readiness Auditor**
@@ -28,7 +33,7 @@ Created & maintained by **Abhishek Agrahari** — built for Indian retail shops,
 
 ## 📋 Complete Feature Matrix (Everything Included Free)
 
-| Category | Included in Bharat GST Free Billing (`v2.6.0`) |
+| Category | Included in Bharat GST Free Billing (`v2.7.0`) |
 |---|---|
 | **10 Document Types** | Tax Invoice, Proforma Invoice, Quotation / Estimate, Credit Note, Debit Note (Purchase Return), Bill of Supply, Composition Bill, Sales Order (with dispatch tracking), Purchase Order, Delivery Challan, Recurring Invoices |
 | **Indian & Export Tax Engine** | Auto **CGST + SGST**, **IGST**, **UTGST**, Cess, Reverse Charge (RCM), SEZ & LUT Zero-Rated Exports, International Billing (**23 countries, 22 currencies** — VAT/SST/MwSt), GSTIN Mod-36 checksum + auto State/PAN fill |
