@@ -1,18 +1,27 @@
-# Bharat GST Free Billing 🇮🇳 (`v2.7.0` · Hybrid Offline PWA + Hard-Drive Live Sync + Desktop Suite)
+# Bharat GST Free Billing 🇮🇳 (`v3.0.0` · Full Double-Entry CA Suite + Multi-OS Installers + AI Voice PWA)
 
-**100% Free, Open-Source, Offline-First & AES-256-GCM Encrypted AI Voice GST Billing, Inventory, Accounting & Tax Filing Suite for Bharat.**
+**100% Free, Open-Source (MIT), Offline-First & Cryptographically Secured AI Voice GST Billing, Full Double-Entry Accounting (`F4–F7`, Trial Balance, Schedule III Balance Sheet), SHA-256 Audit Trail, Inventory & Tax Filing Suite for Bharat.**
 
 Created & maintained by **Abhishek Agrahari** — built for Indian retail shops, kirana stores, pharmacies, mobile/electronics dealers, jewellers, wholesalers, manufacturers, restaurants, freelancers, exporters, and Chartered Accountants. **Zero subscriptions, zero ads, zero signup, and zero locked features — forever.**
 
 🌐 **Live Web & Installable Offline PWA:** [https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/](https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/)  
 📖 **Complete Self-Hosted User Guide (35 Pages, EN + GST Guides):** [https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/user-guide/](https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/user-guide/)  
-📄 **Machine-Readable Architecture Spec (`llms.txt`):** [https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/llms.txt](https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/llms.txt)
+📄 **Machine-Readable Architecture Spec (`llms.txt`):** [https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/llms.txt](https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/llms.txt)  
+📦 **Multi-OS Desktop Releases (`.exe`, `.deb`, `.AppImage`, `macOS`, `Portable ZIP`, `Docker`):** [GitHub Releases](https://github.com/abhishekagrahari307-max/Bharat-GST-Free-Billing/releases)
 
 ---
 
-## 🚀 Exclusive Next-Gen Capabilities in `v2.7.0`
+## 🚀 Exclusive Next-Gen Capabilities in `v3.0.0`
 
-1. **💾 Hybrid Tri-Mode Storage + Real-Time PC Hard-Drive Live Mirroring (`Zero Browser-Cache Risk`)**
+1. **📒 Full Double-Entry Accounting Engine (`F4–F7` Vouchers, Trial Balance & Schedule III Balance Sheet)**
+   - Sales, Credit Notes, Purchases, Debit Notes & Expenses **auto-post balanced Debit/Credit ledger lines (`Dr === Cr`)** automatically — zero accounting complexity for shopkeepers!
+   - Full Tally-style **`F4 Contra`**, **`F5 Payment`**, **`F6 Receipt`**, and **`F7 Journal Vouchers (JV)`** with keyboard shortcuts, live **Trial Balance**, and **Schedule III Balance Sheet** (with Closing Inventory Valuation & P&L Net Profit bridge).
+2. **🔐 Tamper-Proof SHA-256 Hash-Chained Audit Trail + `.bharatca` CA Workpaper Desk**
+   - Every voucher is cryptographically chained from Genesis (`0000…0000`) to HEAD via **SHA-256** (MCA Rule 3(1) audit-trail ready) with 1-click verification.
+   - Export & inspect **AES-256-GCM encrypted `.bharatca` CA Workpaper Packages** containing Trial Balance, Balance Sheet, GST Readiness Score, Vouchers & Audit Proof.
+3. **📦 Multi-OS Desktop Installers + Docker + Zero-Install PWA**
+   - Automated CI/CD builds **Windows Setup `.exe`**, **Linux `.deb` & `.AppImage`**, **macOS App Bundle**, **Universal Portable ZIP**, plus root **`Dockerfile` & `docker-compose.yml`**.
+4. **💾 Hybrid Tri-Mode Storage + Real-Time PC Hard-Drive Live Mirroring (`Zero Browser-Cache Risk`)**
    - **Instant Offline PWA** with automatic `navigator.storage.persist()` non-evictable storage lock on Android, iOS, Windows, macOS & Linux.
    - **Real-Time Direct PC Hard-Drive Folder Sync (`File System Access API`)**: Link any physical folder on your PC/Laptop (`D:\BharatGST-Books` or `Documents\BharatGST`) in *Settings → Data & Backups* — every bill save automatically mirrors `BharatGST-Live-Mirror.json` + dated/encrypted `.fgsb` backups directly onto your hard disk (safe even if browser cache is cleared or the browser is uninstalled!), plus optional **Google Drive Auto-Sync**.
    - **Full Localhost Node.js Desktop Server (`server.js` / Docker)**: Native OS filesystem `data/` storage, daily ZIP backups, and **Same-Wi-Fi Phone/Tablet QR + 6-Digit PIN Pairing**.

@@ -1,0 +1,106 @@
+name: Build & Attach Multi-OS Desktop Installers
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to upload installers to (e.g. v3.0.0)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  portable-and-docs:
+    name: Universal Portable ZIP & Offline User Guide
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci --include=dev --no-audit --no-fund
+      - run: node docs-site/build.mjs && npm run build
+      - run: node scripts/build-release-zip.mjs --outDir=./release-build
+      - run: node scripts/build-docs-zip.mjs
+      - name: Upload Portable & Docs ZIPs to Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          cp docker-compose.yml release-build/docker-compose.yml
+          gh release upload "$TAG" release-build/*.zip release-build/docker-compose.yml --clobber
+
+  windows-exe:
+    name: Windows Setup (.exe Installer)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci --include=dev --no-audit --no-fund
+      - run: node docs-site/build.mjs && npm run build
+      - run: node scripts/build-installer.mjs --skip-build
+      - name: Rename & Upload Windows Setup .exe
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          for f in release-build/*.exe; do
+            mv "$f" "release-build/Bharat-GST-Free-Billing-Windows-Setup.exe" || true
+          done
+          gh release upload "$TAG" release-build/*.exe --clobber
+
+  linux-packages:
+    name: Linux (.deb & .AppImage)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci --include=dev --no-audit --no-fund
+      - run: node docs-site/build.mjs && npm run build
+      - run: node scripts/build-linux.mjs deb appimage
+      - name: Rename & Upload Linux Packages
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          VER=$(node -p "require('./package.json').version")
+          for f in release-build/*.deb; do
+            [ -f "$f" ] && mv "$f" "release-build/bharat-gst-free-billing_${VER}_amd64.deb" || true
+          done
+          for f in release-build/*.AppImage; do
+            [ -f "$f" ] && mv "$f" "release-build/Bharat-GST-Free-Billing-Linux-x86_64.AppImage" || true
+          done
+          gh release upload "$TAG" release-build/*.deb release-build/*.AppImage --clobber
+
+  macos-bundle:
+    name: macOS App Bundle (.zip)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci --include=dev --no-audit --no-fund
+      - run: node docs-site/build.mjs && npm run build
+      - run: bash scripts/build-mac-app.sh
+      - name: Upload macOS App Bundle
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          for f in release-build/*Mac*.zip release-build/*mac*.zip; do
+            [ -f "$f" ] && mv "$f" "release-build/Bharat-GST-Free-Billing-macOS.zip" || true
+          done
+          gh release upload "$TAG" release-build/Bharat-GST-Free-Billing-macOS.zip --clobber || true

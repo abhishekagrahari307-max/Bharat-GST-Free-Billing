@@ -58,7 +58,7 @@ async function download(url) {
 // now: the ZIP keeps ensure-node.ps1's $PortableNodeVersion until its users
 // are moved in a later release. A newer 22.x: change it here (the SHA-256 is
 // checked against nodejs.org's SHASUMS256.txt on download).
-const SETUP_NODE_VERSION = 'v26.13.1'; // v1.10.86 - 26 LTS (to about April 2029; Windows 10+)
+const SETUP_NODE_VERSION = 'v22.14.0'; // Official Node.js 22 LTS on nodejs.org/dist/
 
 // The official portable node.exe, checked against nodejs.org's checksums.
 async function portableNode() {
