@@ -131,22 +131,12 @@ export default defineConfig({
         // came from this cache first on every open, so the window opened on the
         // previous version and only swapped to the new one seconds later. It is
         // fetched from the app first now (see 'app-page' below).
-        globPatterns: ['**/*.{js,css,ico,png,svg,woff,woff2}'],
+        globPatterns: ['index.html', '**/*.{js,css,ico,png,svg,woff2}'],
         globIgnores: [
-          // v1.10.83 - the bundled Inter font: only the Latin parts are ever
-          // drawn (the app is in English; ₹ is in Latin-extended), and every
-          // browser that runs the app reads .woff2, never the .woff copy.
+          // Only Latin + Latin-ext .woff2 fonts are needed (₹ symbol is in Latin-ext).
           '**/assets/inter-{cyrillic,cyrillic-ext,greek,greek-ext,vietnamese}-*',
           '**/assets/*.woff',
-          '**/assets/pdf-*.js',
-          // v1.10.84 - qr-*.js is NOT left out any more: the page loads it at start,
-          // so without it the app could not open while its server was stopped.
-          '**/assets/index.es-*.js',
-          // v1.10.33 — Tesseract worker + core + traineddata (~22MB total).
-          // Excluded from precache — cached on demand by the runtime rule
-          // below so the initial SW install stays ~1MB, and the OCR
-          // dependency is downloaded once when the user actually opens
-          // the OCR modal.
+          // Tesseract OCR (~22MB) caches on demand via runtimeCaching so core offline install stays fast (~1.5MB).
           '**/tesseract/**',
         ],
         // v1.10.33 — allow the 3.9MB traineddata and 3.3MB wasm cores to

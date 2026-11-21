@@ -32,7 +32,7 @@ export default function SupportView() {
       <PageHeader
         title="About Bharat GST Free Billing"
         help={{ title: 'About & Support', doc: 'support' }}
-        subtitle="100% Free GST Billing, Invoicing, Inventory & Tax Filing Suite for Bharat"
+        subtitle="Created by Abhishek Agrahari · 100% Free GST Billing, Invoicing, Inventory & Tax Filing Suite for Bharat"
       />
 
       <div className="glass-panel" style={{ ...card, marginBottom: '1.25rem', display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
@@ -40,7 +40,7 @@ export default function SupportView() {
         <div>
           <h3 style={{ margin: '0 0 0.4rem', fontSize: '1.05rem' }}>Free Forever for Every Business in Bharat <HelpButton title="Free, and it stays free" doc="support#about" size={16} /></h3>
           <p style={{ margin: 0, color: 'var(--text-secondary)', lineHeight: 1.6, maxWidth: '72ch' }}>
-            <b>Bharat GST Free Billing</b> is a complete, open-source GST billing and business management web application built for Indian retailers, wholesalers, freelancers, service providers, manufacturers, and CAs. Zero subscription fees, zero ads, and zero locked features.
+            <b>Bharat GST Free Billing</b> (Created by <b>Abhishek Agrahari</b>) is a complete, offline-first, AES-256-GCM encrypted GST billing and business management platform built for Indian retailers, wholesalers, freelancers, service providers, manufacturers, and CAs. Zero subscription fees, zero ads, and zero locked features.
           </p>
         </div>
       </div>

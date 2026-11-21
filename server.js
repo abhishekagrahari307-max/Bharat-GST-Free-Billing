@@ -26,6 +26,17 @@ import { SETUP_NAME, allowedDownloadUrl, checkSetupBytes, setupAssetFrom } from 
 import { updateHintFor, updateDownloadUrlFor, updateStepFromLine } from './src/utils/installKind.js';
 import { STANDARD_TERMS } from './src/utils/termsDefaults.js';
 import { PDF_CLIP_MAX, sanitizePdfName, isPdfBytes, cleanShareTmp, clipboardCommand } from './src/utils/pdfClipboard.js';
+import {
+  createVault,
+  unlockVaultWithPin,
+  recoverVaultWithCode,
+  changeVaultUserPin,
+  addVaultStaffUser,
+  removeVaultStaffUser,
+  exportDekBase64,
+  publicVaultInfo,
+  checkRoleApiPermission,
+} from './src/utils/localLock.js';
 // v1.10.85 - phone / tablet access on the same Wi-Fi (off by default).
 import https from 'https';
 import http from 'http';
@@ -291,6 +302,100 @@ const ERRORS_LOG = path.join(DATA_DIR, 'errors.log');
 const dirCache = {};
 const DIR_CACHE_TTL_MS = 5000;
 function invalidateCache(dir) { delete dirCache[dir]; }
+function invalidateAllDirCaches() { for (const k of Object.keys(dirCache)) delete dirCache[k]; }
+
+// ---- Option A Server-Side Vault State & Record Encryption (AES-256-GCM) ----
+const VAULT_META_KEY = 'vault';
+const serverVaultState = {
+  rawDek: null,       // 32-byte Buffer when unlocked
+  activeUser: null,   // { id, name, role, pinLength }
+};
+
+function readMetaDirect() {
+  const mp = path.join(DATA_DIR, 'meta.json');
+  try {
+    if (fs.existsSync(mp)) return JSON.parse(fs.readFileSync(mp, 'utf-8'));
+  } catch { /* ignore */ }
+  return {};
+}
+
+function isServerVaultEnabled() {
+  return !!readMetaDirect()?.[VAULT_META_KEY]?.encrypted;
+}
+
+function recordIdForFilePath(filePath) {
+  const resolved = path.resolve(filePath);
+  if (resolved === path.resolve(path.join(DATA_DIR, 'profile.json'))) return 'profile:singleton';
+  const parentDir = path.basename(path.dirname(resolved));
+  if (DIRS.includes(parentDir) && resolved.endsWith('.json')) {
+    return `${parentDir}/${path.basename(resolved, '.json')}`;
+  }
+  return null;
+}
+
+function serverSealRecordSync(recordId, obj) {
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', serverVaultState.rawDek, iv);
+  cipher.setAAD(Buffer.from(`record:${recordId}`, 'utf8'));
+  const ctWithTag = Buffer.concat([
+    cipher.update(JSON.stringify(obj), 'utf8'),
+    cipher.final(),
+    cipher.getAuthTag(),
+  ]);
+  return {
+    __fgsbEnc: 1,
+    v: 1,
+    iv: iv.toString('base64'),
+    ct: ctWithTag.toString('base64'),
+  };
+}
+
+function serverOpenRecordSync(recordId, parsed) {
+  if (!parsed || typeof parsed !== 'object' || parsed.__fgsbEnc !== 1) return parsed;
+  if (!serverVaultState.rawDek) return null;
+  const iv = Buffer.from(parsed.iv, 'base64');
+  const buf = Buffer.from(parsed.ct, 'base64');
+  if (buf.length < 16) throw new Error('Invalid ciphertext');
+  const tag = buf.subarray(buf.length - 16);
+  const ct = buf.subarray(0, buf.length - 16);
+  const decipher = crypto.createDecipheriv('aes-256-gcm', serverVaultState.rawDek, iv);
+  decipher.setAAD(Buffer.from(`record:${recordId}`, 'utf8'));
+  decipher.setAuthTag(tag);
+  const plain = Buffer.concat([decipher.update(ct), decipher.final()]).toString('utf8');
+  return JSON.parse(plain);
+}
+
+// Encrypt or decrypt all existing data records in-place when Vault is toggled ON/OFF
+function rewriteAllBooksEncryption(encryptNow) {
+  const profPath = path.join(DATA_DIR, 'profile.json');
+  if (fs.existsSync(profPath)) {
+    try {
+      const raw = JSON.parse(fs.readFileSync(profPath, 'utf-8').replace(/^\uFEFF/, ''));
+      const plain = raw?.__fgsbEnc === 1 ? serverOpenRecordSync('profile:singleton', raw) : raw;
+      if (plain) {
+        const out = encryptNow ? serverSealRecordSync('profile:singleton', plain) : plain;
+        writeFileAtomic(profPath, JSON.stringify(out, null, 2));
+      }
+    } catch { /* ignore */ }
+  }
+  for (const dir of DIRS) {
+    const dp = path.join(DATA_DIR, dir);
+    if (!fs.existsSync(dp)) continue;
+    for (const f of fs.readdirSync(dp).filter((n) => n.endsWith('.json'))) {
+      const fp = path.join(dp, f);
+      const recId = `${dir}/${path.basename(f, '.json')}`;
+      try {
+        const raw = JSON.parse(fs.readFileSync(fp, 'utf-8').replace(/^\uFEFF/, ''));
+        const plain = raw?.__fgsbEnc === 1 ? serverOpenRecordSync(recId, raw) : raw;
+        if (plain) {
+          const out = encryptNow ? serverSealRecordSync(recId, plain) : plain;
+          writeFileAtomic(fp, JSON.stringify(out, null, 2));
+        }
+      } catch { /* ignore */ }
+    }
+  }
+  invalidateAllDirCaches();
+}
 
 // Helper: read all JSON files from a directory (cached, 5s TTL)
 function readAllFromDir(dir) {
@@ -304,7 +409,9 @@ function readAllFromDir(dir) {
       try {
         // A file saved by Notepad / PowerShell 5.1 starts with a byte-order
         // mark, which JSON.parse refuses: it is not damage, so read past it.
-        const v = JSON.parse(fs.readFileSync(path.join(dirPath, f), 'utf-8').replace(/^\uFEFF/, ''));
+        const raw = JSON.parse(fs.readFileSync(path.join(dirPath, f), 'utf-8').replace(/^\uFEFF/, ''));
+        const recId = `${dir}/${path.basename(f, '.json')}`;
+        const v = raw?.__fgsbEnc === 1 ? serverOpenRecordSync(recId, raw) : raw;
         // v1.10.83 - "null", a number or a list is as damaged as a broken file:
         // the screens expect an object and crashed on anything else.
         if (v && typeof v === 'object' && !Array.isArray(v)) return v;
@@ -334,7 +441,15 @@ function reportDamagedFile(dir, file) {
 // Helper: read a single JSON file
 function readJSON(filePath, fallback = null) {
   try {
-    if (fs.existsSync(filePath)) return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    if (fs.existsSync(filePath)) {
+      const raw = JSON.parse(fs.readFileSync(filePath, 'utf-8').replace(/^\uFEFF/, ''));
+      const recId = recordIdForFilePath(filePath);
+      if (recId && raw?.__fgsbEnc === 1) {
+        const opened = serverOpenRecordSync(recId, raw);
+        return opened ?? fallback;
+      }
+      return raw;
+    }
   } catch { /* ignore */ }
   return fallback;
 }
@@ -343,7 +458,11 @@ function readJSON(filePath, fallback = null) {
 // atomically via temp+rename so a crash mid-write can't leave a
 // truncated meta.json that resets the invoice counter.
 function writeJSON(filePath, data) {
-  writeFileAtomic(filePath, JSON.stringify(data, null, 2));
+  const recId = recordIdForFilePath(filePath);
+  const payload = (recId && serverVaultState.rawDek && isServerVaultEnabled() && data && data.__fgsbEnc !== 1)
+    ? serverSealRecordSync(recId, data)
+    : data;
+  writeFileAtomic(filePath, JSON.stringify(payload, null, 2));
   // Invalidate cache for the parent directory
   const parentDir = path.basename(path.dirname(filePath));
   if (DIRS.includes(parentDir)) invalidateCache(parentDir);
@@ -414,6 +533,34 @@ const writeHistory = (entry) => {
     fs.appendFileSync(path.join(HISTORY_DIR, `${entry.at.slice(0, 7)}.jsonl`), JSON.stringify(entry) + '\n');
   } catch (err) { console.warn('[history] could not write:', err.message); }
 };
+// Guard all data routes when Option A Encrypted Vault is locked, and enforce L2 Staff Roles
+const VAULT_OPEN_PATHS = new Set([
+  '/api/health',
+  '/api/version',
+  '/api/check-update',
+  '/api/changelog',
+  '/api/lock',
+  '/api/local-prefs',
+  '/api/client-errors',
+  '/api/control-panel/status',
+  '/api/control-panel/open-reset-folder',
+]);
+app.use((req, res, next) => {
+  const p = routePath(req);
+  if (!p.startsWith('/api/')) return next();
+  if (p.startsWith('/api/lock/') || VAULT_OPEN_PATHS.has(p)) return next();
+  if (isServerVaultEnabled() && !serverVaultState.rawDek) {
+    return res.status(423).json({ error: 'Encrypted Vault is locked. Enter your PIN to unlock.', code: 'vault-locked' });
+  }
+  if (serverVaultState.activeUser?.role) {
+    const denied = checkRoleApiPermission(serverVaultState.activeUser.role, req.method, p);
+    if (denied) {
+      return res.status(403).json({ error: denied, code: 'role-denied', role: serverVaultState.activeUser.role });
+    }
+  }
+  return next();
+});
+
 app.use((req, res, next) => {
   if (req.method !== 'POST' && req.method !== 'DELETE') return next();
   const p = routePath(req);
@@ -1196,11 +1343,11 @@ const META_PATH = path.join(DATA_DIR, 'meta.json');
 // v1.10.77 (#84) - the PIN lock lives in meta.json too, but only the
 // /api/lock routes below may read or change it.
 const LOCK_KEY = 'appLock';
-const withoutLock = (meta) => { const { [LOCK_KEY]: _lock, ...rest } = meta || {}; return rest; };
+const withoutLock = (meta) => { const { [LOCK_KEY]: _lock, [VAULT_META_KEY]: _vault, ...rest } = meta || {}; return rest; };
 const withLock = (meta, lock) => (lock ? { ...withoutLock(meta), [LOCK_KEY]: lock } : withoutLock(meta));
 
 app.get('/api/meta/:key', (req, res) => {
-  if (req.params.key === LOCK_KEY) return errRes(res, 403, 'forbidden');
+  if (req.params.key === LOCK_KEY || req.params.key === VAULT_META_KEY) return errRes(res, 403, 'forbidden');
   const meta = readJSON(META_PATH, {});
   res.json({ value: meta[req.params.key] ?? null });
 });
@@ -1209,7 +1356,7 @@ app.post('/api/meta/:key', (req, res) => {
   // v1.10.85 (review) - the backup folder is set only through /api/backup-folder,
   // which checks it and is PC-only: through here a paired phone could point the
   // daily copy of every book at a share of its own.
-  if (req.params.key === LOCK_KEY || req.params.key.toLowerCase() === BACKUP_FOLDER_KEY.toLowerCase()
+  if (req.params.key === LOCK_KEY || req.params.key === VAULT_META_KEY || req.params.key.toLowerCase() === BACKUP_FOLDER_KEY.toLowerCase()
     || req.params.key.toLowerCase() === PERIOD_LOCK_KEY.toLowerCase()) return errRes(res, 403, 'forbidden'); // v1.10.85: /api/period-lock only
   if (!req.body || !('value' in req.body)) return errRes(res, 400, 'bad-request');
   const meta = readJSON(META_PATH, {});
@@ -1323,12 +1470,39 @@ const checkPin = (res, lock, pin) => {
 };
 
 app.get('/api/lock', (req, res) => {
+  const meta = readJSON(META_PATH, {});
+  const vault = meta?.[VAULT_META_KEY];
+  if (vault?.encrypted) {
+    const pub = publicVaultInfo(vault);
+    return res.json({
+      enabled: true,
+      encrypted: true,
+      unlocked: !!serverVaultState.rawDek,
+      length: pub.length,
+      pinLength: pub.length,
+      users: pub.users,
+      hasRecoveryCode: pub.hasRecoveryCode,
+      autoLockMinutes: pub.autoLockMinutes,
+      lockOnHidden: pub.lockOnHidden,
+      activeUser: serverVaultState.activeUser || null,
+      os: process.platform,
+    });
+  }
   const lock = currentLock();
   // v1.10.86 - "Forgot PIN?" names the exact folder for the RESET-PIN file, on
   // this PC only (a paired phone is told to do it on the PC; its requests come
   // over the encrypted phone connection).
   const onPc = lock && !req.socket.encrypted;
-  res.json({ enabled: !!lock, length: lock?.length || 0, ...(onPc ? { resetFolder: RESET_PIN_FOLDER, os: process.platform } : {}) });
+  return res.json({
+    enabled: !!lock,
+    encrypted: false,
+    length: lock?.length || 0,
+    users: [],
+    autoLockMinutes: lock?.autoLockMinutes ?? 0,
+    lockOnHidden: !!lock?.lockOnHidden,
+    activeUser: null,
+    ...(onPc ? { resetFolder: RESET_PIN_FOLDER, os: process.platform } : {}),
+  });
 });
 // The folder named on the lock screen: the books folder, except on a ZIP copy,
 // where that is the hidden _system folder - there the visible folder above it
@@ -1348,10 +1522,176 @@ app.post('/api/control-panel/open-reset-folder', (req, res) => {
   } catch (e) { res.json({ ok: false, error: e.message }); }
 });
 
-app.post('/api/lock/verify', (req, res) => {
+app.post('/api/lock/lock-session', (req, res) => {
+  if (isServerVaultEnabled()) {
+    serverVaultState.rawDek = null;
+    serverVaultState.activeUser = null;
+    invalidateAllDirCaches();
+  }
+  res.json({ ok: true });
+});
+
+app.post('/api/lock/verify', async (req, res) => {
+  const meta = readJSON(META_PATH, {});
+  const vault = meta?.[VAULT_META_KEY];
+  if (vault?.encrypted) {
+    const tries = req.socket.encrypted ? networkPinTries : pinTries;
+    const wait = tries.wait();
+    if (wait > 0) return res.status(429).json({ ok: false, error: 'Too many wrong tries', code: 'wait', wait });
+    try {
+      const { dek, user } = await unlockVaultWithPin(vault, req.body?.pin, req.body?.userId || null);
+      tries.reset();
+      serverVaultState.rawDek = Buffer.from(await exportDekBase64(dek), 'base64');
+      serverVaultState.activeUser = user;
+      invalidateAllDirCaches();
+      return res.json({ ok: true, user });
+    } catch {
+      const triesLeft = tries.fail();
+      return res.status(401).json({ ok: false, error: 'wrong-pin', code: 'wrong-pin', triesLeft });
+    }
+  }
   const lock = currentLock();
   if (!lock) return res.json({ ok: true });
-  if (checkPin(res, lock, req.body?.pin)) res.json({ ok: true });
+  if (checkPin(res, lock, req.body?.pin)) return res.json({ ok: true });
+  return undefined;
+});
+
+app.post('/api/lock/setup-vault', async (req, res) => {
+  if (isServerVaultEnabled() && !serverVaultState.rawDek) {
+    return res.status(423).json({ ok: false, error: 'Unlock vault first', code: 'vault-locked' });
+  }
+  try {
+    const { pin, ownerName, autoLockMinutes = 5 } = req.body || {};
+    const prof = readJSON(path.join(DATA_DIR, 'profile.json'), {});
+    const { vaultMeta, dek, recoveryCode } = await createVault(pin, {
+      ownerName: ownerName || prof?.businessName || 'Owner',
+      autoLockMinutes,
+    });
+    serverVaultState.rawDek = Buffer.from(await exportDekBase64(dek), 'base64');
+    serverVaultState.activeUser = {
+      id: vaultMeta.users[0].id,
+      name: vaultMeta.users[0].name,
+      role: 'owner',
+      pinLength: vaultMeta.users[0].pinLength,
+    };
+    const meta = readJSON(META_PATH, {});
+    delete meta[LOCK_KEY];
+    meta[VAULT_META_KEY] = vaultMeta;
+    writeJSON(META_PATH, meta);
+    rewriteAllBooksEncryption(true);
+    return res.json({ ok: true, encrypted: true, recoveryCode, user: serverVaultState.activeUser });
+  } catch (e) {
+    return res.status(400).json({ ok: false, error: e.message || 'Could not enable vault' });
+  }
+});
+
+app.post('/api/lock/recover', async (req, res) => {
+  const tries = req.socket.encrypted ? networkPinTries : pinTries;
+  const wait = tries.wait();
+  if (wait > 0) return res.status(429).json({ ok: false, error: 'Too many wrong tries', code: 'wait', wait });
+  const meta = readJSON(META_PATH, {});
+  const vault = meta?.[VAULT_META_KEY];
+  if (!vault?.encrypted) return res.status(400).json({ ok: false, error: 'Vault not enabled' });
+  try {
+    const { vaultMeta: nextVault, dek, user } = await recoverVaultWithCode(vault, req.body?.recoveryCode, req.body?.newPin);
+    tries.reset();
+    serverVaultState.rawDek = Buffer.from(await exportDekBase64(dek), 'base64');
+    serverVaultState.activeUser = user;
+    meta[VAULT_META_KEY] = nextVault;
+    writeJSON(META_PATH, meta);
+    invalidateAllDirCaches();
+    return res.json({ ok: true, user });
+  } catch (e) {
+    const triesLeft = tries.fail();
+    return res.status(401).json({ ok: false, error: e.message || 'Wrong recovery code', code: e.code || 'wrong-recovery', triesLeft });
+  }
+});
+
+app.post('/api/lock/change-pin', async (req, res) => {
+  const meta = readJSON(META_PATH, {});
+  const vault = meta?.[VAULT_META_KEY];
+  if (!vault?.encrypted) return res.status(400).json({ ok: false, error: 'Vault not enabled' });
+  try {
+    const { userId, currentPin, newPin } = req.body || {};
+    const { dek, user } = await unlockVaultWithPin(vault, currentPin, userId || serverVaultState.activeUser?.id || null);
+    meta[VAULT_META_KEY] = await changeVaultUserPin(vault, dek, userId || user.id, newPin);
+    writeJSON(META_PATH, meta);
+    return res.json({ ok: true });
+  } catch {
+    return res.status(401).json({ ok: false, error: 'Current PIN is wrong', code: 'wrong-pin' });
+  }
+});
+
+app.post('/api/lock/disable-vault', async (req, res) => {
+  const meta = readJSON(META_PATH, {});
+  const vault = meta?.[VAULT_META_KEY];
+  if (!vault?.encrypted) return res.json({ ok: true, enabled: false });
+  try {
+    const { dek, user } = await unlockVaultWithPin(vault, req.body?.currentPin);
+    if (user.role !== 'owner') return res.status(403).json({ ok: false, error: 'Only Owner can disable Vault encryption' });
+    serverVaultState.rawDek = Buffer.from(await exportDekBase64(dek), 'base64');
+    rewriteAllBooksEncryption(false);
+    delete meta[VAULT_META_KEY];
+    writeJSON(META_PATH, meta);
+    serverVaultState.rawDek = null;
+    serverVaultState.activeUser = null;
+    return res.json({ ok: true, enabled: false, encrypted: false });
+  } catch {
+    return res.status(401).json({ ok: false, error: 'Wrong Owner PIN', code: 'wrong-pin' });
+  }
+});
+
+app.post('/api/lock/users', async (req, res) => {
+  const meta = readJSON(META_PATH, {});
+  const vault = meta?.[VAULT_META_KEY];
+  if (!vault?.encrypted) return res.status(400).json({ ok: false, error: 'Enable Encrypted Vault first' });
+  try {
+    const { currentPin, name, role, pin } = req.body || {};
+    const { dek, user: actor } = await unlockVaultWithPin(vault, currentPin);
+    if (actor.role !== 'owner') return res.status(403).json({ ok: false, error: 'Only Owner can add staff accounts' });
+    const { vaultMeta: nextVault, user } = await addVaultStaffUser(vault, dek, { name, role, pin });
+    meta[VAULT_META_KEY] = nextVault;
+    writeJSON(META_PATH, meta);
+    return res.json({ ok: true, user });
+  } catch (e) {
+    return res.status(400).json({ ok: false, error: e.message || 'Could not add staff user' });
+  }
+});
+
+app.delete('/api/lock/users/:id', async (req, res) => {
+  const meta = readJSON(META_PATH, {});
+  const vault = meta?.[VAULT_META_KEY];
+  if (!vault?.encrypted) return res.status(400).json({ ok: false, error: 'Vault not enabled' });
+  try {
+    const { user: actor } = await unlockVaultWithPin(vault, req.body?.currentPin);
+    if (actor.role !== 'owner') return res.status(403).json({ ok: false, error: 'Only Owner can remove staff accounts' });
+    meta[VAULT_META_KEY] = removeVaultStaffUser(vault, req.params.id);
+    writeJSON(META_PATH, meta);
+    return res.json({ ok: true });
+  } catch (e) {
+    return res.status(401).json({ ok: false, error: e.message || 'Wrong Owner PIN' });
+  }
+});
+
+app.post('/api/lock/auto-lock', (req, res) => {
+  const { autoLockMinutes = 5, lockOnHidden = false } = req.body || {};
+  const meta = readJSON(META_PATH, {});
+  if (meta?.[VAULT_META_KEY]?.encrypted) {
+    meta[VAULT_META_KEY] = {
+      ...meta[VAULT_META_KEY],
+      autoLockMinutes: Math.max(0, Number(autoLockMinutes) || 0),
+      lockOnHidden: !!lockOnHidden,
+    };
+    writeJSON(META_PATH, meta);
+  } else if (meta?.[LOCK_KEY]) {
+    meta[LOCK_KEY] = {
+      ...meta[LOCK_KEY],
+      autoLockMinutes: Math.max(0, Number(autoLockMinutes) || 0),
+      lockOnHidden: !!lockOnHidden,
+    };
+    writeJSON(META_PATH, meta);
+  }
+  return res.json({ ok: true });
 });
 
 // Turn on, change ({ pin }) or turn off ({ pin: null }). When a PIN is

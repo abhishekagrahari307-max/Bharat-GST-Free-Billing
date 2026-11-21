@@ -8,6 +8,19 @@
 import { nextCounterValue } from '../utils.js';
 import { STANDARD_TERMS } from './termsDefaults.js';
 import { validateCashEntry, cleanCashEntry } from './cashBook.js';
+import {
+  createVault,
+  unlockVaultWithPin,
+  recoverVaultWithCode,
+  changeVaultUserPin,
+  addVaultStaffUser,
+  removeVaultStaffUser,
+  sealRecord,
+  openRecord,
+  isEncryptedEnvelope,
+  publicVaultInfo,
+  checkRoleApiPermission,
+} from './localLock.js';
 
 const APP_VERSION = '1.10.86';
 const DB_NAME = 'bharat_gst_free_billing_db';
@@ -56,28 +69,6 @@ function openDb() {
   return dbPromise;
 }
 
-async function readPersistedState() {
-  const db = await openDb();
-  if (db) {
-    const fromIdb = await new Promise((resolve) => {
-      try {
-        const tx = db.transaction(DB_STORE, 'readonly');
-        const req = tx.objectStore(DB_STORE).get(DB_KEY);
-        req.onsuccess = () => resolve(req.result || null);
-        req.onerror = () => resolve(null);
-      } catch {
-        resolve(null);
-      }
-    });
-    if (fromIdb && typeof fromIdb === 'object') return mergeWithDefaults(fromIdb);
-  }
-  try {
-    const raw = localStorage.getItem(LS_FALLBACK_KEY);
-    if (raw) return mergeWithDefaults(JSON.parse(raw));
-  } catch { /* ignore */ }
-  return emptyState();
-}
-
 function mergeWithDefaults(saved) {
   const base = emptyState();
   const out = { ...base, ...saved, collections: { ...base.collections, ...(saved.collections || {}) } };
@@ -92,22 +83,106 @@ function mergeWithDefaults(saved) {
 }
 
 let stateCache = null;
+let rawSavedEnvelope = null;
 let saveTimer = null;
 
+const unlockedSession = {
+  appUnlocked: false,
+  dek: null,
+  activeUser: null,
+  hiddenKeys: new Map(),
+  failCount: 0,
+  lockedUntilMs: 0,
+};
+
+function checkBrowserPinWait() {
+  const rem = Math.ceil((unlockedSession.lockedUntilMs - Date.now()) / 1000);
+  return rem > 0 ? rem : 0;
+}
+
+function recordBrowserPinFail() {
+  unlockedSession.failCount += 1;
+  if (unlockedSession.failCount >= 5) {
+    const mult = Math.min(8, 2 ** Math.max(0, unlockedSession.failCount - 5));
+    unlockedSession.lockedUntilMs = Date.now() + 30_000 * mult;
+    return 0;
+  }
+  return Math.max(0, 5 - unlockedSession.failCount);
+}
+
+function resetBrowserPinFail() {
+  unlockedSession.failCount = 0;
+  unlockedSession.lockedUntilMs = 0;
+}
+
+async function readRawRecord() {
+  const db = await openDb();
+  if (db) {
+    const fromIdb = await new Promise((resolve) => {
+      try {
+        const tx = db.transaction(DB_STORE, 'readonly');
+        const req = tx.objectStore(DB_STORE).get(DB_KEY);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => resolve(null);
+      } catch {
+        resolve(null);
+      }
+    });
+    if (fromIdb && typeof fromIdb === 'object') return fromIdb;
+  }
+  try {
+    const raw = localStorage.getItem(LS_FALLBACK_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch { /* ignore */ }
+  return null;
+}
+
 async function getState() {
-  if (!stateCache) stateCache = await readPersistedState();
+  if (stateCache) return stateCache;
+  const raw = await readRawRecord();
+  rawSavedEnvelope = raw;
+  if (raw?.meta?.vault?.encrypted && isEncryptedEnvelope(raw.encryptedBooks)) {
+    if (!unlockedSession.dek) {
+      // Return locked shell containing only public metadata + localPrefs until PIN unlocks DEK
+      return {
+        ...emptyState(),
+        meta: raw.meta,
+        localPrefs: raw.localPrefs || {},
+        __vaultLocked: true,
+      };
+    }
+    const opened = await openRecord(unlockedSession.dek, 'books_v1', raw.encryptedBooks);
+    stateCache = mergeWithDefaults({ ...opened, meta: raw.meta, localPrefs: raw.localPrefs || {} });
+    return stateCache;
+  }
+  stateCache = raw ? mergeWithDefaults(raw) : emptyState();
   return stateCache;
 }
 
 async function flushState() {
-  if (!stateCache) return;
-  const snapshot = JSON.parse(JSON.stringify(stateCache));
+  if (!stateCache || stateCache.__vaultLocked) return;
+  const clone = JSON.parse(JSON.stringify(stateCache));
+  let toStore = clone;
+  if (clone.meta?.vault?.encrypted && unlockedSession.dek) {
+    const { meta, localPrefs, ...sensitive } = clone;
+    const { vault, ...otherMeta } = meta || {};
+    const encryptedBooks = await sealRecord(unlockedSession.dek, 'books_v1', {
+      ...sensitive,
+      metaRest: otherMeta,
+    });
+    toStore = {
+      meta: { vault },
+      localPrefs: localPrefs || {},
+      encryptedBooks,
+    };
+    rawSavedEnvelope = toStore;
+  }
   const db = await openDb();
   if (db) {
     await new Promise((resolve) => {
       try {
         const tx = db.transaction(DB_STORE, 'readwrite');
-        tx.objectStore(DB_STORE).put(snapshot, DB_KEY);
+        tx.objectStore(DB_STORE).put(toStore, DB_KEY);
         tx.oncomplete = () => resolve(true);
         tx.onerror = () => resolve(false);
       } catch {
@@ -116,7 +191,7 @@ async function flushState() {
     });
   }
   try {
-    localStorage.setItem(LS_FALLBACK_KEY, JSON.stringify(snapshot));
+    localStorage.setItem(LS_FALLBACK_KEY, JSON.stringify(toStore));
   } catch { /* quota or private mode — IndexedDB already holds it */ }
 }
 
@@ -139,8 +214,6 @@ async function hashPin(pin, salt) {
   return (h >>> 0).toString(16);
 }
 
-const unlockedSession = { appUnlocked: false, hiddenKeys: new Map() };
-
 function jsonRes(body, status = 200) {
   return new Response(body === null ? '' : JSON.stringify(body), {
     status,
@@ -153,13 +226,17 @@ function listCol(state, name) {
 }
 
 function addHistory(state, entry) {
-  state.editHistory.unshift({ at: new Date().toISOString(), from: 'web', ...entry });
+  const actor = unlockedSession.activeUser?.name
+    ? `${unlockedSession.activeUser.name} (${unlockedSession.activeUser.role || 'owner'})`
+    : 'web';
+  state.editHistory.unshift({ at: new Date().toISOString(), from: actor, ...entry });
   if (state.editHistory.length > 500) state.editHistory.length = 500;
 }
 
 function withoutLock(meta) {
   const copy = { ...(meta || {}) };
   delete copy.appLock;
+  delete copy.vault;
   return copy;
 }
 
@@ -234,20 +311,244 @@ async function handleBrowserApi(path, searchParams, init = {}) {
     }
   }
 
-  // ---- App PIN Lock ----
+  // ---- App PIN Lock + Option A Encrypted Vault & L2 Staff Roles ----
   if (path === '/api/lock') {
+    const vault = state.meta?.vault;
+    if (vault?.encrypted) {
+      const pub = publicVaultInfo(vault);
+      return jsonRes({
+        enabled: true,
+        encrypted: true,
+        unlocked: !!unlockedSession.dek && unlockedSession.appUnlocked,
+        length: pub.length,
+        pinLength: pub.length,
+        users: pub.users,
+        hasRecoveryCode: pub.hasRecoveryCode,
+        autoLockMinutes: pub.autoLockMinutes,
+        lockOnHidden: pub.lockOnHidden,
+        activeUser: unlockedSession.activeUser || null,
+        local: true,
+      });
+    }
     const lock = state.meta?.appLock;
-    return jsonRes({ enabled: !!lock, unlocked: !lock || unlockedSession.appUnlocked, pinLength: lock?.length || 6, local: true });
+    return jsonRes({
+      enabled: !!lock,
+      encrypted: false,
+      unlocked: !lock || unlockedSession.appUnlocked,
+      length: lock?.length || 0,
+      pinLength: lock?.length || 6,
+      users: [],
+      autoLockMinutes: lock?.autoLockMinutes ?? 0,
+      lockOnHidden: !!lock?.lockOnHidden,
+      activeUser: unlockedSession.activeUser || null,
+      local: true,
+    });
   }
+
+  if (path === '/api/lock/lock-session' && method === 'POST') {
+    unlockedSession.appUnlocked = false;
+    if (state.meta?.vault?.encrypted) {
+      unlockedSession.dek = null;
+      unlockedSession.activeUser = null;
+      stateCache = null;
+    }
+    return jsonRes({ ok: true });
+  }
+
   if (path === '/api/lock/verify' && method === 'POST') {
-    const { pin } = await parseBody(init);
+    const wait = checkBrowserPinWait();
+    if (wait > 0) return jsonRes({ ok: false, error: 'Too many wrong tries', code: 'wait', wait }, 429);
+    const { pin, userId } = await parseBody(init);
+    const vault = state.meta?.vault;
+    if (vault?.encrypted) {
+      try {
+        const { dek, user } = await unlockVaultWithPin(vault, pin, userId || null);
+        resetBrowserPinFail();
+        unlockedSession.dek = dek;
+        unlockedSession.appUnlocked = true;
+        unlockedSession.activeUser = user;
+        const raw = rawSavedEnvelope || await readRawRecord();
+        if (raw?.encryptedBooks) {
+          const opened = await openRecord(dek, 'books_v1', raw.encryptedBooks);
+          const mergedMeta = { ...(opened.metaRest || {}), vault };
+          stateCache = mergeWithDefaults({ ...opened, meta: mergedMeta, localPrefs: raw.localPrefs || {} });
+        }
+        return jsonRes({ ok: true, user });
+      } catch {
+        const triesLeft = recordBrowserPinFail();
+        const nextWait = checkBrowserPinWait();
+        if (nextWait > 0) return jsonRes({ ok: false, error: 'Too many wrong tries', code: 'wait', wait: nextWait }, 429);
+        return jsonRes({ ok: false, error: 'Wrong PIN', code: 'wrong-pin', triesLeft }, 401);
+      }
+    }
     const lock = state.meta?.appLock;
     if (!lock) { unlockedSession.appUnlocked = true; return jsonRes({ ok: true }); }
     const h = await hashPin(pin, lock.salt);
-    if (h !== lock.hash) return jsonRes({ ok: false, error: 'Wrong PIN', code: 'wrong-pin', triesLeft: 4 }, 401);
+    if (h !== lock.hash) {
+      const triesLeft = recordBrowserPinFail();
+      const nextWait = checkBrowserPinWait();
+      if (nextWait > 0) return jsonRes({ ok: false, error: 'Too many wrong tries', code: 'wait', wait: nextWait }, 429);
+      return jsonRes({ ok: false, error: 'Wrong PIN', code: 'wrong-pin', triesLeft }, 401);
+    }
+    resetBrowserPinFail();
     unlockedSession.appUnlocked = true;
     return jsonRes({ ok: true });
   }
+
+  if (path === '/api/lock/setup-vault' && method === 'POST') {
+    const { pin, ownerName, autoLockMinutes = 5 } = await parseBody(init);
+    if (state.__vaultLocked) return jsonRes({ error: 'Unlock vault first', code: 'vault-locked' }, 423);
+    try {
+      const { vaultMeta, dek, recoveryCode } = await createVault(pin, {
+        ownerName: ownerName || state.profile?.businessName || 'Owner',
+        autoLockMinutes,
+      });
+      delete state.meta.appLock;
+      state.meta.vault = vaultMeta;
+      unlockedSession.dek = dek;
+      unlockedSession.appUnlocked = true;
+      unlockedSession.activeUser = {
+        id: vaultMeta.users[0].id,
+        name: vaultMeta.users[0].name,
+        role: 'owner',
+        pinLength: vaultMeta.users[0].pinLength,
+      };
+      await flushState();
+      return jsonRes({
+        ok: true,
+        encrypted: true,
+        recoveryCode,
+        user: unlockedSession.activeUser,
+      });
+    } catch (e) {
+      return jsonRes({ ok: false, error: e.message }, 400);
+    }
+  }
+
+  if (path === '/api/lock/recover' && method === 'POST') {
+    const wait = checkBrowserPinWait();
+    if (wait > 0) return jsonRes({ ok: false, error: 'Too many wrong tries', code: 'wait', wait }, 429);
+    const { recoveryCode, newPin } = await parseBody(init);
+    const vault = state.meta?.vault;
+    if (!vault?.encrypted) return jsonRes({ ok: false, error: 'Encrypted vault is not enabled' }, 400);
+    try {
+      const { vaultMeta: nextVault, dek, user } = await recoverVaultWithCode(vault, recoveryCode, newPin);
+      resetBrowserPinFail();
+      unlockedSession.dek = dek;
+      unlockedSession.appUnlocked = true;
+      unlockedSession.activeUser = user;
+      const raw = rawSavedEnvelope || await readRawRecord();
+      if (raw?.encryptedBooks) {
+        const opened = await openRecord(dek, 'books_v1', raw.encryptedBooks);
+        const mergedMeta = { ...(opened.metaRest || {}), vault: nextVault };
+        stateCache = mergeWithDefaults({ ...opened, meta: mergedMeta, localPrefs: raw.localPrefs || {} });
+      } else {
+        state.meta.vault = nextVault;
+      }
+      await flushState();
+      return jsonRes({ ok: true, user });
+    } catch (e) {
+      const triesLeft = recordBrowserPinFail();
+      return jsonRes({ ok: false, error: e.message || 'Invalid recovery code', code: e.code || 'wrong-recovery', triesLeft }, 401);
+    }
+  }
+
+  if (path === '/api/lock/change-pin' && method === 'POST') {
+    const { userId, currentPin, newPin } = await parseBody(init);
+    const vault = state.meta?.vault;
+    if (!vault?.encrypted) return jsonRes({ ok: false, error: 'Vault not enabled' }, 400);
+    try {
+      const { dek, user } = await unlockVaultWithPin(vault, currentPin, userId || unlockedSession.activeUser?.id || null);
+      const targetId = userId || user.id;
+      const nextVault = await changeVaultUserPin(vault, dek, targetId, newPin);
+      state.meta.vault = nextVault;
+      unlockedSession.dek = dek;
+      await flushState();
+      return jsonRes({ ok: true });
+    } catch {
+      return jsonRes({ ok: false, error: 'Current PIN is wrong', code: 'wrong-pin' }, 401);
+    }
+  }
+
+  if (path === '/api/lock/disable-vault' && method === 'POST') {
+    const { currentPin } = await parseBody(init);
+    const vault = state.meta?.vault;
+    if (!vault?.encrypted) return jsonRes({ ok: true, enabled: false });
+    try {
+      const { dek, user } = await unlockVaultWithPin(vault, currentPin);
+      if (user.role !== 'owner') return jsonRes({ ok: false, error: 'Only Owner can disable Vault encryption' }, 403);
+      if (state.__vaultLocked) {
+        const raw = rawSavedEnvelope || await readRawRecord();
+        const opened = raw?.encryptedBooks ? await openRecord(dek, 'books_v1', raw.encryptedBooks) : emptyState();
+        stateCache = mergeWithDefaults({ ...opened, meta: opened.metaRest || {}, localPrefs: raw?.localPrefs || {} });
+      } else {
+        delete state.meta.vault;
+      }
+      unlockedSession.dek = null;
+      unlockedSession.activeUser = null;
+      unlockedSession.appUnlocked = false;
+      await flushState();
+      return jsonRes({ ok: true, enabled: false, encrypted: false });
+    } catch {
+      return jsonRes({ ok: false, error: 'Wrong Owner PIN', code: 'wrong-pin' }, 401);
+    }
+  }
+
+  if (path === '/api/lock/users' && method === 'POST') {
+    const { currentPin, name, role, pin } = await parseBody(init);
+    const vault = state.meta?.vault;
+    if (!vault?.encrypted) return jsonRes({ ok: false, error: 'Enable Encrypted Vault first to add staff roles' }, 400);
+    try {
+      const { dek, user: actor } = await unlockVaultWithPin(vault, currentPin);
+      if (actor.role !== 'owner') return jsonRes({ ok: false, error: 'Only Owner can add staff accounts' }, 403);
+      const { vaultMeta: nextVault, user } = await addVaultStaffUser(vault, dek, { name, role, pin });
+      state.meta.vault = nextVault;
+      await flushState();
+      return jsonRes({ ok: true, user });
+    } catch (e) {
+      return jsonRes({ ok: false, error: e.message || 'Could not add staff user' }, 400);
+    }
+  }
+
+  const staffDelMatch = path.match(/^\/api\/lock\/users\/([^/]+)$/);
+  if (staffDelMatch && method === 'DELETE') {
+    const targetId = decodeURIComponent(staffDelMatch[1]);
+    const { currentPin } = await parseBody(init);
+    const vault = state.meta?.vault;
+    if (!vault?.encrypted) return jsonRes({ ok: false, error: 'Vault not enabled' }, 400);
+    try {
+      const { user: actor } = await unlockVaultWithPin(vault, currentPin);
+      if (actor.role !== 'owner') return jsonRes({ ok: false, error: 'Only Owner can remove staff accounts' }, 403);
+      state.meta.vault = removeVaultStaffUser(vault, targetId);
+      await flushState();
+      return jsonRes({ ok: true });
+    } catch (e) {
+      return jsonRes({ ok: false, error: e.message || 'Wrong Owner PIN' }, 401);
+    }
+  }
+
+  if (path === '/api/lock/auto-lock' && method === 'POST') {
+    const { autoLockMinutes = 5, lockOnHidden = false } = await parseBody(init);
+    if (state.meta?.vault?.encrypted) {
+      state.meta.vault = {
+        ...state.meta.vault,
+        autoLockMinutes: Math.max(0, Number(autoLockMinutes) || 0),
+        lockOnHidden: !!lockOnHidden,
+      };
+      await flushState();
+      return jsonRes({ ok: true });
+    }
+    if (state.meta?.appLock) {
+      state.meta.appLock = {
+        ...state.meta.appLock,
+        autoLockMinutes: Math.max(0, Number(autoLockMinutes) || 0),
+        lockOnHidden: !!lockOnHidden,
+      };
+      await flushState();
+    }
+    return jsonRes({ ok: true });
+  }
+
   if (path === '/api/lock/set' && method === 'POST') {
     const { pin, currentPin } = await parseBody(init);
     const existing = state.meta?.appLock;
@@ -267,6 +568,19 @@ async function handleBrowserApi(path, searchParams, init = {}) {
     }
     await scheduleFlush();
     return jsonRes({ ok: true, enabled: !!state.meta.appLock });
+  }
+
+  // Block all data routes while Option A Encrypted Vault is locked
+  if (state.__vaultLocked && path !== '/api/client-errors') {
+    return jsonRes({ error: 'Encrypted Vault is locked. Enter your PIN to unlock.', code: 'vault-locked' }, 423);
+  }
+
+  // Enforce L2 Staff Role permissions on mutating requests
+  if (unlockedSession.activeUser?.role) {
+    const deniedMsg = checkRoleApiPermission(unlockedSession.activeUser.role, method, path);
+    if (deniedMsg) {
+      return jsonRes({ error: deniedMsg, code: 'role-denied', role: unlockedSession.activeUser.role }, 403);
+    }
   }
 
   // ---- Period Lock & Edit History ----
@@ -492,10 +806,16 @@ async function handleBrowserApi(path, searchParams, init = {}) {
     }));
   }
   if (path === '/api/backups/now' && method === 'POST') {
+    const body = await parseBody(init);
+    const keep = Math.max(3, Math.min(180, Number(body?.keepLastCount) || 30));
     const today = new Date().toISOString().slice(0, 10);
     state.backups[today] = snapshotForBackup(state);
+    const allDates = Object.keys(state.backups).sort((a, b) => b.localeCompare(a));
+    for (const oldDate of allDates.slice(keep)) {
+      delete state.backups[oldDate];
+    }
     await scheduleFlush();
-    return jsonRes({ success: true, date: today });
+    return jsonRes({ success: true, date: today, kept: Object.keys(state.backups).length });
   }
   const backupRestoreMatch = path.match(/^\/api\/backups\/([^/]+)\/restore$/);
   if (backupRestoreMatch && method === 'POST') {

@@ -163,7 +163,7 @@ copyFileSync(join(REPO_ROOT, 'src', 'utils', 'expensePayment.js'), join(SYSTEM, 
 // installKind.js: what a .deb / AppImage / Docker / Mac app copy says on update.
 // v1.10.86 - productUpdates.js (PR #215 price-update route), termsDefaults.js
 // (seeded terms), pdfClipboard.js (WhatsApp: copy the PDF on the PC).
-for (const f of ['purchasePayments.js', 'purchaseOrders.js', 'appHome.js', 'serverLock.js', 'setupDownload.js', 'makeDir.js', 'phoneAccess.js', 'selfSignedCert.js', 'pairPage.js', 'periodLock.js', 'installKind.js', 'productUpdates.js', 'termsDefaults.js', 'pdfClipboard.js']) {
+for (const f of ['purchasePayments.js', 'purchaseOrders.js', 'appHome.js', 'serverLock.js', 'setupDownload.js', 'makeDir.js', 'phoneAccess.js', 'selfSignedCert.js', 'pairPage.js', 'periodLock.js', 'installKind.js', 'productUpdates.js', 'termsDefaults.js', 'pdfClipboard.js', 'industryFields.js', 'localLock.js']) {
   copyFileSync(join(REPO_ROOT, 'src', 'utils', f), join(SYSTEM, 'src', 'utils', f));
 }
 

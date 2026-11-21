@@ -51,6 +51,12 @@ async function apiFetch(url, options = {}) {
     if (res.status === 423 && body?.code === 'period-locked' && typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('fgsb:period-locked', { detail: body }));
     }
+    if (res.status === 423 && body?.code === 'vault-locked' && typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('freegstbill-lock'));
+    }
+    if (res.status === 403 && body?.code === 'role-denied' && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('fgsb:role-denied', { detail: body }));
+    }
     if (res.status >= 500) {
       logApiProblem(options, url, res.status, err.message);
       err.problemLogged = true;
@@ -72,13 +78,27 @@ export const getPeriodLock = () => apiFetch(`${API}/period-lock`);
 export const setPeriodLock = (upTo, pin) => apiFetch(`${API}/period-lock`, { method: 'POST', body: JSON.stringify({ upTo, ...(pin ? { pin } : {}) }) });
 export const getEditHistory = (limit = 200) => apiFetch(`${API}/edit-history?limit=${encodeURIComponent(limit)}`);
 
-// ---- PIN lock (v1.10.77, #84; checked by the server, see AppLock.jsx) ----
+// ---- PIN lock + Option A Encrypted Vault & L2 Staff Roles ----
 export const getLockStatus = () => apiFetch(`${API}/lock`);
 // v1.10.86 - "Forgot PIN?": opens the folder where the RESET-PIN file goes (this PC only).
 export const openResetFolder = () => apiFetch(`${API}/control-panel/open-reset-folder`, { method: 'POST' });
-export const verifyPin = (pin) => apiFetch(`${API}/lock/verify`, { method: 'POST', body: JSON.stringify({ pin }) });
+export const verifyPin = (pin, userId = null) => apiFetch(`${API}/lock/verify`, { method: 'POST', body: JSON.stringify({ pin, ...(userId ? { userId } : {}) }) });
 // pin null turns the lock off. currentPin is needed when a PIN is already set.
 export const setLockPin = (pin, currentPin) => apiFetch(`${API}/lock/set`, { method: 'POST', body: JSON.stringify({ pin, currentPin }) });
+export const setupVaultLock = ({ pin, ownerName, autoLockMinutes = 5 }) =>
+  apiFetch(`${API}/lock/setup-vault`, { method: 'POST', body: JSON.stringify({ pin, ownerName, autoLockMinutes }) });
+export const recoverVaultPin = ({ recoveryCode, newPin }) =>
+  apiFetch(`${API}/lock/recover`, { method: 'POST', body: JSON.stringify({ recoveryCode, newPin }) });
+export const changeVaultPin = ({ userId, currentPin, newPin }) =>
+  apiFetch(`${API}/lock/change-pin`, { method: 'POST', body: JSON.stringify({ userId, currentPin, newPin }) });
+export const disableVaultLock = ({ currentPin }) =>
+  apiFetch(`${API}/lock/disable-vault`, { method: 'POST', body: JSON.stringify({ currentPin }) });
+export const addLockStaffUser = ({ currentPin, name, role, pin }) =>
+  apiFetch(`${API}/lock/users`, { method: 'POST', body: JSON.stringify({ currentPin, name, role, pin }) });
+export const deleteLockStaffUser = (userId, currentPin) =>
+  apiFetch(`${API}/lock/users/${encodeURIComponent(userId)}`, { method: 'DELETE', body: JSON.stringify({ currentPin }) });
+export const saveAutoLockSettings = ({ autoLockMinutes, lockOnHidden }) =>
+  apiFetch(`${API}/lock/auto-lock`, { method: 'POST', body: JSON.stringify({ autoLockMinutes, lockOnHidden }) });
 
 // ---- Phone / tablet access (v1.10.85; server.js PHONE / TABLET ACCESS) ----
 export const getPhoneAccess = () => apiFetch(`${API}/phone-access`);

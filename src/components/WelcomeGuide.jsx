@@ -192,7 +192,10 @@ export default function WelcomeGuide({ onComplete }) {
                 <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'linear-gradient(135deg, #1e40af, #2563eb)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#fff', fontWeight: 800, fontSize: '1.4rem' }}>
                   B
                 </div>
-                <h1 style={{ fontSize: 'clamp(1.25rem, 4vw, 1.6rem)', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>Welcome to Bharat GST Free Billing <HelpButton title="Welcome" doc="first-run#welcome" size={16} /></h1>
+                <div>
+                  <h1 style={{ fontSize: 'clamp(1.25rem, 4vw, 1.6rem)', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>Welcome to Bharat GST Free Billing <HelpButton title="Welcome" doc="first-run#welcome" size={16} /></h1>
+                  <div style={{ fontSize: '0.74rem', fontWeight: 600, color: 'var(--primary)', marginTop: '0.15rem' }}>Created by Abhishek Agrahari</div>
+                </div>
               </div>
               <p style={{ color: 'var(--text-secondary)', margin: '0 0 1rem', lineHeight: 1.5, fontSize: '0.9rem' }}>
                 100% Free GST billing &amp; invoicing for Indian businesses. Two minutes of setup and you can create your first GST bill.

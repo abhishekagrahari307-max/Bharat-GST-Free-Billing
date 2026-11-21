@@ -36,6 +36,8 @@ import { QUICK_TERMS } from '../utils/termsDefaults';
 import ComboInput from './ComboInput';
 import IndustrySpecsEditor from './IndustrySpecsEditor';
 import { readIndustryConfig, saveIndustryConfig } from '../utils/industryFields';
+import OfflineAppCenter from './OfflineAppCenter';
+import BackupCenter from './BackupCenter';
 
 // v1.10.36 — Section order for the jump-nav pill bar. Keeping this at
 // module scope so the scroll-spy effect below can reference it without
@@ -53,11 +55,11 @@ const SETTINGS_TABS = [
   ['tab-features', 'Features',           ['section-modules', 'section-costcentres', 'section-stock']],
   ['tab-privacy',  'Privacy & Security', ['section-lock', 'section-phone', 'section-privacy']],
   // v1.10.86 - with the Control Panel's backup ZIP buttons (section-backupzip).
-  ['tab-data',     'Data & Backups',     ['section-backups', 'section-backupzip', 'section-books', 'section-cloud', 'section-data']],
+  ['tab-data',     'Data & Backups',     ['section-data', 'section-backups', 'section-backupzip', 'section-books', 'section-cloud']],
   // v1.10.86 - App colour, Text size and Compact lists.
   ['tab-look',     'Appearance',         ['section-appearance']],
-  // v1.10.86 - "App & updates": the Control Panel moved in (AppSettings.jsx).
-  ['tab-updates',  'App & updates',      ['section-updates', 'section-app']],
+  // v1.10.86 - "App & updates" + Complete Offline App Installer (PC, Laptop & Mobile).
+  ['tab-updates',  'App & Offline Install', ['section-offline-app', 'section-updates', 'section-app']],
 ];
 const ALL_SECTIONS = SETTINGS_TABS.flatMap(([, , sections]) => sections);
 // A tab id or a section id -> its tab (the first tab for anything unknown).
@@ -72,7 +74,7 @@ const SETTINGS_TAB_DOCS = {
   'section-terms': 'settings#terms', 'section-newinvoice': 'settings#new-invoice', 'section-print': 'print-settings', 'section-modules': 'settings#features',
   'section-stock': 'settings#stock', 'section-region': 'settings#region', 'section-lock': 'settings#lock', 'section-phone': 'phone', 'section-privacy': 'security#offline-mode',
   'section-backups': 'backup#automatic-backups', 'section-books': 'backup#close-books', 'section-cloud': 'settings#google-drive', 'section-data': 'backup#export-import',
-  'section-updates': 'settings#updates', 'section-app': 'settings#restart', 'section-backupzip': 'backup#backup-zip', 'section-appearance': 'settings#appearance',
+  'section-offline-app': 'settings#updates', 'section-updates': 'settings#updates', 'section-app': 'settings#restart', 'section-backupzip': 'backup#backup-zip', 'section-appearance': 'settings#appearance',
 };
 
 export default function SettingsView({ onSaved }) {
@@ -1927,35 +1929,23 @@ export default function SettingsView({ onSaved }) {
            kept as a comment so a code search for "Multi-Business
            Profiles" still lands somewhere sensible. */}
 
-      {/* ---- App & updates (v1.10.86: with the Control Panel's cards) ---- */}
+      {/* ---- Complete Offline App Installer (PC, Laptop & Mobile) + App & updates ---- */}
+      <OfflineAppCenter />
       <AppAndUpdates status={appStatus} />
 
-      <div id="section-data" className="glass-panel p-6 mb-6" style={{ order: 10 }}>
-        <h3 className="section-title">Data Management <HelpButton title="Data Management: Export and Import Backup" doc="backup#export-import" size={16} style={{ marginLeft: 6 }} /></h3>
+      <div id="section-data" className="glass-panel p-6 mb-6" style={{ order: 7 }}>
+        <h3 className="section-title">
+          Data Backup, Auto-Backup Schedule &amp; Cloud Sync
+          <HelpButton title="Data Management: Export and Import Backup" doc="backup#export-import" size={16} style={{ marginLeft: 6 }} />
+        </h3>
 
-        {/* Privacy notice — uses the global .notice .notice-info utility so dark/light look identical to every other info card. */}
-        <div className="notice notice-info" style={{ marginBottom: '1rem' }}>
-          <span className="notice-icon">🔒</span>
-          <div>
-            <strong>Your data is on this computer only.</strong> Nothing is uploaded to
-            us, our servers, or any third party — not invoices, not clients, not
-            settings. Your data leaves this computer only if you send it to{' '}
-            <strong>your own</strong> Google Drive (<em>Save to Drive</em> below, or
-            with each PDF once Drive is set up). See Privacy &amp; internet for
-            everything the app uses the internet for.
-            Files live under <code>data/</code> and <code>Saved Invoices/</code> next to the app.
-          </div>
-        </div>
-
-        <p className="page-subtitle mb-6">
-          Choose what to back up or restore — invoices, clients, products, settings, custom units, or just specific parts.
-          Backup files are plain JSON you can keep on a USB drive, OneDrive, or your own Google Drive.
-        </p>
-        <div className="flex gap-4" style={{ flexWrap: 'wrap' }}>
-          <button type="button" className="btn btn-primary" onClick={() => setShowExportModal(true)}><Download size={18} /> Export Backup…</button>
-          <button type="button" className="btn btn-secondary" onClick={() => fileInputRef.current?.click()}><Upload size={18} /> Import Backup…</button>
-          <input ref={fileInputRef} type="file" accept=".json" onChange={handleImportPick} style={{ display: 'none' }} />
-        </div>
+        <BackupCenter
+          profile={profile}
+          onUpdateProfileField={(k, v) => setProfile((prev) => ({ ...prev, [k]: v }))}
+          onOpenLegacyExport={() => setShowExportModal(true)}
+          onOpenSelectiveImport={() => fileInputRef.current?.click()}
+        />
+        <input ref={fileInputRef} type="file" accept=".json" onChange={handleImportPick} style={{ display: 'none' }} />
       </div>
 
       {/* ----------------------- Export modal ----------------------- */}
