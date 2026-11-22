@@ -1,11 +1,21 @@
-# Bharat GST Free Billing (v3.0.0 — Full Double-Entry CA Suite, SHA-256 Audit & Multi-OS Edition)
+# Bharat GST Free Billing (v3.1.0 — Enterprise Browser-Native ERP + AI Compliance OS)
 
-> 100% Free, Open-Source (MIT), Hybrid Offline PWA + Direct PC Hard-Drive Live Sync + Multi-OS Desktop Installers (`.exe`, `.deb`, `.AppImage`, `macOS`, `Docker`) + Full Double-Entry Accounting (`F4–F7` Vouchers, Trial Balance, Schedule III Balance Sheet), SHA-256 Hash-Chained Audit Trail, `.bharatca` CA Desk & AI Voice GST Billing Suite. Created & maintained by Abhishek Agrahari.
+> 100% Free, Open-Source (MIT), Hybrid Offline PWA + Direct PC Hard-Drive Live Sync + Multi-OS Desktop Installers + Full Double-Entry Accounting (`F4–F7` Vouchers, Trial Balance, Schedule III Balance Sheet), SHA-256 Hash-Chained Audit Trail, AI GST Notice Shield (Sec 17(5) & Rule 37), GSTR-9/CMP-08, AI Fuzzy GSTR-2B Matcher, 30-Day Cash/Dead-Stock Forecaster, FIFO Payment Allocator, Shareable B2B Catalog, WebSerial Weighing Scale & WebUSB Silent ESC/POS Suite. Created & maintained by Abhishek Agrahari.
 
 - Live Application (Instant Offline PWA & Web): https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/
 - Complete Self-Hosted Documentation (35 Pages): https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/user-guide/
 - Public Open-Source Repository & Multi-OS Releases (MIT License): https://github.com/abhishekagrahari307-max/Bharat-GST-Free-Billing
-- Latest Release: v3.0.0 (2026-11-21) — Full Double-Entry Accounting, SHA-256 Audit Chain, `.bharatca` CA Desk & Automated `.exe`/`.deb`/`.AppImage`/`macOS`/`Docker` Installers
+- Latest Release: v3.1.0 (2026-11-21) — Enterprise AI GST Notice Shield, Fuzzy GSTR-2B, Cash/Dead-Stock Forecaster, FIFO Settlement, B2B Catalog, WebSerial Scale & Silent ESC/POS + Full Double-Entry Books
+
+---
+
+## 0A. Enterprise AI Compliance OS, Omnichannel B2B & Hardware Bridge (`v3.1.0`)
+
+- **AI GST Scrutiny & Notice Prevention Engine (`src/utils/gstNoticeShield.js`)**: Automatically flags **Section 17(5) Blocked ITC** (motor vehicles, catering/food, club/health, personal/gifts, immovable works contracts), **CGST Rule 37 (>180-day unpaid supplier ITC reversal + 18% interest)**, and **Rule 138 E-Way Bill (>₹50,000)** gaps, plus **GSTR-9 Annual Return Working Papers (Tables 4, 6, 9, 17)** and **CMP-08 Quarterly Summary**.
+- **AI Fuzzy GSTR-2B Reconciler (`src/utils/fuzzyGstr2b.js`)**: Matches `INV/2026-27/0045` ↔ `45` via normalized trailing digits + Levenshtein distance + `±₹2` tolerance and generates **1-click WhatsApp ITC Follow-Up Notices** for suppliers missing in GSTR-2B.
+- **On-Device 30-Day Cash-Flow & Dead-Stock Forecaster (`src/utils/aiForecaster.js`)**: Local statistical prediction of 30-day cash inflows/outflows, locked dead-stock capital (`90+` days unsold), and fast-moving stockout countdowns (`≤21` days left).
+- **Smart FIFO Lump-Sum Allocator, Shareable B2B Catalog & Multi-Tab Live Sync (`src/utils/fifoAndCatalog.js` + `BroadcastChannel`)**: Settles lump-sum customer receipts oldest-invoice-first, exports a zero-server HTML B2B Digital Catalog with WhatsApp order parsing, and syncs open browser tabs in milliseconds.
+- **Direct Browser Hardware Bridge (`src/utils/hardwareBridge.js`)**: **WebSerial API** live kg/g electronic weighing scale capture + **WebUSB / WebSerial Direct ESC/POS** 0.2s silent 58mm/80mm thermal receipt streaming.
 
 ---
 

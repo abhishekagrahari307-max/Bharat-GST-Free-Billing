@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, Wallet, BarChart3, Clock, Search, X, Users, Package, Boxes, Building2, Percent, BookOpen, Landmark, ShieldCheck } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, BarChart3, Clock, Search, X, Users, Package, Boxes, Building2, Percent, BookOpen, Landmark, ShieldCheck, Sparkles } from 'lucide-react';
 import { getAllBills, getAllExpenses, getAllProducts, getProfile, getAllPurchases } from '../store';
 import { costOfGoodsSold, costOfGoodsSoldIn } from '../utils/products';
 import { formatCurrency, getFYOptions, belongsToProfile, isCancelledBill, salesSign, countsAsSales, parseLocalDate, amountDue } from '../utils';
@@ -15,6 +15,7 @@ import CostCentreReport from './CostCentreReport';
 import { costCentresOn } from './useCostCentres';
 import TdsTcsReport from './TdsTcsReport';
 import AccountingDesk from './AccountingDesk';
+import EnterpriseAiHub from './EnterpriseAiHub';
 import { productSales, categoryOptions, brandOptions, serialTrail } from '../utils/stock';
 
 const MONTHS = [
@@ -36,6 +37,7 @@ const TAB_HELP = {
   doubleentry: ['Double-Entry & Trial Balance', 'reports#double-entry'],
   balancesheet: ['Schedule III Balance Sheet', 'reports#balance-sheet'],
   cadesk: ['SHA-256 Audit & CA Desk', 'reports#ca-desk'],
+  enterprise: ['Enterprise AI, Notice Shield & Hardware Hub', 'reports#enterprise-ai'],
   aging: ['Outstanding & Aging', 'reports#outstanding'],
   party: ['Party Outstanding', 'reports#party-outstanding'],
   clients: ['Client Analytics', 'reports#clients'],
@@ -277,6 +279,10 @@ export default function ReportsView() {
           onClick={() => setActiveTab('cadesk')}>
           <ShieldCheck size={16} /> Audit Chain &amp; CA Desk
         </button>
+        <button className={`btn ${activeTab === 'enterprise' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setActiveTab('enterprise')}>
+          <Sparkles size={16} /> Enterprise AI &amp; POS Hub
+        </button>
         <button className={`btn ${activeTab === 'aging' ? 'btn-primary' : 'btn-secondary'}`}
           onClick={() => setActiveTab('aging')}>
           <Clock size={16} /> Outstanding & Aging
@@ -312,7 +318,7 @@ export default function ReportsView() {
 
       {/* v1.10.74 - Period + Currency Selector, shared by P&L, Client Analytics
           and Product Performance (they all read the same period/currency). */}
-      {activeTab !== 'aging' && activeTab !== 'party' && activeTab !== 'stock' && activeTab !== 'tds' && activeTab !== 'doubleentry' && activeTab !== 'balancesheet' && activeTab !== 'cadesk' && (
+      {activeTab !== 'aging' && activeTab !== 'party' && activeTab !== 'stock' && activeTab !== 'tds' && activeTab !== 'doubleentry' && activeTab !== 'balancesheet' && activeTab !== 'cadesk' && activeTab !== 'enterprise' && (
           <div className="glass-panel" style={{ padding: '1.25rem', marginBottom: '1.5rem' }}>
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
               <div className="form-group" style={{ margin: 0 }}>
@@ -862,6 +868,17 @@ export default function ReportsView() {
           products={products}
           ownerProfile={ownerProfile}
           periodLabel={filterMode === 'fy' ? (fyFilter || 'Current-FY') : `${monthFilter || 'All'}-${yearFilter || currentYear}`}
+        />
+      )}
+
+      {activeTab === 'enterprise' && (
+        <EnterpriseAiHub
+          bills={bills.filter((b) => belongsToProfile(b, ownerProfile))}
+          purchases={purchases.filter((p) => belongsToProfile(p, ownerProfile))}
+          expenses={expenses.filter((e) => belongsToProfile(e, ownerProfile))}
+          products={products}
+          ownerProfile={ownerProfile}
+          onBillsUpdated={() => getAllBills().then(setBills).catch(() => {})}
         />
       )}
     </div>

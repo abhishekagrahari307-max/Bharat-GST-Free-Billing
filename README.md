@@ -1,6 +1,6 @@
-# Bharat GST Free Billing 🇮🇳 (`v3.0.0` · Full Double-Entry CA Suite + Multi-OS Installers + AI Voice PWA)
+# Bharat GST Free Billing 🇮🇳 (`v3.1.0` · Browser-Native Enterprise AI ERP + Double-Entry CA Suite + Hardware POS)
 
-**100% Free, Open-Source (MIT), Offline-First & Cryptographically Secured AI Voice GST Billing, Full Double-Entry Accounting (`F4–F7`, Trial Balance, Schedule III Balance Sheet), SHA-256 Audit Trail, Inventory & Tax Filing Suite for Bharat.**
+**100% Free, Open-Source (MIT), Offline-First & Cryptographically Secured AI Voice GST ERP, Full Double-Entry Accounting (`F4–F7`, Trial Balance, Schedule III Balance Sheet), SHA-256 Audit Trail, AI GST Notice Shield (Sec 17(5) & Rule 37), GSTR-9/CMP-08, Fuzzy GSTR-2B, WebSerial Scale & Silent ESC/POS Suite for Bharat.**
 
 Created & maintained by **Abhishek Agrahari** — built for Indian retail shops, kirana stores, pharmacies, mobile/electronics dealers, jewellers, wholesalers, manufacturers, restaurants, freelancers, exporters, and Chartered Accountants. **Zero subscriptions, zero ads, zero signup, and zero locked features — forever.**
 
@@ -11,7 +11,14 @@ Created & maintained by **Abhishek Agrahari** — built for Indian retail shops,
 
 ---
 
-## 🚀 Exclusive Next-Gen Capabilities in `v3.0.0`
+## 🚀 Exclusive Next-Gen Capabilities in `v3.1.0`
+
+0. **⚡ Enterprise AI Compliance OS, Omnichannel B2B & Hardware Bridge (`Reports → Enterprise AI & POS Hub`)**
+   - **AI GST Notice Shield + GSTR-9 & CMP-08 Working Papers**: Automatically detects **Section 17(5) Blocked ITC**, **CGST Rule 37 (>180-day unpaid supplier ITC reversal + 18% interest)**, and **Rule 138 E-Way Bill (>₹50,000)** risks, plus consolidated **GSTR-9 Annual Return** and **CMP-08** tables.
+   - **AI Fuzzy GSTR-2B Matcher**: Reconciles `INV/2026-27/0045` ↔ `45` using Levenshtein + trailing core digits + `±₹2` tolerance, with **1-click WhatsApp ITC Follow-Up Notices** to suppliers.
+   - **On-Device 30-Day Cash-Flow & Dead-Stock Forecaster**: Predicts 30-day cash inflows/outflows, locked dead-stock capital, and fast-moving stockout countdowns (`≤21` days).
+   - **Smart FIFO Lump-Sum Payment Allocator, Shareable B2B Catalog & `BroadcastChannel` Multi-Tab Live Sync**: Clears oldest unpaid bills first, exports standalone HTML B2B Digital Catalogs with WhatsApp order parsing, and syncs open tabs in milliseconds.
+   - **WebSerial Weighing Scale & WebUSB Silent ESC/POS**: Direct browser hardware capture for electronic scales (kg/g) and 0.2s silent USB thermal receipt printing.
 
 1. **📒 Full Double-Entry Accounting Engine (`F4–F7` Vouchers, Trial Balance & Schedule III Balance Sheet)**
    - Sales, Credit Notes, Purchases, Debit Notes & Expenses **auto-post balanced Debit/Credit ledger lines (`Dr === Cr`)** automatically — zero accounting complexity for shopkeepers!

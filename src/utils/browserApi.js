@@ -284,7 +284,17 @@ function extractApiPath(input) {
   }
 }
 
-const BHARAT_CHANGELOG_MD = `## [3.0.0] - 2026-11-21
+const BHARAT_CHANGELOG_MD = `## [3.1.0] - 2026-11-21
+**Enterprise Browser-Native ERP + AI Compliance OS: GST Notice Shield (Sec 17(5) & Rule 37), GSTR-9/CMP-08, AI Fuzzy GSTR-2B, 30-Day Cash/Dead-Stock Forecaster, FIFO Settlement, B2B Catalog, WebSerial Scale & Silent ESC/POS.**
+
+### Added
+- **AI GST Notice Shield & GSTR-9 / CMP-08 Working Papers**: Flags Section 17(5) blocked ITC, CGST Rule 37 (>180-day unpaid supplier ITC reversal + 18% interest), and Rule 138 E-Way Bill gaps + GSTR-9 Annual Return & CMP-08 working papers.
+- **AI Fuzzy GSTR-2B Matcher**: Reconciles \`INV/2026-27/0045\` <-> \`45\` with Levenshtein + ±₹2 tolerance and 1-click WhatsApp supplier notices for missing ITC.
+- **On-Device 30-Day Cash-Flow & Dead-Stock Forecaster**: Predicts 30-day liquidity, dead-stock locked capital, and fast-moving stockout countdowns.
+- **FIFO Lump-Sum Allocator, Shareable B2B Catalog & Multi-Tab Live Sync**: Settles lump-sum customer payments oldest-first, exports standalone HTML B2B catalogs with WhatsApp order import, and syncs open browser tabs via \`BroadcastChannel\`.
+- **WebSerial Weighing Scale & WebUSB Silent ESC/POS**: Direct browser hardware bridge for electronic scales and 0.2s silent 58mm/80mm USB thermal receipt printing.
+
+## [3.0.0] - 2026-11-21
 **Full Double-Entry CA Accounting (F4-F7, Trial Balance, Schedule III Balance Sheet), SHA-256 Audit Chain, .bharatca CA Desk & Multi-OS Installers.**
 
 ### Added

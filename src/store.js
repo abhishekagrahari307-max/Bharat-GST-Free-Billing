@@ -67,11 +67,32 @@ async function apiFetch(url, options = {}) {
   // menu's red dots look again (App.jsx waits a moment, so a burst is one look).
   if (options.method && options.method !== 'GET' && DATA_SAVED_PATHS.test(url) && typeof window !== 'undefined') {
     window.dispatchEvent(new Event(DATA_SAVED_EVENT));
+    broadcastCrossTabDataSaved();
   }
   return res.json();
 }
 const DATA_SAVED_PATHS = /\/api\/(bills|products|recurring|purchases|receipts|stock-adjustments|productions|import|trash|meta\/journalVouchers)\b/;
 export const DATA_SAVED_EVENT = 'fgsb:data-saved';
+
+// ---- Multi-Tab Real-Time Sync via BroadcastChannel (v3.1.0) ----
+let liveSyncChannel = null;
+function broadcastCrossTabDataSaved() {
+  try {
+    if (typeof BroadcastChannel === 'undefined') return;
+    if (!liveSyncChannel) liveSyncChannel = new BroadcastChannel('bharat_gst_live_sync');
+    liveSyncChannel.postMessage({ type: 'data-saved', ts: Date.now() });
+  } catch { /* ignore unsupported environments */ }
+}
+if (typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined') {
+  try {
+    liveSyncChannel = new BroadcastChannel('bharat_gst_live_sync');
+    liveSyncChannel.onmessage = (ev) => {
+      if (ev?.data?.type === 'data-saved') {
+        window.dispatchEvent(new Event(DATA_SAVED_EVENT));
+      }
+    };
+  } catch { /* ignore */ }
+}
 
 // ---- Double-Entry Journal Vouchers (v3.0.0; stored in meta for universal PWA + Hard-Drive + Server sync) ----
 export const getJournalVouchers = async () => {
