@@ -5,6 +5,19 @@ Bharat GST Free Billing follows a **Daily Continuous Release & Safe Auto-Update*
 
 ---
 
+## [3.1.0] - 2026-11-21
+
+**Enterprise Browser-Native ERP + AI Compliance OS: GST Notice Shield (Sec 17(5) & Rule 37), GSTR-9/CMP-08, AI Fuzzy GSTR-2B, 30-Day Cash/Dead-Stock Forecaster, FIFO Settlement, B2B Catalog, Multi-Tab Live Sync, WebSerial Scale & Silent ESC/POS.**
+
+### Added
+- **AI GST Notice Shield & GSTR-9 / CMP-08 Working Papers (`src/utils/gstNoticeShield.js`)**: Flags Section 17(5) blocked ITC, CGST Rule 37 (>180-day unpaid supplier ITC reversal + 18% interest), and Rule 138 E-Way Bill (>₹50,000) risks + GSTR-9 Annual Return (Tables 4, 6, 9, 17) & CMP-08 summaries.
+- **AI Fuzzy GSTR-2B Matcher (`src/utils/fuzzyGstr2b.js`)**: Reconciles portal `GSTR-2B.json` against Purchase Bills using Levenshtein distance + trailing numeric core + ±₹2 tolerance, with 1-click WhatsApp supplier notices for missing ITC.
+- **On-Device 30-Day Cash-Flow & Dead-Stock Forecaster (`src/utils/aiForecaster.js`)**: Predicts 30-day inflows/outflows, locked dead-stock capital, and fast-moving stockout countdowns.
+- **Smart FIFO Lump-Sum Allocator, Shareable B2B Catalog & Multi-Tab Sync (`src/utils/fifoAndCatalog.js` + `BroadcastChannel`)**: Settles customer lump-sum receipts oldest-invoice-first, exports standalone HTML B2B Digital Catalogs with WhatsApp order parsing, and syncs open tabs in real time.
+- **Direct Browser Hardware Bridge (`src/utils/hardwareBridge.js`)**: WebSerial electronic weighing scale live capture (kg/g) and WebUSB/WebSerial native ESC/POS 0.2s silent thermal printing.
+
+---
+
 ## [3.0.0] - 2026-11-21
 
 **Full Double-Entry CA Accounting (`F4–F7`, Trial Balance, Schedule III Balance Sheet), Tamper-Proof SHA-256 Audit Chain, `.bharatca` CA Desk & Multi-OS Desktop Installers.**

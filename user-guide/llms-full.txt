@@ -1,4 +1,4 @@
-# Bharat GST Free Billing: complete documentation (version 3.0.0)
+# Bharat GST Free Billing: complete documentation (version 3.1.0)
 
 Source: https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/user-guide/
 
@@ -6283,6 +6283,14 @@ Automatically compiles your **Equity & Liabilities** (Owner&apos;s Capital, Draw
 ## Tamper-Proof SHA-256 Audit Chain & CA Desk ( .bharatca )
 
 Chains every voucher from Genesis (0000…0000) to HEAD using cryptographic **SHA-256** digests (MCA Rule 3(1) audit-trail ready) and lets you export or inspect an optional AES-256-GCM encrypted .bharatca CA Workpaper Package containing your Trial Balance, Balance Sheet, GST Readiness Score, and Audit Proof.
+
+## Enterprise AI, GST Notice Shield, B2B Catalog & Hardware Hub
+
+- **AI GST Notice Prevention Shield & GSTR-9 / CMP-08**: Automatically flags Section 17(5) blocked ITC, CGST Rule 37 (>180-day unpaid supplier ITC reversal + 18% interest), and Rule 138 E-Way Bill gaps alongside GSTR-9 Annual Return and CMP-08 working papers.
+- **AI Fuzzy GSTR-2B Matcher**: Reconciles portal GSTR-2B.json against Purchase Bills using Levenshtein distance + trailing numeric core + ±₹2 tolerance, with 1-click WhatsApp supplier notices for missing ITC.
+- **30-Day Cash-Flow & Dead-Stock AI Forecaster**: Predicts 30-day cash inflows/outflows, locked dead-stock capital, and fast-moving stockout countdowns completely offline.
+- **Smart FIFO Lump-Sum Allocator & Shareable B2B Catalog**: Settles customer lump-sum payments bill-by-bill (oldest first) and exports a zero-server HTML B2B Digital Catalog with WhatsApp order parsing.
+- **WebSerial Weighing Scale & WebUSB Silent ESC/POS**: Captures live kg/g readings from electronic scales and streams native ESC/POS receipt bytes directly to 58mm/80mm USB thermal printers.
 
 ---
 

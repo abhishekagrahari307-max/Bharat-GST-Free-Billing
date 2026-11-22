@@ -374,6 +374,17 @@ export default [
 <h2>Tamper-Proof SHA-256 Audit Chain &amp; CA Desk (<code>.bharatca</code>)</h2>
 <p>Chains every voucher from Genesis (<code>0000…0000</code>) to HEAD using cryptographic <b>SHA-256</b> digests (MCA Rule 3(1) audit-trail ready) and lets you export or inspect an optional <b>AES-256-GCM encrypted <code>.bharatca</code> CA Workpaper Package</b> containing your Trial Balance, Balance Sheet, GST Readiness Score, and Audit Proof.</p>
 </section>
+
+<section id="enterprise-ai">
+<h2>Enterprise AI, GST Notice Shield, B2B Catalog &amp; Hardware Hub</h2>
+<ul>
+  <li><b>AI GST Notice Prevention Shield &amp; GSTR-9 / CMP-08</b>: Automatically flags Section 17(5) blocked ITC, CGST Rule 37 (&gt;180-day unpaid supplier ITC reversal + 18% interest), and Rule 138 E-Way Bill gaps alongside GSTR-9 Annual Return and CMP-08 working papers.</li>
+  <li><b>AI Fuzzy GSTR-2B Matcher</b>: Reconciles portal <code>GSTR-2B.json</code> against Purchase Bills using Levenshtein distance + trailing numeric core + ±₹2 tolerance, with 1-click WhatsApp supplier notices for missing ITC.</li>
+  <li><b>30-Day Cash-Flow &amp; Dead-Stock AI Forecaster</b>: Predicts 30-day cash inflows/outflows, locked dead-stock capital, and fast-moving stockout countdowns completely offline.</li>
+  <li><b>Smart FIFO Lump-Sum Allocator &amp; Shareable B2B Catalog</b>: Settles customer lump-sum payments bill-by-bill (oldest first) and exports a zero-server HTML B2B Digital Catalog with WhatsApp order parsing.</li>
+  <li><b>WebSerial Weighing Scale &amp; WebUSB Silent ESC/POS</b>: Captures live kg/g readings from electronic scales and streams native ESC/POS receipt bytes directly to 58mm/80mm USB thermal printers.</li>
+</ul>
+</section>
 `,
 },
 ];
