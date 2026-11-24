@@ -1,4 +1,4 @@
-import { Heart, Share2, BookOpen, ShieldCheck, FileText, Calculator, Printer, Package, Globe, Mic, RefreshCw, Stethoscope } from 'lucide-react';
+import { Heart, Share2, BookOpen, ShieldCheck, FileText, Calculator, Printer, Package, Globe, Mic, RefreshCw, Stethoscope, MessageSquarePlus } from 'lucide-react';
 import WhatsNew from './WhatsNew';
 import ProblemLog from './ProblemLog';
 import HelpButton from './HelpButton';
@@ -20,10 +20,14 @@ const HIGHLIGHTS = [
 ];
 
 export default function SupportView() {
-  const appUrl = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '';
+  const appUrl = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : 'https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/';
   const shareText = `I make my GST invoices with Bharat GST Free Billing (Created by Abhishek Agrahari) — 100% free GST invoicing, GSTR-1/3B/2B, UPI QR & inventory${appUrl ? `: ${appUrl}` : ''}`;
+  const hinglishShareText = `🇮🇳 *Vyapari Bhaiyon & CAs ke liye 100% FREE GST Billing & Stock App!* \n\nAb bina kisi yearly charge ke mobile ya PC par GST Bill, UPI QR, Thermal Print, GSTR-1/3B JSON, Stock aur Tally/Vyapar Import chalayein — data 100% aapke device par safe rehta hai:\n👉 ${appUrl}`;
+  const feedbackUrl = `https://github.com/abhishekagrahari307-max/Bharat-GST-Free-Billing/issues/new?title=${encodeURIComponent(`[Feedback v${APP_VERSION}] `)}&body=${encodeURIComponent('**Business Type (Kirana / Wholesale / CA / Service):** \n\n**What worked well:** \n\n**What should be improved / GST or CA suggestion:** \n')}`;
   const freeWays = [
-    { icon: Share2, title: 'Share with another business on WhatsApp', text: 'Send Bharat GST Free Billing to a fellow shopkeeper, trader, or accountant.', href: `https://wa.me/?text=${encodeURIComponent(shareText)}` },
+    { icon: Share2, title: 'Share on WhatsApp (Hinglish — Vyapar Mandal & Traders)', text: 'Ready-to-forward Hinglish message for shopkeepers, wholesalers, and Vyapar Mandal groups.', href: `https://wa.me/?text=${encodeURIComponent(hinglishShareText)}` },
+    { icon: Share2, title: 'Share with another business on WhatsApp (English)', text: 'Send Bharat GST Free Billing to a fellow shopkeeper, trader, or accountant.', href: `https://wa.me/?text=${encodeURIComponent(shareText)}` },
+    { icon: MessageSquarePlus, title: 'Send Real-World Feedback / CA Review Note', text: 'Report a GST edge-case, CA suggestion, or feature request directly on GitHub.', href: feedbackUrl },
     { icon: BookOpen, title: 'Open Complete User Guide', text: 'Step-by-step instructions for GST invoicing, thermal printing, GSTR-1/3B, and encrypted backups.', href: docsLink('index') },
     { icon: ShieldCheck, title: 'Read Privacy & Data Protection Notice', text: 'Learn how your books stay 100% private on your own device with zero trackers.', href: './privacy.html' },
   ];

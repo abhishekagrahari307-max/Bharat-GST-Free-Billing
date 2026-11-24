@@ -60,3 +60,51 @@ Would love technical & accounting feedback from devs, shop owners, and CAs!
 - **Name:** Bharat GST Free Billing `v3.3.0`
 - **Tagline:** Free, serverless GST ERP, Double-Entry Books & POS in your browser with 5G P2P sync.
 - **Short Description:** Create GST invoices by Hinglish voice, export portal-ready GSTR-1/3B JSONs, fuzzy-match GSTR-2B, maintain Tally-style Trial Balance & Schedule III Balance Sheets, import Tally XML / Vyapar Excel in 1 click, connect weighing scales via WebSerial, and sync mobile orders to your counter PC over resilient 5G WebRTC—100% free & MIT open-source.
+
+---
+
+## 4. Local Vyapar Mandal / Traders WhatsApp Forward (Hinglish)
+
+> 🇮🇳 **Vyapari Bhaiyon aur CA Saathiyon ke liye 100% FREE GST Billing & Stock Software!**
+>
+> Ab GST billing, Stock/Godown hisaab aur GSTR-1/3B return ke liye har saal ₹3,000–₹10,000 dene ki zaroorat nahi hai.
+>
+> **Bharat GST Free Billing (`v3.3.0`)** seedha aapke Mobile ya Computer browser me (bina internet ke bhi) chalta hai:
+> ✅ **A4, A5 aur 58mm/80mm Thermal POS Bill** + Dynamic UPI Payment QR Code  
+> ✅ **Hinglish Bolkar (Voice) Billing** + Barcode Scanner + Weighing Scale connect  
+> ✅ **Tally XML aur Vyapar Excel** se 1-Click Party & Stock Import  
+> ✅ **5G Mobile se Counter PC Live Sync** (Godown se bill bhejein, counter par turant print)  
+> ✅ **CA-Ready GSTR-1 JSON, GSTR-2B Match, Trial Balance & Balance Sheet**  
+> 🔒 **100% Private:** Aapka data kisi bahari company ke server par nahi jaata — seedha aapke PC/Phone me safe rehta hai.
+>
+> 👉 **Abhi Free Chala Kar Dekhein:** https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/  
+> *(Chalak / फीडबैक ke liye app ke "About" tab me "Send Real-World Feedback" dabayein!)*
+
+---
+
+## 5. 10-Bill Real Shop Stress-Test Protocol (Day 1–2)
+
+Create these **10 specific real-world transactions** before public rollout to verify every tax & rounding edge case:
+1. **Local B2C Walk-in Cash Bill** (CGST + SGST, 5% + 18% mixed slabs + UPI QR scan check).
+2. **Local B2B Registered Party Bill** (valid 15-digit GSTIN, intra-state CGST + SGST, 6-digit HSN).
+3. **Inter-State B2B Bill** (different state GSTIN → verify automatic `IGST` switch).
+4. **Inter-State Large B2C (`> ₹2,50,000`)** → verify `B2CL` bucket placement in GSTR-1 JSON.
+5. **Discount + Round-Off Edge Case** (e.g., ₹999 inclusive/exclusive with `%` discount → verify `CGST === SGST` to the exact paisa).
+6. **Credit Note (Sales Return)** against Bill #2 → verify `CDNR` table in GSTR-1 JSON & automatic stock restoration.
+7. **Supplier Purchase Bill + Expense Entry** → verify ITC ledger & Section 17(5) / Rule 37 check.
+8. **Partial Payment + FIFO Lump-Sum Receipt** (`F6 Receipt`) → verify party outstanding balance drops accurately.
+9. **5G Mobile-to-PC P2P Bill** (turn off mobile data for 5 seconds, tap Push Bill → turn data back on → verify Offline Queue auto-flushes to PC).
+10. **PC Hard-Drive Folder Mirror + Restore Test** (link a local folder → verify `BharatGST-Live-Mirror.json` updates live).
+
+---
+
+## 6. CA (Chartered Accountant) Review Handover Checklist (Day 3–4)
+
+Export and email/WhatsApp two files from the stress-test above to your CA:
+1. **`GSTR1_<GSTIN>_<MMYYYY>.json`** (from *GST Returns → GSTR-1*) — ask your CA to load it into the **Official GST Offline Tool** and confirm **0 schema errors** across `b2b`, `b2cl`, `b2cs`, `cdnr`, `hsn`, and `doc_issue`.
+2. **`<FirmName>.bharatca` Workpaper Package** (from *Reports → CA Audit & Workpapers*) — ask your CA to verify:
+   - `Trial Balance` (`Total Debit === Total Credit`)
+   - `Schedule III Balance Sheet` + Closing Stock Valuation
+   - `SHA-256 Audit Chain` integrity check (MCA Rule 3(1) compliance)
+   - `Section 17(5)` & `Rule 37 (180-day)` Notice Shield flags
+
