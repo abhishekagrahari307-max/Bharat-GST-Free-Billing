@@ -19,7 +19,7 @@ if (!fs.existsSync(path.join(DIST, 'index.html'))) {
 }
 
 // Clean previous root static artifacts before copying fresh hashed chunks
-for (const dir of ['assets', 'icons', 'user-guide', '.well-known']) {
+for (const dir of ['assets', 'icons', 'audio', 'user-guide', '.well-known']) {
   fs.rmSync(path.join(ROOT, dir), { recursive: true, force: true });
 }
 for (const entry of fs.readdirSync(ROOT)) {

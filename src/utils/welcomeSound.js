@@ -1,26 +1,30 @@
-// Universal Cross-Device Welcome Chime + Voice Greeting Engine for Bharat GST Free Billing
-// Works across Android Chrome, iOS/iPadOS Safari, Windows, macOS, Linux & Installed PWAs:
-// 1. Plays a warm 4-Note Web Audio API Harmonic Chime (523.25 -> 659.25 -> 783.99 -> 1046.5 Hz) — 100% offline, 0 KB, works even without TTS voices.
-// 2. Speaks dynamic English / Hinglish greeting via SpeechSynthesisUtterance (pre-warmed voices, GC-pinned, zero Chromium cancel+speak race bug).
-// 3. Attempts 0ms automatic playback on page open (succeeds immediately in PWAs & high-MEI browsers) and seamlessly falls back to first-gesture ('click' / 'touchend' / 'keydown') on strict mobile/tablet browsers.
+// Studio Neural Human Voice Greeting Engine for Bharat GST Free Billing
+// Uses real studio-synthesized Indian-English & Hinglish human MP3 recordings
+// (./audio/welcome-en.mp3 & ./audio/welcome-hinglish.mp3 — precached in PWA Service Worker for 100% offline use!)
+// with automatic 0ms page-open playback + instant 1st-touch fallback on strict mobile/tablet browsers.
 // NOTE: Keep free of ../store.js and ../components/* imports (server test isolation).
 
 const SOUND_ENABLED_KEY = 'bharatgst_welcome_sound';
 const VOICE_STYLE_KEY = 'bharatgst_welcome_style';
 
+const STUDIO_AUDIO_PATHS = {
+  en: './audio/welcome-en.mp3',
+  hinglish: './audio/welcome-hinglish.mp3',
+};
+
+const audioElements = {};
 let sharedAudioCtx = null;
-let cachedVoices = [];
 let playedThisPageLoad = false;
 
-// Pre-warm TTS voices asynchronously on module load in browser environments
-if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+// Preload studio human MP3s in browser environments for instant zero-lag playback
+if (typeof window !== 'undefined' && typeof Audio !== 'undefined') {
   try {
-    cachedVoices = window.speechSynthesis.getVoices() || [];
-    window.speechSynthesis.addEventListener?.('voiceschanged', () => {
-      try {
-        cachedVoices = window.speechSynthesis.getVoices() || [];
-      } catch { /* ignore */ }
-    });
+    for (const [key, src] of Object.entries(STUDIO_AUDIO_PATHS)) {
+      const el = new Audio(src);
+      el.preload = 'auto';
+      el.volume = 1.0;
+      audioElements[key] = el;
+    }
   } catch { /* ignore */ }
 }
 
@@ -66,121 +70,100 @@ export function buildWelcomeVoiceText(businessName = '', style = getWelcomeVoice
     : 'Welcome to Bharat GST Free Billing, created by Abhishek Agrahari.';
 }
 
-function getOrCreateAudioContext() {
-  if (typeof window === 'undefined') return null;
-  const AudioCtx = window.AudioContext || window.webkitAudioContext;
-  if (!AudioCtx) return null;
-  if (!sharedAudioCtx || sharedAudioCtx.state === 'closed') {
-    sharedAudioCtx = new AudioCtx();
+function getStudioAudio(style = 'en') {
+  if (typeof window === 'undefined' || typeof Audio === 'undefined') return null;
+  const key = style === 'hinglish' ? 'hinglish' : 'en';
+  if (!audioElements[key]) {
+    const el = new Audio(STUDIO_AUDIO_PATHS[key]);
+    el.preload = 'auto';
+    el.volume = 1.0;
+    audioElements[key] = el;
   }
-  return sharedAudioCtx;
+  return audioElements[key];
 }
 
-function scheduleChimeNotes(ctx) {
-  const now = ctx.currentTime;
-  [523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => {
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(freq, now + i * 0.08);
-    gain.gain.setValueAtTime(0.001, now + i * 0.08);
-    gain.gain.exponentialRampToValueAtTime(0.16, now + i * 0.08 + 0.03);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.08 + 0.52);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start(now + i * 0.08);
-    osc.stop(now + i * 0.08 + 0.56);
-  });
-}
-
-function pickBestVoice(voices = []) {
-  if (!Array.isArray(voices) || voices.length === 0) return null;
-  return (
-    voices.find((v) => /en[-_]IN/i.test(v.lang)) ||
-    voices.find((v) => /hi[-_]IN/i.test(v.lang)) ||
-    voices.find((v) => /IN/i.test(v.lang)) ||
-    voices.find((v) => /^en/i.test(v.lang)) ||
-    voices[0] ||
-    null
-  );
-}
-
-function speakUtteranceSafe(text) {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
-    return false;
+function stopActiveStudioAudio() {
+  for (const el of Object.values(audioElements)) {
+    try {
+      el.pause();
+      el.currentTime = 0;
+    } catch { /* ignore */ }
   }
+}
+
+function playFallbackChime() {
+  if (typeof window === 'undefined') return;
   try {
-    const synth = window.speechSynthesis;
-    const launch = () => {
-      const utterance = new SpeechSynthesisUtterance(text);
-      // Prevent mobile Safari / Chrome Garbage Collector from dropping active utterance
-      window.__bharatGstUtterance = utterance;
-      const voices = cachedVoices.length ? cachedVoices : (synth.getVoices() || []);
-      const bestVoice = pickBestVoice(voices);
-      if (bestVoice) utterance.voice = bestVoice;
-      utterance.lang = bestVoice?.lang || 'en-IN';
-      utterance.rate = 1.0;
-      utterance.pitch = 1.03;
-      utterance.volume = 1.0;
-      synth.speak(utterance);
-    };
-
-    // Avoid Chromium's cancel()+speak() synchronous race bug: only cancel if already speaking
-    if (synth.speaking || synth.pending) {
-      synth.cancel();
-      setTimeout(launch, 60);
-    } else {
-      launch();
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    if (!sharedAudioCtx || sharedAudioCtx.state === 'closed') {
+      sharedAudioCtx = new AudioCtx();
     }
-    return true;
-  } catch {
-    return false;
-  }
+    if (sharedAudioCtx.state === 'suspended') sharedAudioCtx.resume().catch(() => {});
+    const now = sharedAudioCtx.currentTime;
+    [523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => {
+      const osc = sharedAudioCtx.createOscillator();
+      const gain = sharedAudioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now + i * 0.08);
+      gain.gain.setValueAtTime(0.001, now + i * 0.08);
+      gain.gain.exponentialRampToValueAtTime(0.08, now + i * 0.08 + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.08 + 0.42);
+      osc.connect(gain);
+      gain.connect(sharedAudioCtx.destination);
+      osc.start(now + i * 0.08);
+      osc.stop(now + i * 0.08 + 0.45);
+    });
+  } catch { /* ignore */ }
 }
 
 /**
- * Plays BOTH the 4-note Web Audio Harmonic Chime (guaranteed on every phone/tablet/PC)
- * AND the spoken Welcome Voice Greeting.
+ * Plays the real studio human voice MP3 (./audio/welcome-en.mp3 or ./audio/welcome-hinglish.mp3).
+ * Sounds 100% like a natural human across every Android, iPhone, iPad, Mac, Windows & Linux device.
  */
 export function playSafeWelcome(businessName = '', options = {}) {
+  void businessName;
   const { force = false, style } = options || {};
   if (!force && !isWelcomeSoundEnabled()) return false;
   if (typeof window === 'undefined') return false;
 
-  let chimePlayed = false;
-  try {
-    const ctx = getOrCreateAudioContext();
-    if (ctx) {
-      if (ctx.state === 'suspended') {
-        ctx.resume().then(() => {
-          if (ctx.state === 'running') scheduleChimeNotes(ctx);
-        }).catch(() => {});
-      } else if (ctx.state === 'running') {
-        scheduleChimeNotes(ctx);
-        chimePlayed = true;
-      }
-    }
-  } catch { /* ignore */ }
-
   const chosenStyle = style || getWelcomeVoiceStyle();
-  const text = buildWelcomeVoiceText(businessName, chosenStyle);
-  const voiceQueued = speakUtteranceSafe(text);
-  return chimePlayed || voiceQueued;
+  const audio = getStudioAudio(chosenStyle);
+  if (!audio) return false;
+
+  try {
+    stopActiveStudioAudio();
+    if ('speechSynthesis' in window && window.speechSynthesis.speaking) {
+      window.speechSynthesis.cancel();
+    }
+    audio.volume = 1.0;
+    const playPromise = audio.play();
+    if (playPromise && typeof playPromise.catch === 'function') {
+      playPromise.catch(() => {
+        playFallbackChime();
+      });
+    }
+    return true;
+  } catch {
+    playFallbackChime();
+    return false;
+  }
 }
 
-// Primary API used across WelcomeCard, SupportView, and App
 export function playWelcomeVoice(businessName = '', options = {}) {
   return playSafeWelcome(businessName, options);
 }
 
 /**
- * 2-Stage Automatic Launch Sound (Desktop, Mobile, Tablet & PWA):
- * Stage 1: Immediately attempts 0ms playback on website open (works automatically in PWAs & desktop browsers with MEI).
- * Stage 2: If mobile/tablet OS autoplay policy keeps AudioContext suspended until first touch,
- *          arms capture-phase 'click' / 'touchend' / 'keydown' so the VERY FIRST touch anywhere on screen
- *          synchronously unlocks AudioContext + TTS and plays the welcome chime & voice without fail!
+ * 2-Stage Automatic Studio Human Greeting (Desktop, Mobile, Tablet & PWA):
+ * Stage 1: Attempts immediate 0ms HTML5 <audio>.play() on website open.
+ *          If Promise resolves -> real human voice is already playing automatically!
+ * Stage 2: If Promise rejects (NotAllowedError due to mobile/tablet OS autoplay policy),
+ *          arms capture-phase 'click' / 'touchend' / 'keydown' so the VERY FIRST touch anywhere
+ *          plays the studio human MP3 instantaneously.
  */
 export function armSessionWelcomeGreeting(getBusinessName = () => '', onAwaitingGesture) {
+  if (typeof getBusinessName === 'function') getBusinessName();
   if (typeof window === 'undefined' || !isWelcomeSoundEnabled() || playedThisPageLoad) {
     onAwaitingGesture?.(false);
     return () => {};
@@ -200,59 +183,51 @@ export function armSessionWelcomeGreeting(getBusinessName = () => '', onAwaiting
       onAwaitingGesture?.(false);
       return;
     }
-    playedThisPageLoad = true;
-    removeGestureListeners();
-    onAwaitingGesture?.(false);
+    const audio = getStudioAudio(getWelcomeVoiceStyle());
+    if (!audio) return;
 
-    const biz = typeof getBusinessName === 'function' ? getBusinessName() : '';
-    try {
-      const ctx = getOrCreateAudioContext();
-      if (ctx) {
-        if (ctx.state === 'suspended') ctx.resume().catch(() => {});
-        scheduleChimeNotes(ctx);
-      }
-    } catch { /* ignore */ }
-    const text = buildWelcomeVoiceText(biz, getWelcomeVoiceStyle());
-    speakUtteranceSafe(text);
+    audio.currentTime = 0;
+    audio.volume = 1.0;
+    const p = audio.play();
+    if (p && typeof p.then === 'function') {
+      p.then(() => {
+        playedThisPageLoad = true;
+        removeGestureListeners();
+        onAwaitingGesture?.(false);
+      }).catch(() => {
+        // Keep listener if gesture wasn't audio-eligible yet
+      });
+    } else {
+      playedThisPageLoad = true;
+      removeGestureListeners();
+      onAwaitingGesture?.(false);
+    }
   }
 
-  // Stage 1: Try automatic 0ms playback right as the website opens!
   const attemptAutoOpenPlay = () => {
     if (cleanedUp || playedThisPageLoad || !isWelcomeSoundEnabled()) return;
-    try {
-      const ctx = getOrCreateAudioContext();
-      if (!ctx) {
-        // Fallback if Web Audio API unavailable
-        window.addEventListener('click', handleFirstGesture, true);
-        window.addEventListener('touchend', handleFirstGesture, true);
-        window.addEventListener('keydown', handleFirstGesture, true);
-        return;
-      }
+    const audio = getStudioAudio(getWelcomeVoiceStyle());
+    if (!audio) return;
 
-      const checkState = () => {
-        if (cleanedUp || playedThisPageLoad) return;
-        if (ctx.state === 'running') {
-          // Browser allowed zero-touch automatic playback on open!
+    try {
+      audio.currentTime = 0;
+      audio.volume = 1.0;
+      const p = audio.play();
+      if (p && typeof p.then === 'function') {
+        p.then(() => {
+          // Zero-click automatic studio human voice succeeded on open!
           playedThisPageLoad = true;
           removeGestureListeners();
           onAwaitingGesture?.(false);
-          scheduleChimeNotes(ctx);
-          const biz = typeof getBusinessName === 'function' ? getBusinessName() : '';
-          speakUtteranceSafe(buildWelcomeVoiceText(biz, getWelcomeVoiceStyle()));
-        } else {
-          // Mobile/Tablet OS blocked zero-touch autoplay -> arm instant 1st-touch unlock
-          onAwaitingGesture?.(true);
-          window.addEventListener('click', handleFirstGesture, true);
-          window.addEventListener('touchend', handleFirstGesture, true);
-          window.addEventListener('keydown', handleFirstGesture, true);
-        }
-      };
-
-      if (ctx.state === 'running') {
-        checkState();
-      } else {
-        ctx.resume().then(checkState).catch(checkState);
-        setTimeout(checkState, 180);
+        }).catch(() => {
+          // Mobile/Tablet OS requires 1 touch -> arm instant capture listener
+          if (!cleanedUp && !playedThisPageLoad) {
+            onAwaitingGesture?.(true);
+            window.addEventListener('click', handleFirstGesture, true);
+            window.addEventListener('touchend', handleFirstGesture, true);
+            window.addEventListener('keydown', handleFirstGesture, true);
+          }
+        });
       }
     } catch {
       onAwaitingGesture?.(true);
@@ -262,8 +237,7 @@ export function armSessionWelcomeGreeting(getBusinessName = () => '', onAwaiting
     }
   };
 
-  // Delay 250ms on open so profile name (if cached) & browser audio pipeline settle
-  const openTimer = setTimeout(attemptAutoOpenPlay, 250);
+  const openTimer = setTimeout(attemptAutoOpenPlay, 180);
 
   return () => {
     cleanedUp = true;
