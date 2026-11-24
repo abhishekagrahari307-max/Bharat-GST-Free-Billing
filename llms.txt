@@ -1,11 +1,11 @@
-# Bharat GST Free Billing (v3.3.0 — Enterprise Browser-Native ERP + Resilient 5G WebRTC P2P Sync + Tally/Vyapar Bridge)
+# Bharat GST Free Billing (v5.0.0 — Autonomous Bharat Business & Tax OS)
 
-> 100% Free, Open-Source (MIT), Hybrid Offline PWA + Resilient Serverless WebRTC 5G Mobile-to-PC Live Sync (with Offline Queue & Auto-Reconnect) + 1-Click Tally XML & Vyapar Excel Importer + Direct PC Hard-Drive Live Mirroring + Full Double-Entry Accounting (`F4–F7` Vouchers, Trial Balance, Schedule III Balance Sheet), SHA-256 Hash-Chained Audit Trail, AI GST Notice Shield (Sec 17(5) & Rule 37), GSTR-9/CMP-08, AI Fuzzy GSTR-2B Matcher, FIFO Payment Allocator, Shareable B2B Catalog, WebSerial Weighing Scale & WebUSB Silent ESC/POS Suite. Created & maintained by Abhishek Agrahari.
+> 100% Free, Open-Source (MIT), Serverless Browser-Native Autonomous ERP & Tax OS: ITR-3/4 (Sec 44AD/44ADA) + Income Tax AIS/26AS Parser + Form 26Q RPU + Zero-GSP Chrome/Edge Portal Auto-Fill Bridge + Multi-Godown Stock Transfer + FEFO Batch Allocator + Manufacturing BOM Costing + Income Tax Sec 43B(h) 45-Day MSME Tax Shield + Autonomous AI Munim + Zero-Server `#b2b-catalog=` WhatsApp Storefront + Resilient 5G WebRTC P2P Sync + 1-Click Tally XML & Vyapar Excel Importer + Studio Human Welcome Voice. Created & maintained by Abhishek Agrahari.
 
 - Live Application (Instant Offline PWA & Web): https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/
 - Complete Self-Hosted Documentation (35 Pages): https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/user-guide/
 - Public Open-Source Repository & Multi-OS Releases (MIT License): https://github.com/abhishekagrahari307-max/Bharat-GST-Free-Billing
-- Latest Release: v3.3.0 (2026-11-21) — Hardened 5G WebRTC P2P Sync (Offline Queue + Auto-Reconnect) + 1-Click Tally XML / Vyapar Excel Importer + Enterprise AI Notice Shield + Full Double-Entry Books
+- Latest Release: v5.0.0 (2026-11-21) — Autonomous Bharat Business & Tax OS (ITR-3/4 + AIS + 26Q + Zero-GSP Portal Bridge + Multi-Godown/FEFO/BOM + Sec 43B(h) MSME Shield + AI Munim + `#b2b-catalog=` Storefront)
 
 ---
 

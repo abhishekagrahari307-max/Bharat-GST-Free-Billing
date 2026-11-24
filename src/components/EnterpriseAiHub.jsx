@@ -3,6 +3,7 @@ import QRCode from 'qrcode';
 import {
   Sparkles, ShieldAlert, SearchCheck, TrendingUp, Cpu, ShoppingBag,
   Upload, Download, CheckCircle2, MessageCircle, Scale, Printer, Smartphone, Send, RefreshCw, Database,
+  FileSpreadsheet, Warehouse, Brain,
 } from 'lucide-react';
 import { saveBill, saveClient, saveProduct } from '../store';
 import { formatCurrency } from '../utils';
@@ -31,6 +32,7 @@ import {
   parseTallyXmlMigration,
 } from '../utils/legacyImporter';
 import TableExport from './TableExport';
+import AutonomousOsPanels from './AutonomousOsPanels';
 import { toast } from './Toast';
 
 export default function EnterpriseAiHub({
@@ -406,6 +408,15 @@ export default function EnterpriseAiHub({
           </button>
           <button type="button" className={`btn ${section === 'migrate' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSection('migrate')}>
             <Database size={15} /> Tally XML &amp; Vyapar Import
+          </button>
+          <button type="button" className={`btn ${section === 'itr' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSection('itr')}>
+            <FileSpreadsheet size={15} /> ITR-3/4, AIS &amp; Portal Bridge
+          </button>
+          <button type="button" className={`btn ${section === 'supplychain' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSection('supplychain')}>
+            <Warehouse size={15} /> Multi-Godown, FEFO &amp; BOM
+          </button>
+          <button type="button" className={`btn ${section === 'munim' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSection('munim')}>
+            <Brain size={15} /> AI Munim, Sec 43B(h) &amp; Storefront
           </button>
         </div>
       </div>
@@ -975,6 +986,18 @@ export default function EnterpriseAiHub({
             </div>
           )}
         </div>
+      )}
+
+      {(section === 'itr' || section === 'supplychain' || section === 'munim') && (
+        <AutonomousOsPanels
+          section={section}
+          bills={bills}
+          purchases={purchases}
+          expenses={expenses}
+          products={products}
+          ownerProfile={ownerProfile}
+          onProductsUpdated={onProductsUpdated}
+        />
       )}
     </div>
   );

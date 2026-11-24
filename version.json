@@ -1,8 +1,8 @@
 {
-  "version": "3.3.0",
+  "version": "5.0.0",
   "channel": "daily",
   "autoUpdate": true,
   "releaseDate": "2026-11-24",
-  "buildTime": "2026-11-24T16:38:27.959Z",
+  "buildTime": "2026-11-24T16:54:37.781Z",
   "minSupportedSchema": 1
 }

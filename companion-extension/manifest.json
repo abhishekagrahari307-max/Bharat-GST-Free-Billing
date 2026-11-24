@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "Bharat GST Portal Auto-Fill Bridge (Zero-GSP)",
+  "version": "5.0.0",
+  "description": "1-Click Zero-GSP auto-fill bridge for GST Portal (gst.gov.in) & NIC E-Way Bill (ewaybillgst.gov.in) from Bharat GST Free Billing.",
+  "permissions": ["storage", "activeTab", "scripting"],
+  "host_permissions": [
+    "https://abhishekagrahari307-max.github.io/*",
+    "http://localhost/*",
+    "https://*.gst.gov.in/*",
+    "https://ewaybillgst.gov.in/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/*",
+        "http://localhost/*",
+        "https://*.gst.gov.in/*",
+        "https://ewaybillgst.gov.in/*"
+      ],
+      "js": ["contentScript.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

@@ -1,8 +1,8 @@
-# Bharat GST Free Billing 🇮🇳 (`v3.3.0` · Enterprise AI ERP + Resilient 5G WebRTC P2P + Tally/Vyapar 1-Click Import + Double-Entry Suite)
+# Bharat GST Free Billing 🇮🇳 (`v5.0.0` · Autonomous Bharat Business & Tax OS — Unifying GST, ITR-3/4, Multi-Godown BOM, AI Munim & 5G POS)
 
 [![Live Offline PWA](https://img.shields.io/badge/Live_App_%26_Offline_PWA-Launch_Now-16a34a?style=for-the-badge)](https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/)
 [![35-Page User Guide](https://img.shields.io/badge/35--Page_User_Guide-Read_Docs-2563eb?style=for-the-badge)](https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/user-guide/)
-[![Release v3.3.0](https://img.shields.io/badge/Release-v3.3.0-e11d48?style=for-the-badge)](https://github.com/abhishekagrahari307-max/Bharat-GST-Free-Billing/releases/tag/v3.3.0)
+[![Release v5.0.0](https://img.shields.io/badge/Release-v5.0.0_Autonomous_OS-e11d48?style=for-the-badge)](https://github.com/abhishekagrahari307-max/Bharat-GST-Free-Billing/releases/tag/v5.0.0)
 [![License: MIT](https://img.shields.io/badge/License-MIT_Free_Forever-0f172a?style=for-the-badge)](./LICENSE)
 
 > **Welcome to Bharat GST Free Billing** — India's 100% Free, Offline-First ERP & GST Compliance OS, *created by Abhishek Agrahari*.
@@ -16,14 +16,18 @@ Created & maintained by **Abhishek Agrahari** — built for Indian retail shops,
 📄 **Machine-Readable Architecture Spec (`llms.txt`):** [https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/llms.txt](https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/llms.txt)  
 📦 **Multi-OS Desktop Releases (`.exe`, `.deb`, `.AppImage`, `macOS`, `Portable ZIP`, `Docker`):** [GitHub Releases](https://github.com/abhishekagrahari307-max/Bharat-GST-Free-Billing/releases)
 
-### 🏆 Benchmark: Why Bharat GST `v3.3.0` Wins Against Desktop & Paid Tools
+### 🏆 Dominance Matrix: Bharat GST `v5.0.0` vs Tax2Win, CompuTax, Vyapar & TallyPrime
 
-| Benchmark Pillar | Bharat GST `v3.3.0` Status | Why It Wins Against Desktop & Paid Tools |
-|---|---|---|
-| **Migration & Onboarding** | **Zero-CVE `fflate` Excel + UTF-16LE Tally XML** | 1-click full migration from Tally `Masters.xml`/`DayBook.xml` and Vyapar `.xlsx`/`.csv` with zero parser vulnerabilities. |
-| **Network Resilience** | **Offline Queue + 10s Heartbeat + Idempotent Sync** | Zero lost orders even in basement/weak 5G, with automatic reconnect flush & duplicate packet (`seenQueueIds`) protection. |
-| **Accounting & CA Audit** | **Double-Entry `F4–F7` + Schedule III + SHA-256 Chain** | Not just a billing tool — full CA-ready double-entry accounting and MCA Rule 3(1) tamper-proof audit trail. |
-| **Cost & Accessibility** | **₹0 Server Cost + Instant PWA + Local Node/Docker** | Starts in 1 second from a browser link, with real-time PC hard-drive folder mirroring or localhost/Docker deployment. |
+| Capability | Tax2Win | CompuTax | Vyapar | TallyPrime | **Bharat GST `v5.0.0`** |
+|---|---|---|---|---|---|
+| **GST Billing, POS & Weighing Scale** | ❌ | ❌ | ⚠️ Paid | ⚠️ No Scale | ✅ **100% Free + WebSerial** |
+| **GSTR-1/2B/3B/9 + Sec 17(5) / Rule 37 Shield** | ⚠️ Paid | ✅ Paid | ⚠️ Basic | ✅ Paid | ✅ **Free + AI Fuzzy 2B** |
+| **ITR-3/4 (44AD/44ADA) + AIS/26AS + TDS 26Q** | ✅ Paid | ✅ Paid | ❌ | ⚠️ Basic | ✅ **Built-in Free Engine** |
+| **1-Click Portal Auto-Fill (Zero-GSP)** | ⚠️ API Paid | ✅ Paid | ❌ | ⚠️ Paid | ✅ **Free Chrome/Edge Bridge** |
+| **Multi-Godown, FEFO Batch & BOM Costing** | ❌ | ❌ | ⚠️ Paid | ✅ Paid | ✅ **Built-in Free ERP** |
+| **Sec 43B(h) MSME 45d Shield + AI Munim** | ❌ | ⚠️ Manual | ❌ | ❌ | ✅ **Proactive Real-Time AI** |
+| **5G WebRTC P2P + `#b2b-catalog=` Storefront** | ❌ | ❌ | ⚠️ Cloud | ❌ | ✅ **₹0 Serverless P2P + URL** |
+| **100% Privacy (Zero Cloud Lock)** | ❌ | ✅ | ❌ | ✅ | ✅ **Local + Hard-Drive + AES-256** |
 
 ---
 
