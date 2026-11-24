@@ -284,7 +284,14 @@ function extractApiPath(input) {
   }
 }
 
-const BHARAT_CHANGELOG_MD = `## [3.2.0] - 2026-11-21
+const BHARAT_CHANGELOG_MD = `## [3.3.0] - 2026-11-21
+**Hardened 5G WebRTC P2P Sync (Offline Queue + Auto-Reconnect) & 1-Click Tally XML / Vyapar Excel Migration Bridge.**
+
+### Added
+- **Hardened Resilient 5G WebRTC P2P Engine (\`src/utils/webrtcP2pSync.js\`)**: Added durable local Offline Sync Queue (\`bharatgst_p2p_offline_queue\`), 10s PING/PONG heartbeat, automatic 3s reconnect + queue auto-flush, and Counter PC idempotent \`queueId\` deduplication — zero lost orders even when godown 5G signal drops.
+- **1-Click Tally XML & Vyapar Excel Importer (\`src/utils/legacyImporter.js\`)**: Drop TallyPrime \`Masters.xml\` / \`DayBook.xml\` (UTF-8 / UTF-16LE) or Vyapar \`.xlsx\` / \`.csv\` sheets in *Reports -> Enterprise AI & POS Hub* to import Customers, HSN Stock Items, Opening Stock & Sales Vouchers in one click.
+
+## [3.2.0] - 2026-11-21
 **Serverless WebRTC 5G Mobile <-> PC Live Sync (QR + 4-Digit PIN + Godown Order Pad).**
 
 ### Added

@@ -71,7 +71,7 @@ async function apiFetch(url, options = {}) {
   }
   return res.json();
 }
-const DATA_SAVED_PATHS = /\/api\/(bills|products|recurring|purchases|receipts|stock-adjustments|productions|import|trash|meta\/journalVouchers)\b/;
+const DATA_SAVED_PATHS = /\/api\/(bills|clients|products|recurring|purchases|receipts|stock-adjustments|productions|import|trash|meta\/journalVouchers)\b/;
 export const DATA_SAVED_EVENT = 'fgsb:data-saved';
 
 // ---- Multi-Tab Real-Time Sync via BroadcastChannel (v3.1.0) ----

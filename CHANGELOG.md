@@ -5,6 +5,17 @@ Bharat GST Free Billing follows a **Daily Continuous Release & Safe Auto-Update*
 
 ---
 
+## [3.3.0] - 2026-11-21
+
+**Hardened Resilient 5G WebRTC P2P Sync (Offline Sync Queue + Auto-Reconnect), 1-Click Tally XML / Vyapar Excel Importer & Community Launch Kit (`LAUNCH_KIT.md`).**
+
+### Added
+- **Hardened WebRTC P2P Sync (`src/utils/webrtcP2pSync.js`)**: Durable local Offline Sync Queue (`bharatgst_p2p_offline_queue`), 10s `PING`/`PONG` heartbeat, automatic 3s reconnect + queue auto-flush, and Counter PC idempotent `queueId` deduplication so zero godown orders are lost when 5G fluctuates.
+- **1-Click Tally XML & Vyapar Excel Migration Bridge (`src/utils/legacyImporter.js`)**: Zero-CVE `fflate` `.xlsx`/`.csv` reader + UTF-16LE BOM-safe Tally XML parser importing Customers, HSN Stock Items, Opening Balances, and Tally Sales Vouchers in one click.
+- **Community & Product Launch Kit (`LAUNCH_KIT.md`)**: Ready-to-publish launch copy for LinkedIn, Reddit, and Product Hunt.
+
+---
+
 ## [3.2.0] - 2026-11-21
 
 **Serverless WebRTC 5G Mobile ↔ PC Live Sync (QR + 4-Digit Counter PIN + Mobile Godown Order Pad).**

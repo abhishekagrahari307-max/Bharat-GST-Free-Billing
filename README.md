@@ -1,4 +1,4 @@
-# Bharat GST Free Billing 🇮🇳 (`v3.2.0` · Browser-Native Enterprise AI ERP + 5G WebRTC P2P Sync + Double-Entry CA Suite)
+# Bharat GST Free Billing 🇮🇳 (`v3.3.0` · Enterprise AI ERP + Resilient 5G WebRTC P2P + Tally/Vyapar 1-Click Import + Double-Entry Suite)
 
 **100% Free, Open-Source (MIT), Offline-First & Cryptographically Secured AI Voice GST ERP, Full Double-Entry Accounting (`F4–F7`, Trial Balance, Schedule III Balance Sheet), SHA-256 Audit Trail, AI GST Notice Shield (Sec 17(5) & Rule 37), GSTR-9/CMP-08, Fuzzy GSTR-2B, WebSerial Scale & Silent ESC/POS Suite for Bharat.**
 
@@ -11,9 +11,11 @@ Created & maintained by **Abhishek Agrahari** — built for Indian retail shops,
 
 ---
 
-## 🚀 Exclusive Next-Gen Capabilities in `v3.1.0`
+## 🚀 Exclusive Next-Gen Capabilities in `v3.3.0`
 
-0. **⚡ Enterprise AI Compliance OS, Omnichannel B2B & Hardware Bridge (`Reports → Enterprise AI & POS Hub`)**
+0. **📲 Resilient 5G WebRTC P2P Sync (with Offline Queue), 1-Click Tally/Vyapar Importer & Enterprise AI Hub (`Reports → Enterprise AI & POS Hub`)**
+   - **Hardened 5G Mobile ↔ Counter PC Live Sync (`WebRTC P2P + Offline Sync Queue`)**: Staff scan a QR + 4-digit Counter PIN on 5G/Wi-Fi to pull live stock & push instant bills — with 10s heartbeat, 3s auto-reconnect, and a durable **Offline Sync Queue** (`bharatgst_p2p_offline_queue`) so zero orders are lost even if godown 5G drops!
+   - **1-Click TallyPrime XML & Vyapar Excel Migration Bridge**: Drop Tally `Masters.xml` / `DayBook.xml` (UTF-8 / UTF-16LE) or Vyapar `.xlsx` / `.csv` files to import Parties, HSN Stock Items, Opening Stock, and Sales Vouchers in seconds!
    - **AI GST Notice Shield + GSTR-9 & CMP-08 Working Papers**: Automatically detects **Section 17(5) Blocked ITC**, **CGST Rule 37 (>180-day unpaid supplier ITC reversal + 18% interest)**, and **Rule 138 E-Way Bill (>₹50,000)** risks, plus consolidated **GSTR-9 Annual Return** and **CMP-08** tables.
    - **AI Fuzzy GSTR-2B Matcher**: Reconciles `INV/2026-27/0045` ↔ `45` using Levenshtein + trailing core digits + `±₹2` tolerance, with **1-click WhatsApp ITC Follow-Up Notices** to suppliers.
    - **On-Device 30-Day Cash-Flow & Dead-Stock Forecaster**: Predicts 30-day cash inflows/outflows, locked dead-stock capital, and fast-moving stockout countdowns (`≤21` days).

@@ -1,7 +1,7 @@
 {
   "name": "bharat-gst-free-billing",
-  "version": "3.2.0",
-  "description": "Bharat GST Free Billing v3.2.0 — Enterprise Browser-Native ERP + AI Compliance OS + Serverless WebRTC 5G Mobile-PC P2P Sync + Direct PC Hard-Drive Live Mirroring + Full Double-Entry Accounting (F4-F7, Trial Balance, Schedule III Balance Sheet), SHA-256 Audit Chain, Sec 17(5)/Rule 37 Notice Shield, Fuzzy GSTR-2B, WebSerial Scale & Silent ESC/POS.",
+  "version": "3.3.0",
+  "description": "Bharat GST Free Billing v3.3.0 — Enterprise Browser-Native ERP + AI Compliance OS + Resilient 5G WebRTC P2P Sync (Offline Queue + Auto-Reconnect) + 1-Click Tally XML & Vyapar Excel Importer + Direct PC Hard-Drive Live Mirroring + Full Double-Entry Accounting (F4-F7, Trial Balance, Schedule III Balance Sheet), SHA-256 Audit Chain, Sec 17(5)/Rule 37 Notice Shield, Fuzzy GSTR-2B, WebSerial Scale & Silent ESC/POS.",
   "author": "Abhishek Agrahari",
   "license": "MIT",
   "repository": {
