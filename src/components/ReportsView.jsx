@@ -51,7 +51,13 @@ export default function ReportsView() {
   const [bills, setBills] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [products, setProducts] = useState([]);
-  const [activeTab, setActiveTab] = useState('pl');
+  const [activeTab, setActiveTab] = useState(() => {
+    try {
+      return new URLSearchParams(window.location.search).get('p2p') ? 'enterprise' : 'pl';
+    } catch {
+      return 'pl';
+    }
+  });
   const [filterMode, setFilterMode] = useState('fy');
   const [fyFilter, setFyFilter] = useState('');
   const [monthFilter, setMonthFilter] = useState('');

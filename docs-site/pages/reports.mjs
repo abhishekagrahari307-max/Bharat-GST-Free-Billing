@@ -383,6 +383,7 @@ export default [
   <li><b>30-Day Cash-Flow &amp; Dead-Stock AI Forecaster</b>: Predicts 30-day cash inflows/outflows, locked dead-stock capital, and fast-moving stockout countdowns completely offline.</li>
   <li><b>Smart FIFO Lump-Sum Allocator &amp; Shareable B2B Catalog</b>: Settles customer lump-sum payments bill-by-bill (oldest first) and exports a zero-server HTML B2B Digital Catalog with WhatsApp order parsing.</li>
   <li><b>WebSerial Weighing Scale &amp; WebUSB Silent ESC/POS</b>: Captures live kg/g readings from electronic scales and streams native ESC/POS receipt bytes directly to 58mm/80mm USB thermal printers.</li>
+  <li><b>Serverless WebRTC 5G Mobile &harr; PC P2P Live Sync</b>: Connects staff phones (even on 5G mobile data) directly to the Counter PC via QR + 4-digit Counter PIN to sync live stock and push instant bills with ₹0 server cost.</li>
 </ul>
 </section>
 `,

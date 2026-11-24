@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import QRCode from 'qrcode';
 import {
   Sparkles, ShieldAlert, SearchCheck, TrendingUp, Cpu, ShoppingBag,
-  Upload, Download, CheckCircle2, MessageCircle, Scale, Printer,
+  Upload, Download, CheckCircle2, MessageCircle, Scale, Printer, Smartphone, Send,
 } from 'lucide-react';
 import { saveBill } from '../store';
 import { formatCurrency } from '../utils';
@@ -18,6 +19,12 @@ import {
   buildShareableB2bCatalogHtml,
   parseWhatsappCatalogOrder,
 } from '../utils/fifoAndCatalog';
+import {
+  WebRtcP2pController,
+  buildP2pPairingUrl,
+  parseP2pParamsFromSearch,
+  buildP2pInvoicePayload,
+} from '../utils/webrtcP2pSync';
 import TableExport from './TableExport';
 import { toast } from './Toast';
 
@@ -29,8 +36,40 @@ export default function EnterpriseAiHub({
   ownerProfile = null,
   onBillsUpdated,
 }) {
-  const [section, setSection] = useState('notice');
+  const initialP2p = useMemo(
+    () => (typeof window !== 'undefined' ? parseP2pParamsFromSearch(window.location.search) : null),
+    []
+  );
+  const [section, setSection] = useState(() => (initialP2p ? 'p2p' : 'notice'));
   const [reconResult, setReconResult] = useState(null);
+
+  // WebRTC P2P Mobile <-> PC Live Sync state
+  const p2pRef = useRef(null);
+  const [p2pRole, setP2pRole] = useState(() => (initialP2p ? 'CLIENT' : 'HOST'));
+  const [hostCreds, setHostCreds] = useState(null);
+  const [hostQrDataUrl, setHostQrDataUrl] = useState('');
+  const [remoteRoomId, setRemoteRoomId] = useState(() => initialP2p?.roomId || '');
+  const [remotePin, setRemotePin] = useState(() => initialP2p?.pin || '');
+  const [p2pConnected, setP2pConnected] = useState(false);
+  const [p2pRemoteShop, setP2pRemoteShop] = useState('');
+  const [p2pRemoteCatalog, setP2pRemoteCatalog] = useState([]);
+  const [p2pCart, setP2pCart] = useState({});
+  const [p2pCustomerName, setP2pCustomerName] = useState('');
+  const [p2pCustomerPhone, setP2pCustomerPhone] = useState('');
+  const [p2pCustomerGstin, setP2pCustomerGstin] = useState('');
+  const [p2pDocType, setP2pDocType] = useState('Tax Invoice');
+  const [p2pLogs, setP2pLogs] = useState([]);
+
+  useEffect(() => {
+    p2pRef.current = new WebRtcP2pController();
+    return () => {
+      p2pRef.current?.disconnectAll();
+    };
+  }, []);
+
+  const pushP2pLog = (text) => {
+    setP2pLogs((prev) => [`[${new Date().toLocaleTimeString('en-IN')}] ${text}`, ...prev.slice(0, 39)]);
+  };
 
   // FIFO state
   const [fifoParty, setFifoParty] = useState('');
@@ -183,6 +222,98 @@ export default function EnterpriseAiHub({
     }
   };
 
+  const handleStartP2pHost = async () => {
+    try {
+      const creds = await p2pRef.current.startHost({
+        shopName: ownerProfile?.businessName || 'Counter PC',
+        getCatalog: () =>
+          products.map((p) => ({
+            id: p.id,
+            name: p.name,
+            hsn: p.hsn || '',
+            unit: p.unit || 'PCS',
+            price: Number(p.sellingPrice ?? p.price ?? 0) || 0,
+            gstRate: Number(p.gstRate ?? p.taxRate ?? 0) || 0,
+            stock: Number(p.stock ?? p.currentStock ?? 0) || 0,
+          })),
+        onStatus: (st) => {
+          pushP2pLog(st.message);
+          if (st.state === 'DEVICE_AUTHENTICATED') toast(st.message, 'success');
+        },
+        onInvoiceReceived: async (incomingBill) => {
+          const saved = await saveBill(incomingBill);
+          toast(`📲 Live P2P Bill #${incomingBill.invoiceNumber} received & saved!`, 'success');
+          if (typeof onBillsUpdated === 'function') onBillsUpdated();
+          return saved;
+        },
+      });
+      setHostCreds(creds);
+      const pairUrl = buildP2pPairingUrl(window.location.href, creds);
+      const qr = await QRCode.toDataURL(pairUrl, { width: 200, margin: 1 });
+      setHostQrDataUrl(qr);
+      pushP2pLog(`Generating WebRTC session ${creds.roomId} (PIN: ${creds.pin})…`);
+    } catch (err) {
+      toast(err?.message || 'Could not start WebRTC Host', 'error');
+    }
+  };
+
+  const handleConnectMobileToPc = async () => {
+    try {
+      await p2pRef.current.connectToHost({
+        hostRoomId: remoteRoomId,
+        pin: remotePin,
+        deviceName: 'Staff Mobile',
+        onStatus: (st) => {
+          pushP2pLog(st.message);
+          if (st.state === 'CONNECTED_TO_PC') {
+            setP2pConnected(true);
+            toast(st.message, 'success');
+          } else if (st.state === 'AUTH_DENIED' || st.state === 'DISCONNECTED') {
+            setP2pConnected(false);
+          }
+        },
+        onCatalogReceived: (cat, shop) => {
+          setP2pRemoteCatalog(cat);
+          setP2pRemoteShop(shop);
+        },
+        onAckReceived: (ack) => {
+          toast(`✓ Counter PC saved Bill #${ack.invoiceNumber}!`, 'success');
+          setP2pCart({});
+        },
+      });
+    } catch (err) {
+      toast(err?.message || 'Connection failed', 'error');
+    }
+  };
+
+  const handleSendMobileOrderToPc = () => {
+    const sourceItems = p2pRemoteCatalog.length > 0 ? p2pRemoteCatalog : products;
+    const chosen = sourceItems
+      .map((it, idx) => ({
+        ...it,
+        quantity: Number(p2pCart[it.id || idx] || 0),
+      }))
+      .filter((it) => it.quantity > 0);
+    if (!chosen.length) {
+      toast('Enter quantity > 0 for at least one item before sending to Counter PC.', 'error');
+      return;
+    }
+    try {
+      const payload = buildP2pInvoicePayload({
+        docType: p2pDocType,
+        customerName: p2pCustomerName || 'Walk-in Customer',
+        customerPhone: p2pCustomerPhone,
+        customerGstin: p2pCustomerGstin,
+        sellerState: String(ownerProfile?.gstin || '').slice(0, 2),
+        items: chosen,
+      });
+      p2pRef.current.sendInvoiceToHost(remoteRoomId, payload);
+      pushP2pLog(`Sent ${p2pDocType} #${payload.invoiceNumber} (₹${payload.totalAmount.toFixed(2)}) to Counter PC…`);
+    } catch (err) {
+      toast(err?.message || 'Could not send bill to Counter PC', 'error');
+    }
+  };
+
   return (
     <div>
       {/* Sub-navigation pills */}
@@ -202,6 +333,9 @@ export default function EnterpriseAiHub({
           </button>
           <button type="button" className={`btn ${section === 'hardware' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSection('hardware')}>
             <Cpu size={15} /> WebSerial Scale &amp; Silent POS
+          </button>
+          <button type="button" className={`btn ${section === 'p2p' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSection('p2p')}>
+            <Smartphone size={15} /> 5G Mobile-PC P2P Sync
           </button>
         </div>
       </div>
@@ -587,6 +721,136 @@ export default function EnterpriseAiHub({
             <button type="button" className="btn btn-primary" onClick={handleSilentThermalPrint}>
               <Printer size={15} /> Silent Print Receipt (ESC/POS)
             </button>
+          </div>
+        </div>
+      )}
+
+      {section === 'p2p' && (
+        <div>
+          <div className="glass-panel" style={{ padding: '1.25rem', marginBottom: '1.25rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem' }}>
+              <div>
+                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                  <Smartphone size={18} /> Serverless WebRTC P2P Mobile &harr; PC Live Sync (Works Over 5G &amp; Broadband!)
+                </h3>
+                <p className="text-muted" style={{ margin: '0.25rem 0 0', fontSize: '0.83rem' }}>
+                  Godown or floor staff can take live orders on 5G mobile data while your Counter PC is on broadband — protected by a 4-digit Counter PIN with ₹0 server cost.
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button type="button" className={`btn ${p2pRole === 'HOST' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setP2pRole('HOST')}>
+                  🖥️ Counter PC (Receive Bills)
+                </button>
+                <button type="button" className={`btn ${p2pRole === 'CLIENT' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setP2pRole('CLIENT')}>
+                  📱 Staff Mobile (Send Orders)
+                </button>
+              </div>
+            </div>
+
+            {p2pRole === 'HOST' ? (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.25rem', alignItems: 'center' }}>
+                <div>
+                  <p style={{ fontSize: '0.85rem', marginTop: 0 }}>
+                    Click below on your Counter PC to open an encrypted WebRTC DataChannel. Staff phones scan the QR (or enter Session ID + 4-digit PIN) to pull live stock and push instant bills directly into your IndexedDB &amp; Hard-Drive Mirror!
+                  </p>
+                  <button type="button" className="btn btn-primary" onClick={handleStartP2pHost}>
+                    Generate Pairing QR &amp; Start Counter Receiver
+                  </button>
+                  {hostCreds && (
+                    <div style={{ marginTop: '0.9rem', padding: '0.8rem', borderRadius: '10px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', fontSize: '0.85rem' }}>
+                      <div>Session ID: <strong style={{ fontFamily: 'monospace', fontSize: '0.95rem' }}>{hostCreds.roomId}</strong></div>
+                      <div style={{ marginTop: '0.25rem' }}>4-Digit Security PIN: <strong style={{ fontFamily: 'monospace', fontSize: '0.95rem', color: '#059669' }}>{hostCreds.pin}</strong></div>
+                    </div>
+                  )}
+                </div>
+
+                {hostQrDataUrl && (
+                  <div style={{ textAlign: 'center', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: '#fff', color: '#0f172a' }}>
+                    <img src={hostQrDataUrl} alt="WebRTC P2P Pairing QR" style={{ width: '176px', height: '176px' }} />
+                    <div style={{ fontSize: '0.76rem', fontWeight: 600, marginTop: '0.35rem' }}>Scan with Staff Phone Camera (5G or Wi-Fi)</div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div>
+                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: '1rem' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Counter PC Session ID</label>
+                    <input type="text" className="form-input" placeholder="BGST-123456" value={remoteRoomId} onChange={(e) => setRemoteRoomId(e.target.value.toUpperCase())} />
+                  </div>
+                  <div className="form-group" style={{ margin: 0, width: '130px' }}>
+                    <label className="form-label">4-Digit PIN</label>
+                    <input type="text" maxLength={6} className="form-input" placeholder="1234" value={remotePin} onChange={(e) => setRemotePin(e.target.value)} />
+                  </div>
+                  <button type="button" className="btn btn-primary" onClick={handleConnectMobileToPc}>
+                    {p2pConnected ? `✓ Paired (${p2pRemoteShop || 'PC'})` : 'Connect to Counter PC'}
+                  </button>
+                </div>
+
+                {/* Staff Mobile Order Pad */}
+                <div style={{ padding: '1rem', borderRadius: '10px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)' }}>
+                  <h4 style={{ marginTop: 0, marginBottom: '0.75rem' }}>
+                    📝 Godown / Floor Quick Order Pad ({(p2pRemoteCatalog.length || products.length)} items available)
+                  </h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.65rem', marginBottom: '0.85rem' }}>
+                    <select className="form-input" value={p2pDocType} onChange={(e) => setP2pDocType(e.target.value)}>
+                      <option value="Tax Invoice">Tax Invoice</option>
+                      <option value="Sales Order">Sales Order</option>
+                      <option value="Quotation">Estimate / Quotation</option>
+                    </select>
+                    <input type="text" className="form-input" placeholder="Customer Name" value={p2pCustomerName} onChange={(e) => setP2pCustomerName(e.target.value)} />
+                    <input type="tel" className="form-input" placeholder="Customer Phone" value={p2pCustomerPhone} onChange={(e) => setP2pCustomerPhone(e.target.value)} />
+                    <input type="text" className="form-input" placeholder="Party GSTIN (optional)" value={p2pCustomerGstin} onChange={(e) => setP2pCustomerGstin(e.target.value.toUpperCase())} />
+                  </div>
+
+                  <div style={{ maxHeight: '220px', overflowY: 'auto', marginBottom: '0.85rem' }}>
+                    <table className="data-table" style={{ marginBottom: 0 }}>
+                      <thead>
+                        <tr><th>Item</th><th style={{ textAlign: 'right' }}>Stock</th><th style={{ textAlign: 'right' }}>Rate</th><th style={{ width: '95px', textAlign: 'right' }}>Order Qty</th></tr>
+                      </thead>
+                      <tbody>
+                        {(p2pRemoteCatalog.length > 0 ? p2pRemoteCatalog : products).slice(0, 40).map((it, idx) => {
+                          const key = it.id || idx;
+                          const price = Number(it.price ?? it.sellingPrice ?? 0) || 0;
+                          const stock = Number(it.stock ?? it.currentStock ?? 0) || 0;
+                          return (
+                            <tr key={key}>
+                              <td className="font-medium">{it.name}</td>
+                              <td style={{ textAlign: 'right' }}>{stock}</td>
+                              <td style={{ textAlign: 'right' }}>{formatCurrency(price)}</td>
+                              <td>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="1"
+                                  className="form-input"
+                                  style={{ textAlign: 'right', padding: '0.3rem 0.45rem' }}
+                                  value={p2pCart[key] || ''}
+                                  onChange={(e) => setP2pCart((prev) => ({ ...prev, [key]: e.target.value }))}
+                                />
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <button type="button" className="btn btn-primary" onClick={handleSendMobileOrderToPc}>
+                    <Send size={15} /> Push Live Bill to Counter PC
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="glass-panel" style={{ padding: '1rem', fontFamily: 'monospace', fontSize: '0.78rem', maxHeight: '160px', overflowY: 'auto' }}>
+            <div className="text-muted" style={{ marginBottom: '0.35rem' }}>// Live WebRTC P2P Activity Log</div>
+            {p2pLogs.length === 0 ? (
+              <div className="text-muted">Ready — start Counter PC Receiver or connect from Staff Mobile above.</div>
+            ) : (
+              p2pLogs.map((ln, idx) => <div key={idx}>{ln}</div>)
+            )}
           </div>
         </div>
       )}

@@ -1,15 +1,17 @@
-# Bharat GST Free Billing (v3.1.0 — Enterprise Browser-Native ERP + AI Compliance OS)
+# Bharat GST Free Billing (v3.2.0 — Enterprise Browser-Native ERP + 5G WebRTC P2P Sync + AI Compliance OS)
 
-> 100% Free, Open-Source (MIT), Hybrid Offline PWA + Direct PC Hard-Drive Live Sync + Multi-OS Desktop Installers + Full Double-Entry Accounting (`F4–F7` Vouchers, Trial Balance, Schedule III Balance Sheet), SHA-256 Hash-Chained Audit Trail, AI GST Notice Shield (Sec 17(5) & Rule 37), GSTR-9/CMP-08, AI Fuzzy GSTR-2B Matcher, 30-Day Cash/Dead-Stock Forecaster, FIFO Payment Allocator, Shareable B2B Catalog, WebSerial Weighing Scale & WebUSB Silent ESC/POS Suite. Created & maintained by Abhishek Agrahari.
+> 100% Free, Open-Source (MIT), Hybrid Offline PWA + Serverless WebRTC 5G Mobile-to-PC Live Sync + Direct PC Hard-Drive Live Mirroring + Multi-OS Desktop Installers + Full Double-Entry Accounting (`F4–F7` Vouchers, Trial Balance, Schedule III Balance Sheet), SHA-256 Hash-Chained Audit Trail, AI GST Notice Shield (Sec 17(5) & Rule 37), GSTR-9/CMP-08, AI Fuzzy GSTR-2B Matcher, 30-Day Cash/Dead-Stock Forecaster, FIFO Payment Allocator, Shareable B2B Catalog, WebSerial Weighing Scale & WebUSB Silent ESC/POS Suite. Created & maintained by Abhishek Agrahari.
 
 - Live Application (Instant Offline PWA & Web): https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/
 - Complete Self-Hosted Documentation (35 Pages): https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/user-guide/
 - Public Open-Source Repository & Multi-OS Releases (MIT License): https://github.com/abhishekagrahari307-max/Bharat-GST-Free-Billing
-- Latest Release: v3.1.0 (2026-11-21) — Enterprise AI GST Notice Shield, Fuzzy GSTR-2B, Cash/Dead-Stock Forecaster, FIFO Settlement, B2B Catalog, WebSerial Scale & Silent ESC/POS + Full Double-Entry Books
+- Latest Release: v3.2.0 (2026-11-21) — Serverless WebRTC 5G Mobile-to-PC Live Sync + Enterprise AI Notice Shield + Full Double-Entry Books
 
 ---
 
-## 0A. Enterprise AI Compliance OS, Omnichannel B2B & Hardware Bridge (`v3.1.0`)
+## 0A. Serverless WebRTC 5G Mobile-to-PC Sync, Enterprise AI & Hardware Bridge (`v3.2.0`)
+
+- **Serverless WebRTC P2P Mobile ↔ PC Live Sync (`src/utils/webrtcP2pSync.js`)**: Connects godown/floor staff phones (even on 5G mobile data) directly to the Counter PC (broadband/Wi-Fi) via scannable QR + 4-digit Counter PIN (`BGST-XXXXXX`), syncing live product stock to mobile and pushing instant Tax Invoices / Sales Orders straight into the Counter PC's IndexedDB & Hard-Drive Live Mirror with `₹0` server cost.
 
 - **AI GST Scrutiny & Notice Prevention Engine (`src/utils/gstNoticeShield.js`)**: Automatically flags **Section 17(5) Blocked ITC** (motor vehicles, catering/food, club/health, personal/gifts, immovable works contracts), **CGST Rule 37 (>180-day unpaid supplier ITC reversal + 18% interest)**, and **Rule 138 E-Way Bill (>₹50,000)** gaps, plus **GSTR-9 Annual Return Working Papers (Tables 4, 6, 9, 17)** and **CMP-08 Quarterly Summary**.
 - **AI Fuzzy GSTR-2B Reconciler (`src/utils/fuzzyGstr2b.js`)**: Matches `INV/2026-27/0045` ↔ `45` via normalized trailing digits + Levenshtein distance + `±₹2` tolerance and generates **1-click WhatsApp ITC Follow-Up Notices** for suppliers missing in GSTR-2B.
