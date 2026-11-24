@@ -16,7 +16,7 @@ import {
   parseSpreadsheetMigration,
   parseTallyXmlMigration,
 } from '../src/utils/legacyImporter.js';
-import { buildWelcomeVoiceText } from '../src/utils/welcomeSound.js';
+import { buildWelcomeVoiceText, playSafeWelcome } from '../src/utils/welcomeSound.js';
 
 let passed = 0;
 let failed = 0;
@@ -142,6 +142,7 @@ assert(
   buildWelcomeVoiceText('', 'hinglish') === 'Bharat GST Free Billing mein aapka swagat hai — created by Abhishek Agrahari.',
   'Builds warm Hinglish welcome voice greeting'
 );
+assert(typeof playSafeWelcome === 'function' && playSafeWelcome('Test') === false, 'Exports playSafeWelcome safely in Node without window crash');
 
 console.log(`webrtc-p2p-test: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

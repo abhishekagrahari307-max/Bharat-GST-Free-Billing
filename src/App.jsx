@@ -537,9 +537,14 @@ function App() {
   // after a restart it showed "Needs a Quick Start". The installers' own
   // Free GST Billing icon starts the server and opens the app.
 
+  const [awaitingWelcomeTap, setAwaitingWelcomeTap] = useState(false);
+
   useEffect(() => {
-    return armSessionWelcomeGreeting(() => profile?.businessName || '');
-  }, [profile?.businessName]);
+    return armSessionWelcomeGreeting(
+      () => profileRef.current?.businessName || '',
+      (needsTap) => setAwaitingWelcomeTap(Boolean(needsTap))
+    );
+  }, []);
 
   useEffect(() => {
     sessionStorage.setItem('gst_currentView', currentView);
@@ -999,6 +1004,33 @@ function App() {
     );
   }
 
+  const welcomeTapBanner = awaitingWelcomeTap ? (
+    <button
+      type="button"
+      onClick={() => setAwaitingWelcomeTap(false)}
+      style={{
+        position: 'fixed',
+        bottom: '1rem',
+        right: '1rem',
+        zIndex: 9999,
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '0.45rem',
+        padding: '0.55rem 0.95rem',
+        borderRadius: '999px',
+        border: '1px solid rgba(255,255,255,0.22)',
+        background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+        color: '#f8fafc',
+        fontSize: '0.78rem',
+        fontWeight: 600,
+        boxShadow: '0 10px 25px rgba(15, 23, 42, 0.35)',
+        cursor: 'pointer',
+      }}
+    >
+      🔊 Tap anywhere — Welcome Audio Ready
+    </button>
+  ) : null;
+
   if (showWelcome) {
     return (
       <>
@@ -1007,6 +1039,7 @@ function App() {
           setShowWelcome(false);
           playWelcomeVoice(p?.businessName || '');
         }} />
+        {welcomeTapBanner}
         {/* v1.10.86 - mounted (and blocked) during the welcome so a new install
             marks this version's slides as seen: none right after setup. */}
         <WhatsNewAfterUpdate blocked />
@@ -1022,6 +1055,7 @@ function App() {
       {/* v1.10.86 - "What's new" slides, once after an update (never during the
           first-run welcome, which renders above instead of this layout). */}
       <WhatsNewAfterUpdate blocked={showWelcome} />
+      {welcomeTapBanner}
       {/* v1.10.66 (#59) — phone-only top bar with the menu button. CSS hides it
           on wider screens, where the sidebar is always shown. */}
       <div className="mobile-topbar">
