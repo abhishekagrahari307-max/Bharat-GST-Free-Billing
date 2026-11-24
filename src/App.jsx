@@ -52,6 +52,7 @@ import { releaseNoteTitles } from './utils/changelog';
 import ErrorBoundary from './components/ErrorBoundary';
 import ConfirmModalContainer, { promptAction } from './components/ConfirmModal';
 import WelcomeGuide from './components/WelcomeGuide';
+import { playWelcomeVoice, armSessionWelcomeGreeting } from './utils/welcomeSound';
 import { WhatsNewAfterUpdate, SEEN_KEY as WHATS_NEW_SEEN_KEY } from './components/WhatsNewSlides';
 const InvoiceGenerator = lazy(() => import('./components/InvoiceGenerator'));
 const SettingsView = lazy(() => import('./components/SettingsView'));
@@ -537,6 +538,10 @@ function App() {
   // Free GST Billing icon starts the server and opens the app.
 
   useEffect(() => {
+    return armSessionWelcomeGreeting(() => profile?.businessName || '');
+  }, [profile?.businessName]);
+
+  useEffect(() => {
     sessionStorage.setItem('gst_currentView', currentView);
   }, [currentView]);
 
@@ -1000,6 +1005,7 @@ function App() {
         <WelcomeGuide onComplete={(p) => {
           if (p) setProfile(p);
           setShowWelcome(false);
+          playWelcomeVoice(p?.businessName || '');
         }} />
         {/* v1.10.86 - mounted (and blocked) during the welcome so a new install
             marks this version's slides as seen: none right after setup. */}
@@ -1190,6 +1196,10 @@ function App() {
                 </button>
               ),
             })[id])}
+
+            <div style={{ padding: '0.45rem 0.65rem 0.15rem', fontSize: '0.68rem', color: 'var(--text-muted)', lineHeight: 1.35, opacity: 0.85 }}>
+              <strong>Bharat GST Free Billing</strong> · Built for Bharat, <em>created by Abhishek Agrahari</em>.
+            </div>
 
             {activeStaff?.name && (
               <button
