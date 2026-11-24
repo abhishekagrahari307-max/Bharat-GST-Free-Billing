@@ -2,9 +2,9 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import QRCode from 'qrcode';
 import {
   Sparkles, ShieldAlert, SearchCheck, TrendingUp, Cpu, ShoppingBag,
-  Upload, Download, CheckCircle2, MessageCircle, Scale, Printer, Smartphone, Send,
+  Upload, Download, CheckCircle2, MessageCircle, Scale, Printer, Smartphone, Send, RefreshCw, Database,
 } from 'lucide-react';
-import { saveBill } from '../store';
+import { saveBill, saveClient, saveProduct } from '../store';
 import { formatCurrency } from '../utils';
 import { runGstNoticeShield, buildGstr9AndCmp08WorkingPapers } from '../utils/gstNoticeShield';
 import { reconcileGstr2bFuzzy } from '../utils/fuzzyGstr2b';
@@ -24,7 +24,12 @@ import {
   buildP2pPairingUrl,
   parseP2pParamsFromSearch,
   buildP2pInvoicePayload,
+  getP2pOfflineQueue,
 } from '../utils/webrtcP2pSync';
+import {
+  parseSpreadsheetMigration,
+  parseTallyXmlMigration,
+} from '../utils/legacyImporter';
 import TableExport from './TableExport';
 import { toast } from './Toast';
 
@@ -35,6 +40,7 @@ export default function EnterpriseAiHub({
   products = [],
   ownerProfile = null,
   onBillsUpdated,
+  onProductsUpdated,
 }) {
   const initialP2p = useMemo(
     () => (typeof window !== 'undefined' ? parseP2pParamsFromSearch(window.location.search) : null),
@@ -59,6 +65,11 @@ export default function EnterpriseAiHub({
   const [p2pCustomerGstin, setP2pCustomerGstin] = useState('');
   const [p2pDocType, setP2pDocType] = useState('Tax Invoice');
   const [p2pLogs, setP2pLogs] = useState([]);
+  const [offlineQueue, setOfflineQueue] = useState(() => getP2pOfflineQueue());
+
+  // 1-Click Tally XML & Vyapar Excel Migration state
+  const [migrationPreview, setMigrationPreview] = useState(null);
+  const [importingLegacy, setImportingLegacy] = useState(false);
 
   useEffect(() => {
     p2pRef.current = new WebRtcP2pController();
@@ -277,9 +288,11 @@ export default function EnterpriseAiHub({
           setP2pRemoteShop(shop);
         },
         onAckReceived: (ack) => {
+          setOfflineQueue(getP2pOfflineQueue());
           toast(`✓ Counter PC saved Bill #${ack.invoiceNumber}!`, 'success');
           setP2pCart({});
         },
+        onQueueChange: (q) => setOfflineQueue(q),
       });
     } catch (err) {
       toast(err?.message || 'Connection failed', 'error');
@@ -307,10 +320,64 @@ export default function EnterpriseAiHub({
         sellerState: String(ownerProfile?.gstin || '').slice(0, 2),
         items: chosen,
       });
-      p2pRef.current.sendInvoiceToHost(remoteRoomId, payload);
-      pushP2pLog(`Sent ${p2pDocType} #${payload.invoiceNumber} (₹${payload.totalAmount.toFixed(2)}) to Counter PC…`);
+      const delivery = p2pRef.current.pushBillSafe(remoteRoomId, payload);
+      setOfflineQueue(getP2pOfflineQueue());
+      if (delivery.sentImmediately) {
+        pushP2pLog(`Sent ${p2pDocType} #${payload.invoiceNumber} (₹${payload.totalAmount.toFixed(2)}) [${delivery.queueId}]…`);
+      } else {
+        setP2pCart({});
+        pushP2pLog(`Offline Queue saved #${payload.invoiceNumber} [${delivery.queueId}] — will auto-push as soon as 5G/PC reconnects!`);
+        toast(`Saved #${payload.invoiceNumber} to Offline Queue (${delivery.pendingCount} pending) — will auto-sync on reconnect!`, 'info');
+      }
     } catch (err) {
-      toast(err?.message || 'Could not send bill to Counter PC', 'error');
+      toast(err?.message || 'Could not queue bill', 'error');
+    }
+  };
+
+  const handleLegacyFileSelect = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const lower = file.name.toLowerCase();
+      const buf = new Uint8Array(await file.arrayBuffer());
+      const parsed = lower.endsWith('.xml')
+        ? parseTallyXmlMigration(buf)
+        : parseSpreadsheetMigration({ bytes: buf, fileName: file.name });
+      setMigrationPreview({ fileName: file.name, ...parsed });
+      toast(
+        `Parsed ${file.name}: ${parsed.clients.length} Parties, ${parsed.products.length} Stock Items, ${parsed.vouchers.length} Vouchers!`,
+        'success'
+      );
+    } catch (err) {
+      toast(err?.message || 'Could not parse Tally/Vyapar file', 'error');
+    }
+  };
+
+  const handleCommitLegacyImport = async () => {
+    if (!migrationPreview) return;
+    setImportingLegacy(true);
+    try {
+      for (const c of migrationPreview.clients) {
+        await saveClient(c);
+      }
+      for (const p of migrationPreview.products) {
+        await saveProduct(p);
+      }
+      for (const v of migrationPreview.vouchers) {
+        await saveBill(v);
+      }
+      toast(
+        `Imported ${migrationPreview.clients.length} Parties, ${migrationPreview.products.length} Items & ${migrationPreview.vouchers.length} Bills!`,
+        'success'
+      );
+      setMigrationPreview(null);
+      if (typeof onBillsUpdated === 'function') onBillsUpdated();
+      if (typeof onProductsUpdated === 'function') onProductsUpdated();
+    } catch (err) {
+      toast(err?.message || 'Migration import failed', 'error');
+    } finally {
+      setImportingLegacy(false);
     }
   };
 
@@ -336,6 +403,9 @@ export default function EnterpriseAiHub({
           </button>
           <button type="button" className={`btn ${section === 'p2p' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSection('p2p')}>
             <Smartphone size={15} /> 5G Mobile-PC P2P Sync
+          </button>
+          <button type="button" className={`btn ${section === 'migrate' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSection('migrate')}>
+            <Database size={15} /> Tally XML &amp; Vyapar Import
           </button>
         </div>
       </div>
@@ -836,22 +906,74 @@ export default function EnterpriseAiHub({
                     </table>
                   </div>
 
-                  <button type="button" className="btn btn-primary" onClick={handleSendMobileOrderToPc}>
-                    <Send size={15} /> Push Live Bill to Counter PC
-                  </button>
+                  <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <button type="button" className="btn btn-primary" onClick={handleSendMobileOrderToPc}>
+                      <Send size={15} /> Push Live Bill to Counter PC (Offline-Queue Safe)
+                    </button>
+                    {offlineQueue.length > 0 && (
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={() => {
+                          const n = p2pRef.current?.flushOfflineQueue(remoteRoomId) || 0;
+                          toast(n > 0 ? `Flushing ${n} queued bill(s)…` : 'Waiting for Counter PC link — bills are safe in local queue.', 'info');
+                        }}
+                      >
+                        <RefreshCw size={14} /> Offline Queue: {offlineQueue.length} Pending (Auto-Flush Active)
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
           </div>
 
           <div className="glass-panel" style={{ padding: '1rem', fontFamily: 'monospace', fontSize: '0.78rem', maxHeight: '160px', overflowY: 'auto' }}>
-            <div className="text-muted" style={{ marginBottom: '0.35rem' }}>// Live WebRTC P2P Activity Log</div>
+            <div className="text-muted" style={{ marginBottom: '0.35rem' }}>// Live Resilient WebRTC P2P Activity Log (10s Heartbeat + 3s Auto-Reconnect)</div>
             {p2pLogs.length === 0 ? (
               <div className="text-muted">Ready — start Counter PC Receiver or connect from Staff Mobile above.</div>
             ) : (
               p2pLogs.map((ln, idx) => <div key={idx}>{ln}</div>)
             )}
           </div>
+        </div>
+      )}
+
+      {section === 'migrate' && (
+        <div className="glass-panel" style={{ padding: '1.25rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+            <div>
+              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                <Database size={18} /> 1-Click TallyPrime XML &amp; Vyapar Excel / CSV Migration Bridge
+              </h3>
+              <p className="text-muted" style={{ margin: '0.25rem 0 0', fontSize: '0.83rem' }}>
+                Upload Tally <code>Masters.xml</code> / <code>DayBook.xml</code> (UTF-8 or UTF-16LE) or Vyapar / Excel <code>.xlsx</code> / <code>.csv</code> sheets to import Customers, HSN Stock Items &amp; Opening Balances in one click.
+              </p>
+            </div>
+            <label className="btn btn-primary" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}>
+              <Upload size={16} /> Choose Tally .XML / Vyapar .XLSX / .CSV
+              <input type="file" accept=".xml,.xlsx,.csv" style={{ display: 'none' }} onChange={handleLegacyFileSelect} />
+            </label>
+          </div>
+
+          {migrationPreview && (
+            <div style={{ marginTop: '1.15rem', padding: '1rem', borderRadius: '10px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+                <div>
+                  <div style={{ fontWeight: 700 }}>{migrationPreview.fileName} ({migrationPreview.source})</div>
+                  <div className="text-muted" style={{ fontSize: '0.82rem', marginTop: '0.2rem' }}>
+                    Ready to import: <b>{migrationPreview.clients.length}</b> Parties · <b>{migrationPreview.products.length}</b> Stock Items · <b>{migrationPreview.vouchers.length}</b> Sales Vouchers
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button type="button" className="btn btn-secondary" onClick={() => setMigrationPreview(null)}>Cancel</button>
+                  <button type="button" className="btn btn-primary" disabled={importingLegacy} onClick={handleCommitLegacyImport}>
+                    <CheckCircle2 size={15} /> {importingLegacy ? 'Importing…' : 'Confirm 1-Click Import'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

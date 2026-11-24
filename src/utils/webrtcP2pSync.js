@@ -1,8 +1,53 @@
-// Browser-Native WebRTC P2P Mobile-to-PC Live Billing & Stock Sync Engine (v3.2.0)
-// Connects Staff Phones (even on 5G Mobile Data) directly to Counter PC (Broadband/Wi-Fi)
-// with 4-digit PIN authentication, live catalog/stock push, and instant invoice sync — ₹0 server cost.
-// Also includes Zero-Signaling-Server native RTCPeerConnection SDP fallback.
+// Hardened Browser-Native WebRTC P2P Mobile-to-PC Live Billing & Stock Sync Engine (v3.3.0)
+// Includes:
+// 1. 4-Digit Counter Security PIN Handshake
+// 2. Durable Offline Sync Queue (bharatgst_p2p_offline_queue) — zero lost orders if 5G drops
+// 3. Automatic 10s PING/PONG Heartbeat + 3s Auto-Reconnect + Signaling Reconnect + Queue Auto-Flush
+// 4. Idempotent queueId De-Duplication on Counter PC
 // NOTE: Keep free of ../store.js and ../components/* imports (server test isolation).
+
+export const P2P_QUEUE_STORAGE_KEY = 'bharatgst_p2p_offline_queue';
+
+const memoryQueueFallback = [];
+
+function getStorage() {
+  try {
+    if (typeof globalThis !== 'undefined' && globalThis.localStorage) {
+      return globalThis.localStorage;
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
+export function getP2pOfflineQueue() {
+  const st = getStorage();
+  if (!st) return [...memoryQueueFallback];
+  try {
+    const parsed = JSON.parse(st.getItem(P2P_QUEUE_STORAGE_KEY) || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveP2pOfflineQueue(queue = []) {
+  const clean = Array.isArray(queue) ? queue : [];
+  const st = getStorage();
+  if (!st) {
+    memoryQueueFallback.length = 0;
+    memoryQueueFallback.push(...clean);
+    return;
+  }
+  try {
+    st.setItem(P2P_QUEUE_STORAGE_KEY, JSON.stringify(clean));
+  } catch { /* quota */ }
+}
+
+export function removeP2pQueueItem(queueId) {
+  const updated = getP2pOfflineQueue().filter((item) => item?.queueId !== queueId);
+  saveP2pOfflineQueue(updated);
+  return updated;
+}
 
 function r2(n) {
   const x = Number(n);
@@ -43,8 +88,7 @@ export function parseP2pParamsFromSearch(search = '') {
 }
 
 /**
- * Builds a complete GST-compliant invoice / sales order payload on the Mobile Staff Order Pad
- * ready to be saved directly into the Counter PC's books.
+ * Builds a complete GST-compliant invoice / sales order payload on the Mobile Staff Order Pad.
  */
 export function buildP2pInvoicePayload({
   invoiceNumber = '',
@@ -55,7 +99,7 @@ export function buildP2pInvoicePayload({
   sellerState = '',
   buyerState = '',
   items = [],
-  staffNote = 'Synced via Mobile P2P',
+  staffNote = 'Synced via 5G Mobile P2P',
 } = {}) {
   const cleanGstin = String(customerGstin || '').trim().toUpperCase();
   const inferredBuyerState = buyerState || (cleanGstin.length >= 2 ? cleanGstin.slice(0, 2) : sellerState);
@@ -144,8 +188,10 @@ export class WebRtcP2pController {
     this.peer = null;
     this.connections = new Map();
     this.authenticatedPeers = new Set();
-    this.manualPc = null;
-    this.manualChannel = null;
+    this.seenQueueIds = new Map(); // queueId -> saved invoiceNumber (idempotency guard)
+    this.heartbeatTimer = null;
+    this.reconnectTimer = null;
+    this.stoppedManually = false;
   }
 
   async startHost({
@@ -157,6 +203,7 @@ export class WebRtcP2pController {
     onInvoiceReceived,
   } = {}) {
     this.disconnectAll();
+    this.stoppedManually = false;
     const creds = roomId && pin ? { roomId, pin } : generateP2pCredentials();
     const { default: Peer } = await import('peerjs');
 
@@ -166,6 +213,12 @@ export class WebRtcP2pController {
 
     this.peer.on('open', (id) => {
       onStatus?.({ state: 'HOST_READY', message: `Host ready on ${id} (PIN: ${creds.pin})`, peerId: id });
+    });
+
+    this.peer.on('disconnected', () => {
+      if (this.stoppedManually || !this.peer || this.peer.destroyed) return;
+      onStatus?.({ state: 'SIGNALING_RECONNECTING', message: 'Signaling dropped — auto-reconnecting Counter PC…' });
+      try { this.peer.reconnect(); } catch { /* ignore */ }
     });
 
     this.peer.on('error', (err) => {
@@ -206,26 +259,47 @@ export class WebRtcP2pController {
           return;
         }
 
+        if (msg.type === 'PING') {
+          conn.send({ type: 'PONG', ts: Date.now() });
+          return;
+        }
+
         if (msg.type === 'PULL_CATALOG') {
           conn.send({ type: 'CATALOG_SNAPSHOT', shopName, catalog: getCatalog() });
           return;
         }
 
         if (msg.type === 'SYNC_INVOICE' && msg.invoice) {
-          try {
-            const saved = await onInvoiceReceived?.(msg.invoice);
+          // Idempotent deduplication for retried offline-queue packets
+          if (msg.queueId && this.seenQueueIds.has(msg.queueId)) {
             conn.send({
               type: 'ACK_INVOICE',
-              invoiceNumber: saved?.invoiceNumber || msg.invoice.invoiceNumber,
+              queueId: msg.queueId,
+              invoiceNumber: this.seenQueueIds.get(msg.queueId),
+              totalAmount: msg.invoice.totalAmount,
+              deduplicated: true,
+              savedAt: new Date().toISOString(),
+            });
+            return;
+          }
+
+          try {
+            const saved = await onInvoiceReceived?.(msg.invoice);
+            const savedNo = saved?.invoiceNumber || msg.invoice.invoiceNumber;
+            if (msg.queueId) this.seenQueueIds.set(msg.queueId, savedNo);
+            conn.send({
+              type: 'ACK_INVOICE',
+              queueId: msg.queueId || null,
+              invoiceNumber: savedNo,
               totalAmount: msg.invoice.totalAmount,
               savedAt: new Date().toISOString(),
             });
             onStatus?.({
               state: 'INVOICE_SYNCED',
-              message: `Saved live bill #${msg.invoice.invoiceNumber} (₹${Number(msg.invoice.totalAmount || 0).toFixed(2)})`,
+              message: `Saved live bill #${savedNo} (₹${Number(msg.invoice.totalAmount || 0).toFixed(2)})`,
             });
           } catch (err) {
-            conn.send({ type: 'ERR_INVOICE', error: err?.message || 'Save failed on Counter PC' });
+            conn.send({ type: 'ERR_INVOICE', queueId: msg.queueId || null, error: err?.message || 'Save failed on Counter PC' });
           }
         }
       });
@@ -244,6 +318,15 @@ export class WebRtcP2pController {
     return creds;
   }
 
+  startHeartbeat(conn) {
+    clearInterval(this.heartbeatTimer);
+    this.heartbeatTimer = setInterval(() => {
+      if (conn && conn.open) {
+        try { conn.send({ type: 'PING', ts: Date.now() }); } catch { /* ignore */ }
+      }
+    }, 10000);
+  }
+
   async connectToHost({
     hostRoomId,
     pin,
@@ -251,22 +334,21 @@ export class WebRtcP2pController {
     onStatus,
     onCatalogReceived,
     onAckReceived,
+    onQueueChange,
   } = {}) {
     this.disconnectAll();
+    this.stoppedManually = false;
     const target = String(hostRoomId || '').trim().toUpperCase();
     if (!target) throw new Error('Enter the Counter PC Session ID (e.g. BGST-123456).');
 
     const { default: Peer } = await import('peerjs');
     this.peer = new Peer({ config: { iceServers: DEFAULT_ICE_SERVERS } });
 
-    this.peer.on('error', (err) => {
-      onStatus?.({ state: 'ERROR', message: err?.message || 'Could not reach Counter PC' });
-    });
-
-    this.peer.on('open', () => {
+    const establishDataChannel = () => {
+      if (this.stoppedManually || !this.peer || this.peer.destroyed) return;
       const conn = this.peer.connect(target, { reliable: true });
+
       conn.on('open', () => {
-        this.connections.set(target, conn);
         onStatus?.({ state: 'AUTHENTICATING', message: `Connected to ${target}, verifying PIN…` });
         conn.send({ type: 'AUTH_HELLO', pin: String(pin || '').trim(), deviceName });
       });
@@ -274,18 +356,29 @@ export class WebRtcP2pController {
       conn.on('data', (msg) => {
         if (!msg || typeof msg !== 'object') return;
         if (msg.type === 'AUTH_DENIED') {
+          this.stoppedManually = true;
           onStatus?.({ state: 'AUTH_DENIED', message: msg.reason || 'PIN rejected by Counter PC' });
           return;
         }
         if (msg.type === 'AUTH_OK' || msg.type === 'CATALOG_SNAPSHOT') {
+          this.connections.set(target, conn);
           onCatalogReceived?.(Array.isArray(msg.catalog) ? msg.catalog : [], msg.shopName || 'Counter PC');
           onStatus?.({
             state: 'CONNECTED_TO_PC',
             message: `Paired with ${msg.shopName || 'Counter PC'} (${(msg.catalog || []).length} live items ready)`,
           });
+          this.startHeartbeat(conn);
+          const flushed = this.flushOfflineQueue(target);
+          if (flushed > 0) {
+            onStatus?.({ state: 'QUEUE_FLUSHING', message: `Auto-flushing ${flushed} queued offline bill(s) to Counter PC…` });
+          }
           return;
         }
         if (msg.type === 'ACK_INVOICE') {
+          if (msg.queueId) {
+            const remaining = removeP2pQueueItem(msg.queueId);
+            onQueueChange?.(remaining);
+          }
           onAckReceived?.(msg);
           onStatus?.({
             state: 'ACK_INVOICE',
@@ -299,26 +392,76 @@ export class WebRtcP2pController {
 
       conn.on('close', () => {
         this.connections.delete(target);
-        onStatus?.({ state: 'DISCONNECTED', message: 'Disconnected from Counter PC' });
+        clearInterval(this.heartbeatTimer);
+        if (!this.stoppedManually) {
+          onStatus?.({ state: 'RECONNECTING_IN_3S', message: '5G/Wi-Fi link dropped — auto-reconnecting in 3s (offline queue safe)…' });
+          clearTimeout(this.reconnectTimer);
+          this.reconnectTimer = setTimeout(establishDataChannel, 3000);
+        } else {
+          onStatus?.({ state: 'DISCONNECTED', message: 'Disconnected from Counter PC' });
+        }
       });
+    };
+
+    this.peer.on('open', establishDataChannel);
+
+    this.peer.on('disconnected', () => {
+      if (this.stoppedManually || !this.peer || this.peer.destroyed) return;
+      try { this.peer.reconnect(); } catch { /* ignore */ }
+    });
+
+    this.peer.on('error', (err) => {
+      onStatus?.({ state: 'ERROR', message: err?.message || 'Could not reach Counter PC — queued bills remain safe offline' });
     });
   }
 
-  sendInvoiceToHost(hostRoomId, invoicePayload) {
+  /**
+   * Queue-Safe Bill Push: saves to durable local Offline Queue BEFORE transmitting.
+   * Never loses an order even if 5G drops mid-click; flushes automatically on reconnect!
+   */
+  pushBillSafe(hostRoomId, invoicePayload) {
     const target = String(hostRoomId || '').trim().toUpperCase();
+    const queueId = `Q-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const packet = {
+      queueId,
+      targetRoomId: target,
+      queuedAt: new Date().toISOString(),
+      type: 'SYNC_INVOICE',
+      invoice: invoicePayload,
+    };
+
+    const queue = getP2pOfflineQueue();
+    queue.push(packet);
+    saveP2pOfflineQueue(queue);
+
     const conn = this.connections.get(target);
     if (conn && conn.open) {
-      conn.send({ type: 'SYNC_INVOICE', invoice: invoicePayload });
-      return;
+      conn.send(packet);
+      return { queued: false, sentImmediately: true, queueId, pendingCount: queue.length };
     }
-    if (this.manualChannel && this.manualChannel.readyState === 'open') {
-      this.manualChannel.send(JSON.stringify({ type: 'SYNC_INVOICE', invoice: invoicePayload }));
-      return;
+    return { queued: true, sentImmediately: false, queueId, pendingCount: queue.length };
+  }
+
+  flushOfflineQueue(hostRoomId) {
+    const target = String(hostRoomId || '').trim().toUpperCase();
+    const conn = this.connections.get(target);
+    if (!conn || !conn.open) return 0;
+    const queue = getP2pOfflineQueue().filter((p) => !p.targetRoomId || p.targetRoomId === target);
+    for (const pkt of queue) {
+      conn.send(pkt);
     }
-    throw new Error('Not connected to Counter PC yet. Pair with Session ID & PIN first.');
+    return queue.length;
+  }
+
+  // Backward-compatible alias using queue-safe delivery
+  sendInvoiceToHost(hostRoomId, invoicePayload) {
+    return this.pushBillSafe(hostRoomId, invoicePayload);
   }
 
   disconnectAll() {
+    this.stoppedManually = true;
+    clearInterval(this.heartbeatTimer);
+    clearTimeout(this.reconnectTimer);
     for (const c of this.connections.values()) {
       try { c.close(); } catch { /* ignore */ }
     }
@@ -326,9 +469,5 @@ export class WebRtcP2pController {
     this.authenticatedPeers.clear();
     try { this.peer?.destroy(); } catch { /* ignore */ }
     this.peer = null;
-    try { this.manualChannel?.close(); } catch { /* ignore */ }
-    try { this.manualPc?.close(); } catch { /* ignore */ }
-    this.manualChannel = null;
-    this.manualPc = null;
   }
 }

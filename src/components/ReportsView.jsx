@@ -885,6 +885,7 @@ export default function ReportsView() {
           products={products}
           ownerProfile={ownerProfile}
           onBillsUpdated={() => getAllBills().then(setBills).catch(() => {})}
+          onProductsUpdated={() => getAllProducts().then(setProducts).catch(() => {})}
         />
       )}
     </div>
