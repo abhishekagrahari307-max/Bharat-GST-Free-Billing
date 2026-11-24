@@ -5,6 +5,18 @@ Bharat GST Free Billing follows a **Daily Continuous Release & Safe Auto-Update*
 
 ---
 
+## [5.0.0] - 2026-11-21
+
+**Autonomous Bharat Business & Tax OS — Unifying Tax2Win/CompuTax (ITR-3/4 + AIS/26AS + Form 26Q + Zero-GSP Portal Bridge), TallyPrime (Multi-Godown + FEFO + Manufacturing BOM), and Next-Gen AI (Sec 43B(h) MSME 45-Day Shield + Margin Arbitrage Munim + Serverless `#b2b-catalog=` Storefront).**
+
+### Added
+- **Module A — ITR-3/4, AIS/26AS & TDS Form 26Q Engine (`src/utils/itrAndTaxEngine.js`)**: Parses Income Tax AIS/TIS JSON, compares ITR-3 vs Sec 44AD/44ADA ITR-4 Sugam under AY 2027-28 New Regime slabs (including Sec 87A ₹12L rebate), and generates RPU-ready Form 26Q `.txt` files.
+- **Module B — Multi-Godown, FEFO Batch Allocator, Manufacturing BOM & E-Way Tracker (`src/utils/godownAndManufacturing.js`)**: Inter-godown stock transfers with Challan, FEFO expiry-sorted batch allocation, Raw-to-Finished BOM landed cost calculation, and 6-hour pre-expiry E-Way Bill extension alerts.
+- **Module C — Zero-GSP Chrome/Edge Companion Extension (`companion-extension/`)**: Manifest V3 bridge auto-filling `ewaybillgst.gov.in` and `gst.gov.in` directly from Bharat GST Free Billing with ₹0 GSP API cost.
+- **Module D — Sec 43B(h) MSME Shield, Autonomous AI Munim & Serverless Storefront (`src/utils/autonomousMunimAnd43B.js` + `ServerlessCatalogModal.jsx`)**: 45-day MSME tax disallowance countdown, purchase rate hike / margin erosion detector with 1-click reprice, and UTF-8 URL-compressed `#b2b-catalog=` WhatsApp Mini Storefront.
+
+---
+
 ## [3.3.0] - 2026-11-21
 
 **Hardened Resilient 5G WebRTC P2P Sync (Offline Sync Queue + Auto-Reconnect), 1-Click Tally XML / Vyapar Excel Importer & Community Launch Kit (`LAUNCH_KIT.md`).**

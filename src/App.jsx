@@ -52,6 +52,7 @@ import { releaseNoteTitles } from './utils/changelog';
 import ErrorBoundary from './components/ErrorBoundary';
 import ConfirmModalContainer, { promptAction } from './components/ConfirmModal';
 import WelcomeGuide from './components/WelcomeGuide';
+import ServerlessCatalogModal from './components/ServerlessCatalogModal';
 import { playWelcomeVoice, armSessionWelcomeGreeting } from './utils/welcomeSound';
 import { WhatsNewAfterUpdate, SEEN_KEY as WHATS_NEW_SEEN_KEY } from './components/WhatsNewSlides';
 const InvoiceGenerator = lazy(() => import('./components/InvoiceGenerator'));
@@ -1055,6 +1056,7 @@ function App() {
       {/* v1.10.86 - "What's new" slides, once after an update (never during the
           first-run welcome, which renders above instead of this layout). */}
       <WhatsNewAfterUpdate blocked={showWelcome} />
+      <ServerlessCatalogModal />
       {welcomeTapBanner}
       {/* v1.10.66 (#59) — phone-only top bar with the menu button. CSS hides it
           on wider screens, where the sidebar is always shown. */}

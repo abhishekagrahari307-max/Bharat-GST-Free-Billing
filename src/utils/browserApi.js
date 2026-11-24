@@ -284,7 +284,15 @@ function extractApiPath(input) {
   }
 }
 
-const BHARAT_CHANGELOG_MD = `## [3.3.0] - 2026-11-21
+const BHARAT_CHANGELOG_MD = `## [5.0.0] - 2026-11-21
+**Autonomous Bharat Business & Tax OS — Unifying ITR-3/4 + AIS/26Q + Zero-GSP Portal Bridge + Multi-Godown/FEFO/BOM + Sec 43B(h) MSME Shield + AI Munim & Serverless WhatsApp Storefront.**
+
+### Added
+- **ITR-3/4, AIS Parser, Form 26Q & Zero-GSP Portal Bridge (\`src/utils/itrAndTaxEngine.js\` + \`companion-extension/\`)**: Parses Income Tax AIS/TIS JSON, compares ITR-3 vs Sec 44AD/44ADA ITR-4 Sugam under AY 2027-28 New Regime slabs, exports Form 26Q RPU \`.txt\`, and pushes 1-click auto-fill payloads to \`ewaybillgst.gov.in\` & \`gst.gov.in\`.
+- **Multi-Godown, FEFO Batch Allocator, Manufacturing BOM & E-Way Tracker (\`src/utils/godownAndManufacturing.js\`)**: Inter-godown stock transfers with Challan, FEFO expiry picking, Raw-to-Finished BOM landed cost calculation, and 6-hour pre-expiry E-Way Bill extension alerts.
+- **Section 43B(h) MSME 45-Day Shield, Autonomous AI Munim & Serverless \`#b2b-catalog=\` Storefront (\`src/utils/autonomousMunimAnd43B.js\`)**: Tracks 45-day MSME disallowance risk, supplier rate hikes / margin erosion, and encodes live inventory into a zero-server WhatsApp Mini E-Commerce Storefront URL.
+
+## [3.3.0] - 2026-11-21
 **Hardened 5G WebRTC P2P Sync (Offline Queue + Auto-Reconnect) & 1-Click Tally XML / Vyapar Excel Migration Bridge.**
 
 ### Added
