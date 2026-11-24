@@ -1,4 +1,4 @@
-# Bharat GST Free Billing 🇮🇳 (`v3.1.0` · Browser-Native Enterprise AI ERP + Double-Entry CA Suite + Hardware POS)
+# Bharat GST Free Billing 🇮🇳 (`v3.2.0` · Browser-Native Enterprise AI ERP + 5G WebRTC P2P Sync + Double-Entry CA Suite)
 
 **100% Free, Open-Source (MIT), Offline-First & Cryptographically Secured AI Voice GST ERP, Full Double-Entry Accounting (`F4–F7`, Trial Balance, Schedule III Balance Sheet), SHA-256 Audit Trail, AI GST Notice Shield (Sec 17(5) & Rule 37), GSTR-9/CMP-08, Fuzzy GSTR-2B, WebSerial Scale & Silent ESC/POS Suite for Bharat.**
 

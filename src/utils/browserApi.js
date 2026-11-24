@@ -284,7 +284,13 @@ function extractApiPath(input) {
   }
 }
 
-const BHARAT_CHANGELOG_MD = `## [3.1.0] - 2026-11-21
+const BHARAT_CHANGELOG_MD = `## [3.2.0] - 2026-11-21
+**Serverless WebRTC 5G Mobile <-> PC Live Sync (QR + 4-Digit PIN + Godown Order Pad).**
+
+### Added
+- **Serverless WebRTC P2P Mobile-to-PC Sync (\`src/utils/webrtcP2pSync.js\`)**: Connects godown/floor staff phones (even on 5G mobile data) directly to the Counter PC (broadband/Wi-Fi) via scannable QR + 4-digit Counter PIN. Syncs live product stock to mobile and pushes instant Tax Invoices / Sales Orders straight into the Counter PC's IndexedDB & Hard-Drive Live Mirror with ₹0 server cost.
+
+## [3.1.0] - 2026-11-21
 **Enterprise Browser-Native ERP + AI Compliance OS: GST Notice Shield (Sec 17(5) & Rule 37), GSTR-9/CMP-08, AI Fuzzy GSTR-2B, 30-Day Cash/Dead-Stock Forecaster, FIFO Settlement, B2B Catalog, WebSerial Scale & Silent ESC/POS.**
 
 ### Added

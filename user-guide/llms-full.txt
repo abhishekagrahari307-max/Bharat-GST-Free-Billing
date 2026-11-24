@@ -1,4 +1,4 @@
-# Bharat GST Free Billing: complete documentation (version 3.1.0)
+# Bharat GST Free Billing: complete documentation (version 3.2.0)
 
 Source: https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/user-guide/
 
@@ -6291,6 +6291,7 @@ Chains every voucher from Genesis (0000…0000) to HEAD using cryptographic **SH
 - **30-Day Cash-Flow & Dead-Stock AI Forecaster**: Predicts 30-day cash inflows/outflows, locked dead-stock capital, and fast-moving stockout countdowns completely offline.
 - **Smart FIFO Lump-Sum Allocator & Shareable B2B Catalog**: Settles customer lump-sum payments bill-by-bill (oldest first) and exports a zero-server HTML B2B Digital Catalog with WhatsApp order parsing.
 - **WebSerial Weighing Scale & WebUSB Silent ESC/POS**: Captures live kg/g readings from electronic scales and streams native ESC/POS receipt bytes directly to 58mm/80mm USB thermal printers.
+- **Serverless WebRTC 5G Mobile &harr; PC P2P Live Sync**: Connects staff phones (even on 5G mobile data) directly to the Counter PC via QR + 4-digit Counter PIN to sync live stock and push instant bills with ₹0 server cost.
 
 ---
 

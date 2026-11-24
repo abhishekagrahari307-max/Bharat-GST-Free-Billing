@@ -5,6 +5,15 @@ Bharat GST Free Billing follows a **Daily Continuous Release & Safe Auto-Update*
 
 ---
 
+## [3.2.0] - 2026-11-21
+
+**Serverless WebRTC 5G Mobile ↔ PC Live Sync (QR + 4-Digit Counter PIN + Mobile Godown Order Pad).**
+
+### Added
+- **Serverless WebRTC P2P Mobile-to-PC Live Sync (`src/utils/webrtcP2pSync.js` + `EnterpriseAiHub.jsx`)**: Connects staff phones (even on 5G mobile data) directly to the Counter PC (broadband/Wi-Fi) via scannable QR + 4-digit Counter Security PIN (`BGST-XXXXXX`). Automatically streams live product stock/rates to the mobile order pad and pushes instant Tax Invoices / Sales Orders straight into the Counter PC's IndexedDB & `BharatGST-Live-Mirror.json` with ₹0 server cost.
+
+---
+
 ## [3.1.0] - 2026-11-21
 
 **Enterprise Browser-Native ERP + AI Compliance OS: GST Notice Shield (Sec 17(5) & Rule 37), GSTR-9/CMP-08, AI Fuzzy GSTR-2B, 30-Day Cash/Dead-Stock Forecaster, FIFO Settlement, B2B Catalog, Multi-Tab Live Sync, WebSerial Scale & Silent ESC/POS.**
