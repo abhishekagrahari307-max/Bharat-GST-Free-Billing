@@ -1,5 +1,12 @@
 # Bharat GST Free Billing 🇮🇳 (`v3.3.0` · Enterprise AI ERP + Resilient 5G WebRTC P2P + Tally/Vyapar 1-Click Import + Double-Entry Suite)
 
+[![Live Offline PWA](https://img.shields.io/badge/Live_App_%26_Offline_PWA-Launch_Now-16a34a?style=for-the-badge)](https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/)
+[![35-Page User Guide](https://img.shields.io/badge/35--Page_User_Guide-Read_Docs-2563eb?style=for-the-badge)](https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/user-guide/)
+[![Release v3.3.0](https://img.shields.io/badge/Release-v3.3.0-e11d48?style=for-the-badge)](https://github.com/abhishekagrahari307-max/Bharat-GST-Free-Billing/releases/tag/v3.3.0)
+[![License: MIT](https://img.shields.io/badge/License-MIT_Free_Forever-0f172a?style=for-the-badge)](./LICENSE)
+
+> **Welcome to Bharat GST Free Billing** — India's 100% Free, Offline-First ERP & GST Compliance OS, *created by Abhishek Agrahari*.
+
 **100% Free, Open-Source (MIT), Offline-First & Cryptographically Secured AI Voice GST ERP, Full Double-Entry Accounting (`F4–F7`, Trial Balance, Schedule III Balance Sheet), SHA-256 Audit Trail, AI GST Notice Shield (Sec 17(5) & Rule 37), GSTR-9/CMP-08, Fuzzy GSTR-2B, WebSerial Scale & Silent ESC/POS Suite for Bharat.**
 
 Created & maintained by **Abhishek Agrahari** — built for Indian retail shops, kirana stores, pharmacies, mobile/electronics dealers, jewellers, wholesalers, manufacturers, restaurants, freelancers, exporters, and Chartered Accountants. **Zero subscriptions, zero ads, zero signup, and zero locked features — forever.**
@@ -8,6 +15,15 @@ Created & maintained by **Abhishek Agrahari** — built for Indian retail shops,
 📖 **Complete Self-Hosted User Guide (35 Pages, EN + GST Guides):** [https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/user-guide/](https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/user-guide/)  
 📄 **Machine-Readable Architecture Spec (`llms.txt`):** [https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/llms.txt](https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/llms.txt)  
 📦 **Multi-OS Desktop Releases (`.exe`, `.deb`, `.AppImage`, `macOS`, `Portable ZIP`, `Docker`):** [GitHub Releases](https://github.com/abhishekagrahari307-max/Bharat-GST-Free-Billing/releases)
+
+### 🏆 Benchmark: Why Bharat GST `v3.3.0` Wins Against Desktop & Paid Tools
+
+| Benchmark Pillar | Bharat GST `v3.3.0` Status | Why It Wins Against Desktop & Paid Tools |
+|---|---|---|
+| **Migration & Onboarding** | **Zero-CVE `fflate` Excel + UTF-16LE Tally XML** | 1-click full migration from Tally `Masters.xml`/`DayBook.xml` and Vyapar `.xlsx`/`.csv` with zero parser vulnerabilities. |
+| **Network Resilience** | **Offline Queue + 10s Heartbeat + Idempotent Sync** | Zero lost orders even in basement/weak 5G, with automatic reconnect flush & duplicate packet (`seenQueueIds`) protection. |
+| **Accounting & CA Audit** | **Double-Entry `F4–F7` + Schedule III + SHA-256 Chain** | Not just a billing tool — full CA-ready double-entry accounting and MCA Rule 3(1) tamper-proof audit trail. |
+| **Cost & Accessibility** | **₹0 Server Cost + Instant PWA + Local Node/Docker** | Starts in 1 second from a browser link, with real-time PC hard-drive folder mirroring or localhost/Docker deployment. |
 
 ---
 

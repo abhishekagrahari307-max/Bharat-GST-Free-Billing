@@ -5,15 +5,16 @@
 // business has fewer than 10 invoices (from 10 the daily support card takes
 // over, so the two never show together).
 import { useState } from 'react';
-import { Heart, Share2, X } from 'lucide-react';
+import { Heart, Share2, Volume2, X } from 'lucide-react';
 import { SUPPORT_NUDGE_MIN_INVOICES } from '../utils/supporters';
+import { playWelcomeVoice } from '../utils/welcomeSound';
 import HelpButton from './HelpButton';
 
 const KEY = 'freegstbill_welcomeCard';
 
 const isClosed = () => { try { return localStorage.getItem(KEY) === 'closed'; } catch { return false; } };
 
-export default function WelcomeCard({ invoiceCount, onOpenSupport }) {
+export default function WelcomeCard({ invoiceCount, businessName = '', onOpenSupport }) {
   const [closed, setClosed] = useState(isClosed);
   if (closed || invoiceCount >= SUPPORT_NUDGE_MIN_INVOICES) return null;
   const appUrl = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '';
@@ -29,7 +30,7 @@ export default function WelcomeCard({ invoiceCount, onOpenSupport }) {
       </button>
       <h2 id="welcome-card-title">Welcome to Bharat GST Free Billing <HelpButton title="The welcome note" doc="dashboard#welcome-card" size={16} /></h2>
       <p className="welcome-card-lead">
-        Built for Indian shop owners, traders, freelancers, manufacturers, and CAs — fast GST invoicing without subscriptions or hidden fees.
+        India&apos;s 100% Free, Offline-First ERP &amp; GST Compliance OS, <em>created by Abhishek Agrahari</em> — built for shop owners, traders, manufacturers, freelancers, and CAs.
       </p>
       <ul className="welcome-card-points">
         <li><strong>100% Free Forever.</strong> No subscription, no ads, no locked features.</li>
@@ -40,6 +41,9 @@ export default function WelcomeCard({ invoiceCount, onOpenSupport }) {
       <div className="welcome-card-actions">
         <button type="button" className="welcome-card-btn welcome-card-btn-primary" onClick={close}>
           Start Billing Now
+        </button>
+        <button type="button" className="welcome-card-btn" onClick={() => playWelcomeVoice(businessName, { force: true })}>
+          <Volume2 size={16} /> Hear Welcome
         </button>
         <a className="welcome-card-btn" href={`https://wa.me/?text=${encodeURIComponent(shareText)}`} target="_blank" rel="noopener noreferrer">
           <Share2 size={16} /> Share on WhatsApp

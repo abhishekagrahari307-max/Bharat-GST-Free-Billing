@@ -1,4 +1,12 @@
-import { Heart, Share2, BookOpen, ShieldCheck, FileText, Calculator, Printer, Package, Globe, Mic, RefreshCw, Stethoscope, MessageSquarePlus } from 'lucide-react';
+import { useState } from 'react';
+import { Heart, Share2, BookOpen, ShieldCheck, FileText, Calculator, Printer, Package, Globe, Mic, RefreshCw, Stethoscope, MessageSquarePlus, Volume2, VolumeX } from 'lucide-react';
+import {
+  isWelcomeSoundEnabled,
+  setWelcomeSoundEnabled,
+  getWelcomeVoiceStyle,
+  setWelcomeVoiceStyle,
+  playWelcomeVoice,
+} from '../utils/welcomeSound';
 import WhatsNew from './WhatsNew';
 import ProblemLog from './ProblemLog';
 import HelpButton from './HelpButton';
@@ -20,6 +28,8 @@ const HIGHLIGHTS = [
 ];
 
 export default function SupportView() {
+  const [soundOn, setSoundOn] = useState(() => isWelcomeSoundEnabled());
+  const [voiceStyle, setVoiceStyleState] = useState(() => getWelcomeVoiceStyle());
   const appUrl = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : 'https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/';
   const shareText = `I make my GST invoices with Bharat GST Free Billing (Created by Abhishek Agrahari) — 100% free GST invoicing, GSTR-1/3B/2B, UPI QR & inventory${appUrl ? `: ${appUrl}` : ''}`;
   const hinglishShareText = `🇮🇳 *Vyapari Bhaiyon & CAs ke liye 100% FREE GST Billing & Stock App!* \n\nAb bina kisi yearly charge ke mobile ya PC par GST Bill, UPI QR, Thermal Print, GSTR-1/3B JSON, Stock aur Tally/Vyapar Import chalayein — data 100% aapke device par safe rehta hai:\n👉 ${appUrl}`;
@@ -40,8 +50,42 @@ export default function SupportView() {
       <PageHeader
         title="About Bharat GST Free Billing"
         help={{ title: 'About', doc: 'support' }}
-        subtitle="Created by Abhishek Agrahari · Complete Offline-Ready GST Billing, Inventory & Tax Filing Suite for Bharat"
+        subtitle="Built for Bharat, created by Abhishek Agrahari · India's 100% Free, Offline-First ERP & GST Compliance OS"
       />
+
+      <div className="glass-panel" style={{ ...card, marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.85rem' }}>
+        <div>
+          <h3 style={{ margin: '0 0 0.25rem', fontSize: '0.98rem', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+            {soundOn ? <Volume2 size={18} style={{ color: 'var(--primary)' }} /> : <VolumeX size={18} />} Welcome Voice Greeting
+          </h3>
+          <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+            Choose English or Hinglish spoken greeting (<code>en-IN</code>) when launching Bharat GST Free Billing.
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <button
+            type="button"
+            className={`btn ${voiceStyle === 'en' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => { setVoiceStyleState('en'); setWelcomeVoiceStyle('en'); playWelcomeVoice('', { force: true, style: 'en' }); }}
+          >
+            🔊 Preview English
+          </button>
+          <button
+            type="button"
+            className={`btn ${voiceStyle === 'hinglish' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => { setVoiceStyleState('hinglish'); setWelcomeVoiceStyle('hinglish'); playWelcomeVoice('', { force: true, style: 'hinglish' }); }}
+          >
+            🇮🇳 Preview Hinglish
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => { const next = !soundOn; setSoundOn(next); setWelcomeSoundEnabled(next); }}
+          >
+            {soundOn ? 'Startup Greeting: ON' : 'Startup Greeting: Muted'}
+          </button>
+        </div>
+      </div>
 
       <div className="glass-panel" style={{ ...card, marginBottom: '1.25rem', display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
         <Heart size={28} style={{ color: '#e11d48', flexShrink: 0, marginTop: 2 }} />

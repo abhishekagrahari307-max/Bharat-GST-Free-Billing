@@ -1572,7 +1572,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
 
       {/* v1.10.86 - each block in a wrapper whose CSS order follows Customise Dashboard. */}
       {blockOn('welcome') && <div style={blockOrder('welcome')}>
-      {onOpenSupport && billsLoaded && <WelcomeCard invoiceCount={bills.length} onOpenSupport={onOpenSupport} />}
+      {onOpenSupport && billsLoaded && <WelcomeCard invoiceCount={bills.length} businessName={profile?.businessName || ''} onOpenSupport={onOpenSupport} />}
 
       {startedSteps && (
         <div className="glass-panel p-6 mb-6">

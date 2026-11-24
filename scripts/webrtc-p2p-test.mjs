@@ -16,6 +16,7 @@ import {
   parseSpreadsheetMigration,
   parseTallyXmlMigration,
 } from '../src/utils/legacyImporter.js';
+import { buildWelcomeVoiceText } from '../src/utils/welcomeSound.js';
 
 let passed = 0;
 let failed = 0;
@@ -126,6 +127,20 @@ assert(
     tallyParsed.vouchers.length === 1 &&
     tallyParsed.vouchers[0].totalAmount === 21000,
   'Imports Tally XML Ledgers, Stock Items (with OPENINGBALANCE=25) & Sales Vouchers in 1 click'
+);
+
+// Welcome Voice Greeting lines (English, Dynamic Business Name & Hinglish)
+assert(
+  buildWelcomeVoiceText('', 'en') === 'Welcome to Bharat GST Free Billing, created by Abhishek Agrahari.',
+  'Builds clean English welcome voice greeting'
+);
+assert(
+  buildWelcomeVoiceText('Sharma Traders', 'en') === 'Welcome to Bharat GST Free Billing, Sharma Traders. Created by Abhishek Agrahari.',
+  'Builds dynamic business-name welcome voice greeting'
+);
+assert(
+  buildWelcomeVoiceText('', 'hinglish') === 'Bharat GST Free Billing mein aapka swagat hai — created by Abhishek Agrahari.',
+  'Builds warm Hinglish welcome voice greeting'
 );
 
 console.log(`webrtc-p2p-test: ${passed} passed, ${failed} failed`);
