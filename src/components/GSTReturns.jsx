@@ -3,7 +3,20 @@ import { FileText, Download, Upload, ExternalLink, CheckCircle, ChevronDown, Che
 import { getAllBills, getAllExpenses, getAllPurchases, getProfile, getEnabledModules, getAllDebitNotes } from '../store';
 import { purchaseReturnsTax, netItc, rcmInward, splitRcmItc } from '../utils/debitNotes';
 import { purchaseLineTax } from '../utils/purchaseOrders';
-import { hsnTable, stripEmpty, lineTreatment, nilTable, expTable, exportNote, b2bInvType, docIssueSummary, docIssueDetails, cleanGstin, gstinFormatOk, hsnSplitFrom, hsnSummary, mergeHsnRows, hsnRowValue, hsnCsvRow, HSN_CSV_HEADERS, billIsInterstate, billSplit, isExportBill, hsnSign, ecoSummary } from '../utils/gstr1Json';
+import { hsnTable, stripEmpty, lineTreatment, nilTable, expTable, exportNote, b2bInvType, docIssueSummary, docIssueDetails, cleanGstin, gstinFormatOk, hsnSplitFrom, hsnSummary, mergeHsnRows, hsnRowValue, billIsInterstate, billSplit, isExportBill, hsnSign, ecoSummary } from '../utils/gstr1Json';
+import {
+  buildGovtB2csRows,
+  generateGovtGstr1B2csCsv,
+  generateGovtGstr1HsnCsv,
+  generateGovtGstr1B2bCsv,
+  generateGovtGstr1B2clCsv,
+  generateGovtGstr1CdnrCsv,
+  generateGovtGstr1CdnurCsv,
+  generateGovtGstr1ExpCsv,
+  generateGovtGstr1DocsCsv,
+  generateGovtGstr1ExempCsv,
+  resolveBillPosCode,
+} from '../utils/gstExport';
 import { formatCurrency, INVOICE_TYPES, getStateCode, formatDateGST, getFilingPeriod, getFYOptions, belongsToProfile, toCsvLine, isCancelledBill, b2clThreshold, GST_PORTAL_RATES, setOffITC, placeOfSupplyLabel, countsAsSales, parseLocalDate, isModuleEnabled, gstinChecksumOk } from '../utils';
 import { toast } from './Toast';
 import HelpButton from './HelpButton';
@@ -33,7 +46,7 @@ function downloadCSV(filename, headers, rows) {
   // with "=" from running as a spreadsheet formula when the file is opened.
   const lines = [toCsvLine(headers)];
   rows.forEach(row => lines.push(toCsvLine(row)));
-  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const blob = new Blob([lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
   triggerTrackedBrowserDownload({
     blob,
     filename,
@@ -41,6 +54,18 @@ function downloadCSV(filename, headers, rows) {
     label: `GST CSV Export (${filename})`,
     allowEmpty: true,
     portalAdvisory: 'Verify figures before portal filing',
+  });
+}
+
+function downloadGovtCsv(filename, csvContent) {
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  triggerTrackedBrowserDownload({
+    blob,
+    filename,
+    category: 'gstr',
+    label: `Govt GST Offline Tool V3.2.4 CSV (${filename})`,
+    allowEmpty: true,
+    portalAdvisory: '100% matched to Government GST Offline Tool V3.2.4 CSV template',
   });
 }
 
@@ -793,7 +818,7 @@ export default function GSTReturns({ onOpenPurchases } = {}) {
   // row per supply type, place of supply and rate. It used to add every state
   // into one row per rate, so inter-state sales to Bihar, Punjab... could not
   // be read off it. B2C Large (Table 5) invoices are listed under it.
-  const b2cPos = (bill) => getStateCode(bill.data?.details?.placeOfSupply || bill.data?.client?.state || bill.data?.profile?.state || '');
+  const b2cPos = (bill) => resolveBillPosCode(bill, profile);
   const b2cTable7 = (() => {
     const rows = {};
     b2cSmall.forEach(bill => {
@@ -1053,89 +1078,76 @@ export default function GSTReturns({ onOpenPurchases } = {}) {
   // reverse charge), so it is not a NIL GSTR-3B even with no sales.
   const isNilReturn = filteredBills.length === 0 && filteredExpenses.length === 0 && filteredPurchases.length === 0 && !hasReturns;
 
-  // ========== CSV Exports ==========
+  // ========== CSV Exports (100% Government GST Offline Tool V3.2.4 Templates) ==========
   const exportB2B = () => {
-    if (b2bRows.length === 0) { toast('No B2B data to export', 'warning'); return; }
-    downloadCSV('GSTR1_B2B_Invoices.csv',
-      ['GSTIN/UIN', 'Receiver Name', 'Invoice Number', 'Invoice Date', 'Invoice Value', 'Place of Supply', 'Reverse Charge', 'Invoice Type', 'Supply Type', 'Taxable Value', 'CGST Amount', 'SGST Amount', 'IGST Amount'],
-      b2bRegular.map(bill => {
-        const { client, totals, details } = bill.data;
-        const isInter = billIsInterstate(bill);
-        const pos = getStateCode(details?.placeOfSupply || client?.state || '');
-        return [client.gstin, client.name || bill.clientName || '', bill.invoiceNumber || '', formatDateGST(bill.invoiceDate), (totals?.total || 0).toFixed(2), placeOfSupplyLabel(pos), 'N', 'Regular', isInter ? 'Inter State' : 'Intra State', getTaxableAmount(totals).toFixed(2), isInter ? 0 : (totals?.cgst || 0).toFixed(2), isInter ? 0 : ((totals?.sgst || 0) + (totals?.utgst || 0)).toFixed(2), isInter ? (totals?.igst || 0).toFixed(2) : 0];
-      }));
-    toast('B2B CSV downloaded — matches GSTR-1 Table 4A format', 'success');
+    if (b2bRegular.length === 0) { toast('No B2B data to export', 'warning'); return; }
+    downloadGovtCsv('GSTR1_B2B_Invoices.csv', generateGovtGstr1B2bCsv(b2bRegular, profile));
+    toast('B2B CSV downloaded — matches Govt GST Offline Tool V3.2.4 (Table 4A/4B/6B/6C)', 'success');
   };
 
   const exportB2C = () => {
-    if (b2cRates.length === 0 && b2cLarge.length === 0) { toast('No B2C data to export', 'warning'); return; }
-    const b2csData = {};
-    b2cSmall.forEach(bill => {
-      const { profile: prof, client, items, details } = bill.data;
-      const isInter = billIsInterstate(bill);
-      const pos = getStateCode(details?.placeOfSupply || client?.state || prof?.state || '');
-      const splyType = isInter ? 'INTER' : 'INTRA';
-      (items || []).forEach(item => {
-        const rate = item.taxPercent || 0;
-        const key = `${splyType}_${pos}_${rate}`;
-        if (!b2csData[key]) b2csData[key] = { splyType, pos, rate, taxable: 0, cgst: 0, sgst: 0, igst: 0 };
-        const split = billSplit(bill, item, isInter, !!bill.data?.taxInclusive, billIsIntraUT(bill));
-        b2csData[key].taxable += split.taxable; b2csData[key].cgst += split.cgst; b2csData[key].sgst += split.sgst + split.utgst; b2csData[key].igst += split.igst;
-        b2csData[key].cess = (b2csData[key].cess || 0) + split.cess;
-      });
-    });
-    downloadCSV('GSTR1_B2C_Small.csv', ['Type', 'Place of Supply', 'Rate', 'Taxable Value', 'CGST Amount', 'SGST Amount', 'IGST Amount', 'Cess Amount'],
-      Object.values(b2csData).map(d => [d.splyType === 'INTER' ? 'Inter State' : 'Intra State', placeOfSupplyLabel(d.pos), d.rate + '%', d.taxable.toFixed(2), d.cgst.toFixed(2), d.sgst.toFixed(2), d.igst.toFixed(2), (d.cess || 0).toFixed(2)]));
-    if (b2cLarge.length > 0) {
-      downloadCSV('GSTR1_B2C_Large.csv', ['Invoice Number', 'Invoice Date', 'Invoice Value', 'Place of Supply', 'Taxable Value', 'IGST Amount', 'Cess Amount'],
-        b2cLarge.map(bill => { const { client, totals, details } = bill.data; const pos = getStateCode(details?.placeOfSupply || client?.state || ''); return [bill.invoiceNumber, formatDateGST(bill.invoiceDate), (totals?.total || 0).toFixed(2), placeOfSupplyLabel(pos), getTaxableAmount(totals).toFixed(2), (totals?.igst || 0).toFixed(2), (totals?.cess || 0).toFixed(2)]; }));
+    const unregSmallNotes = creditNotes.filter(
+      (b) => !b.data?.client?.gstin && !isExportBill(b) && !(billIsInterstate(b) && (b.totalAmount || 0) > b2clThreshold(b.invoiceDate))
+    );
+    const b2csRows = buildGovtB2csRows(b2cSmall, unregSmallNotes, profile);
+    if (b2csRows.length === 0 && b2cLarge.length === 0) { toast('No B2C data to export', 'warning'); return; }
+    if (b2csRows.length > 0) {
+      downloadGovtCsv('GSTR1_B2C_Small.csv', generateGovtGstr1B2csCsv(b2csRows));
     }
-    toast('B2C CSV downloaded', 'success');
+    if (b2cLarge.length > 0) {
+      downloadGovtCsv('GSTR1_B2C_Large.csv', generateGovtGstr1B2clCsv(b2cLarge, profile));
+    }
+    toast('B2C CSV downloaded — matches Govt GST Offline Tool V3.2.4 (Table 7 B2CS / Table 5A B2CL)', 'success');
   };
 
   const exportHSN = () => {
     if (hsnRows.length === 0) { toast('No HSN data', 'warning'); return; }
     // v1.10.84 (#166) - from the May 2025 return the portal takes Table 12 as
-    // two lists, so the CSV comes as two files (a list with no rows is left
-    // out). Earlier periods keep the one combined file.
+    // two lists (B2B and B2C). Uses exact Govt Offline Tool V3.2.4 UQC strings ("PCS-PIECES", "NA").
     if (!hsnSplit) {
-      downloadCSV('GSTR1_HSN_Summary.csv', HSN_CSV_HEADERS, mergeHsnRows(hsnRows).map(hsnCsvRow));
+      downloadGovtCsv('GSTR1_HSN_Summary.csv', generateGovtGstr1HsnCsv(mergeHsnRows(hsnRows)));
     } else {
       [['B2B', hsnB2B], ['B2C', hsnB2C]].forEach(([part, rows]) => {
-        if (rows.length) downloadCSV(`GSTR1_HSN_${part}.csv`, HSN_CSV_HEADERS, rows.map(hsnCsvRow));
+        if (rows.length) downloadGovtCsv(`GSTR1_HSN_${part}.csv`, generateGovtGstr1HsnCsv(rows));
       });
     }
-    toast(hsnSplit ? 'HSN CSV downloaded - B2B and B2C files, GSTR-1 Table 12 format' : 'HSN CSV downloaded - GSTR-1 Table 12 format', 'success');
+    toast(hsnSplit ? 'HSN B2B & B2C CSVs downloaded — matches Govt GST Offline Tool V3.2.4 (Table 12)' : 'HSN CSV downloaded — matches Govt GST Offline Tool V3.2.4 (Table 12)', 'success');
   };
 
   const exportCDNR = () => {
-    const cdnrBills = creditNotes.filter(b => b.data?.client?.gstin);
-    const cdnurBills = creditNotes.filter(b => !b.data?.client?.gstin);
-    if (cdnrBills.length === 0 && cdnurBills.length === 0) { toast('No Credit Notes', 'warning'); return; }
+    const cdnrBills = creditNotes.filter((b) => b.data?.client?.gstin && !isExportBill(b));
+    const cdnurBills = creditNotes.filter(
+      (b) => !b.data?.client?.gstin && (isExportBill(b) || (billIsInterstate(b) && (b.totalAmount || 0) > b2clThreshold(b.invoiceDate)))
+    );
+    if (cdnrBills.length === 0 && cdnurBills.length === 0) {
+      toast('No CDNR/CDNUR notes (small B2C credit notes are auto-netted in B2CS Table 7)', 'warning');
+      return;
+    }
     if (cdnrBills.length > 0) {
-      downloadCSV('GSTR1_CDNR.csv', ['GSTIN/UIN', 'Receiver Name', 'Note Number', 'Note Date', 'Note Type', 'Place of Supply', 'Reverse Charge', 'Note Value', 'Taxable Value', 'IGST Amount', 'CGST Amount', 'SGST Amount'],
-        cdnrBills.map(bill => { const { client, totals } = bill.data; const isInter = billIsInterstate(bill); const pos = getStateCode(bill.data.details?.placeOfSupply || client?.state || ''); return [client.gstin, client.name || bill.clientName, bill.invoiceNumber, formatDateGST(bill.invoiceDate), 'C', pos, 'N', (totals?.total || 0).toFixed(2), getTaxableAmount(totals).toFixed(2), isInter ? (totals?.igst || 0).toFixed(2) : '0.00', isInter ? '0.00' : (totals?.cgst || 0).toFixed(2), isInter ? '0.00' : ((totals?.sgst || 0) + (totals?.utgst || 0)).toFixed(2)]; }));
+      downloadGovtCsv('GSTR1_CDNR.csv', generateGovtGstr1CdnrCsv(cdnrBills, profile));
     }
     if (cdnurBills.length > 0) {
-      downloadCSV('GSTR1_CDNUR.csv', ['Note Number', 'Note Date', 'Note Type', 'Place of Supply', 'Note Value', 'Taxable Value', 'IGST Amount', 'Cess Amount'],
-        cdnurBills.map(bill => { const { client, totals } = bill.data; const pos = getStateCode(bill.data.details?.placeOfSupply || client?.state || ''); return [bill.invoiceNumber, formatDateGST(bill.invoiceDate), 'C', pos, (totals?.total || 0).toFixed(2), getTaxableAmount(totals).toFixed(2), (totals?.igst || 0).toFixed(2), (totals?.cess || 0).toFixed(2)]; }));
+      downloadGovtCsv('GSTR1_CDNUR.csv', generateGovtGstr1CdnurCsv(cdnurBills, profile));
     }
-    toast('Credit Notes exported', 'success');
+    toast('Credit Notes CSV downloaded — matches Govt GST Offline Tool V3.2.4 (Table 9B)', 'success');
   };
 
   const exportExports = () => {
-    if (exportRows.length === 0) { toast('No export invoices', 'warning'); return; }
-    downloadCSV('GSTR1_Exports_6A.csv', ['Export Type', 'Invoice Number', 'Invoice Date', 'Invoice Value (INR)', 'Rate', 'Taxable Value (INR)', 'IGST (INR)', 'Cess (INR)', 'Client', 'Country', 'Currency', 'Exchange Rate'],
-      // An invoice with no rate has no rupee figures yet: left out (it is listed as an error).
-      exportRows.filter(r => !r.missing).map(r => [r.type, r.invoiceNo, formatDateGST(r.date), r.value.toFixed(2), r.rates, r.taxable.toFixed(2), r.igst.toFixed(2), r.cess.toFixed(2), r.client, r.country, r.currency, r.missing ? 'MISSING' : r.fxRate]));
-    toast('Exports (Table 6A) CSV downloaded', 'success');
+    if (exportBills.length === 0) { toast('No export invoices', 'warning'); return; }
+    downloadGovtCsv('GSTR1_Exports_6A.csv', generateGovtGstr1ExpCsv(exportBills));
+    toast('Exports (Table 6A) CSV downloaded — matches Govt GST Offline Tool V3.2.4', 'success');
   };
 
   const exportDocSummary = () => {
     if (Object.keys(docSummary).length === 0) { toast('No documents', 'warning'); return; }
-    downloadCSV('GSTR1_Doc_Summary.csv', ['Document Type', 'Sr. No. From', 'Sr. No. To', 'Total Number', 'Cancelled'],
-      Object.entries(docSummary).map(([, d]) => [d.type, d.from, d.to, d.total, d.cancelled]));
-    toast('Document Summary CSV downloaded', 'success');
+    downloadGovtCsv('GSTR1_Doc_Summary.csv', generateGovtGstr1DocsCsv(docSummary));
+    toast('Document Summary CSV downloaded — matches Govt GST Offline Tool V3.2.4 (Table 13)', 'success');
+  };
+
+  const exportExemp = () => {
+    if (nilRows.length === 0) { toast('No Nil/Exempt/Non-GST supplies', 'warning'); return; }
+    downloadGovtCsv('GSTR1_Exemp_Nil_NonGST.csv', generateGovtGstr1ExempCsv(nilRows));
+    toast('Nil / Exempt / Non-GST CSV downloaded — matches Govt GST Offline Tool V3.2.4 (Table 8)', 'success');
   };
 
   const exportGSTR3B = () => {
@@ -1408,14 +1420,17 @@ export default function GSTReturns({ onOpenPurchases } = {}) {
     const isLargeNote = (b) => billIsInterstate(b) && (b.totalAmount || 0) > b2clThreshold(b.invoiceDate);
     const b2csMap = {};
     const addB2cs = (bill, sign) => {
-      const { profile: prof, client, items, details } = bill.data;
+      const { items, details } = bill.data;
       const isInter = billIsInterstate(bill);
       const isIntraUT = billIsIntraUT(bill);
-      const pos = getStateCode(details?.placeOfSupply || client?.state || prof?.state || '');
+      const pos = resolveBillPosCode(bill, profile);
+      const rawEco = cleanGstin(details?.ecoGstin || '');
+      const etin = rawEco.length === 15 ? rawEco : '';
+      const typ = etin ? 'E' : 'OE';
       const splyTy = isInter ? 'INTER' : 'INTRA';
       (items || []).filter(taxableLine(bill)).forEach(item => {
-        const rate = Number(item.taxPercent) || 0; const key = `${splyTy}_${pos}_${rate}`;
-        if (!b2csMap[key]) b2csMap[key] = { sply_ty: splyTy, pos, typ: 'OE', rt: rate, txval: 0, iamt: 0, camt: 0, samt: 0, csamt: 0 };
+        const rate = Number(item.taxPercent) || 0; const key = `${splyTy}_${pos}_${rate}_${etin}`;
+        if (!b2csMap[key]) b2csMap[key] = { sply_ty: splyTy, pos, typ, rt: rate, txval: 0, iamt: 0, camt: 0, samt: 0, csamt: 0, ...(etin ? { etin } : {}) };
         const split = billSplit(bill, item, isInter, !!bill.data?.taxInclusive, isIntraUT);
         b2csMap[key].txval += sign * split.taxable;
         b2csMap[key].iamt += sign * split.igst;
@@ -1691,6 +1706,7 @@ export default function GSTReturns({ onOpenPurchases } = {}) {
             <button className="btn btn-secondary" onClick={exportHSN} style={{ fontSize: '0.78rem', padding: '0.3rem 0.6rem' }}><Download size={13} /> HSN</button>
             <button className="btn btn-secondary" onClick={exportCDNR} style={{ fontSize: '0.78rem', padding: '0.3rem 0.6rem' }}><Download size={13} /> CDNR</button>
             <button className="btn btn-secondary" onClick={exportDocSummary} style={{ fontSize: '0.78rem', padding: '0.3rem 0.6rem' }}><Download size={13} /> Docs</button>
+            {nilRows.length > 0 && <button className="btn btn-secondary" onClick={exportExemp} style={{ fontSize: '0.78rem', padding: '0.3rem 0.6rem' }}><Download size={13} /> Nil/Exempt</button>}
             {exportRows.length > 0 && <button className="btn btn-secondary" onClick={exportExports} style={{ fontSize: '0.78rem', padding: '0.3rem 0.6rem' }}><Download size={13} /> Exports</button>}
             <HelpButton title="GSTR-1 downloads" doc="gst-returns#gstr-1-files" size={16} />
             {!periodFiling.gstr1 && (

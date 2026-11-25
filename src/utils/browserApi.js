@@ -284,7 +284,14 @@ function extractApiPath(input) {
   }
 }
 
-const BHARAT_CHANGELOG_MD = `## [5.5.1] - 2026-11-21
+const BHARAT_CHANGELOG_MD = `## [5.5.2] - 2026-11-21
+**100% Official Government GST Offline Tool V3.2.4 CSV Export Compliance — Exact Templates for B2CS (Table 7), HSN B2B & B2C (Table 12), B2B (Table 4), B2CL, CDNR/CDNUR, Exports, Nil/Exempt & Docs.**
+
+### Fixed & Upgraded
+- **B2C(Small) Table 7 CSV (\`src/utils/gstExport.js\`)**: Resolves \`Error: Data Invalid (Section : B2CS)\` in **GST Offline Tool V3.2.4** with exact 7 columns (\`Type,Place Of Supply,Applicable % of Tax Rate,Rate,Taxable Value,Cess Amount,E-Commerce GSTIN\`), \`OE\`/\`E\` indicator, \`09-Uttar Pradesh\` format, and numeric \`Rate\`.
+- **HSN B2B & B2C, B2B, B2CL, CDNR/CDNUR, Exports & Docs CSVs**: Matched every GSTR-1 CSV 100% to GST Offline Tool V3.2.4 (\`PCS-PIECES\` / \`KGS-KILOGRAMS\` / \`NA\` UQCs, \`dd-MMM-yyyy\` dates, \`Regular B2B\` slab rows, and CRLF endings).
+
+## [5.5.1] - 2026-11-21
 **Complete A-to-Z UI/UX & Full-Screen Layout Polish — Natural Full-Page Scrolling, Universal \`☰\` Collapsible Sidebar, Non-Overlapping Single-Row Header & Non-Clipping MSME/Sidebar Cards.**
 
 ### Fixed & Refined

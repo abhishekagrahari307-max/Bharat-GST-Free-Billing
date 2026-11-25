@@ -5,6 +5,23 @@ Bharat GST Free Billing follows a **Daily Continuous Release & Safe Auto-Update*
 
 ---
 
+## [5.5.2] - 2026-11-21
+
+**100% Official Government GST Offline Tool V3.2.4 CSV Export Compliance — Exact Templates for B2CS (Table 7), HSN B2B & B2C (Table 12), B2B (Table 4), B2CL (Table 5A), CDNR/CDNUR (Table 9B), Exports (Table 6A), Nil/Exempt (Table 8) & Documents Issued (Table 13).**
+
+### Fixed & Upgraded
+- **B2C(Small) Table 7 CSV (`src/utils/gstExport.js`, `src/components/GSTReturns.jsx`)**: Fixed `Error: Data Invalid (Section : B2CS)` in **GST Offline Tool V3.2.4** by emitting the exact 7 mandatory columns (`Type,Place Of Supply,Applicable % of Tax Rate,Rate,Taxable Value,Cess Amount,E-Commerce GSTIN`), `OE`/`E` supply indicator, `09-Uttar Pradesh` POS format, pure numeric tax rate (`5` instead of `5%`), taxable-only netting of small unregistered credit notes, and `\r\n` CRLF line endings.
+- **HSN B2B & B2C Table 12 CSV (`src/utils/gstExport.js`, `src/utils/gstr1Json.js`)**: Emits the exact 11 Offline Tool V3.2.4 columns with official `CODE-DESCRIPTION` UQC values (`PCS-PIECES`, `NOS-NUMBERS`, `KGS-KILOGRAMS`, `OTH-OTHERS`, and `NA` with `0` quantity for SAC `99xxxx` services), numeric HSN cleaning, and 30-character sanitized descriptions.
+- **B2B, B2CL, CDNR, CDNUR, Exports, Nil/Exempt & Docs CSVs (`src/utils/gstExport.js`, `src/components/GSTReturns.jsx`)**: Matched all remaining GSTR-1 CSV exports 100% to GST Offline Tool V3.2.4 (`dd-MMM-yyyy` dates, slab-wise invoice rows, `Regular B2B` / `SEZ` / `Deemed Exp` labels, `UR Type`, and official Table 8 & Table 13 templates).
+
+### How to update
+**Current version:** v5.5.1  →  **New version:** v5.5.2
+
+- **Web & Installable PWA**: Refresh the page or click **Update** in **Settings → About & Updates** (`v5.5.1` → `v5.5.2`).
+- **Desktop / Portable (`Free-GST-Billing-v5.5.2.zip`)**: Click **Update** in **Settings**, or download `Free-GST-Billing-v5.5.2.zip` and extract over your existing folder (your `data/` folder is never touched).
+
+---
+
 ## [5.5.1] - 2026-11-21
 
 **Complete A-to-Z UI/UX & Full-Screen Layout Polish — Natural Full-Page Scrolling, Universal Desktop/Mobile `☰` Collapsible Sidebar, Single-Row Non-Overlapping Header, Consolidated SOS & CTA Controls, and Non-Clipping MSME 43B(h) & Sidebar Cards.**
