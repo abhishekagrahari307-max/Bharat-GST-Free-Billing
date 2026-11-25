@@ -5,6 +5,22 @@ Bharat GST Free Billing follows a **Daily Continuous Release & Safe Auto-Update*
 
 ---
 
+## [5.5.4] - 2026-11-21
+
+**Universal Auto-Closing Menu Sidebar Across Phone, Tablet & Desktop (`src/App.jsx`, `src/index.css`).**
+
+### Fixed & Hardened
+- **Instant Sidebar Auto-Close on Selection (`src/App.jsx`)**: Selecting any navigation item, profile option, or footer shortcut in the Menu Sidebar immediately closes both the mobile/tablet slide-in drawer (`navOpen`) and the desktop/tablet collapsible sidebar (`sidebarCollapsed`), blurs focus inside the hidden rail, and supports `Escape` & outside-click dismissal.
+- **Responsive Drawer & Tablet Breakpoint Guard (`src/index.css`)**: Eliminates off-screen shadow bleed when closed and unifies the `<= 860px` mobile/tablet drawer & bottom navigation bar breakpoint.
+
+### How to update
+**Current version:** 5.5.3  →  **New version:** 5.5.4
+
+- **Web & Installable PWA**: Refresh the page or click **Update** in **Settings → About & Updates** (`5.5.3` → `5.5.4`).
+- **Desktop / Portable (`Free-GST-Billing.zip` / `Free-GST-Billing-v5.5.4.zip`)**: Click **Update** in **Settings**, or download `Free-GST-Billing-v5.5.4.zip` and extract over your existing folder (your `data/` folder is never touched).
+
+---
+
 ## [5.5.3] - 2026-11-21
 
 **1-Click Govt GST Offline Tool V3.2.4 Full CSV Bundle (`All CSVs (V3.2.4)`), Strict Phase-III HSN Goods UQC Validation & Verified Portable Release ZIP (`Free-GST-Billing-v5.5.3.zip`).**
