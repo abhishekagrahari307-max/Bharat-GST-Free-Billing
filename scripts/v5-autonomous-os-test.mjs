@@ -22,6 +22,9 @@ import {
   detectMarginErosion,
   generateServerlessCatalogLink,
   decodeServerlessCatalogLink,
+  encodeB2BOrderToken,
+  decodeB2BOrderToken,
+  computeMultiFirmConsolidation,
 } from '../src/utils/autonomousMunimAnd43B.js';
 
 let passed = 0;
@@ -163,6 +166,43 @@ const decodedCat = decodeServerlessCatalogLink(new URL(catLink).hash);
 assert(
   decodedCat?.b?.n === 'अग्रहरि ट्रेडर्स' && decodedCat?.i?.[0]?.n === 'सरसों तेल Tin' && decodedCat?.i?.[0]?.r === 2150,
   'Round-trips UTF-8 Hindi/English Serverless #b2b-catalog Storefront link losslessly'
+);
+
+// 9. BGST-ORD WhatsApp Order Token Round-Trip
+const ordToken = encodeB2BOrderToken({
+  buyer: 'Sharma Kirana',
+  gstin: '09ABCDE1234F1Z5',
+  items: [{ id: '1', name: 'सरसों तेल Tin', qty: 4, rate: 2150, gst: 5, unit: 'TIN' }],
+});
+const decodedOrd = decodeB2BOrderToken(`New WhatsApp Order:\n${ordToken}`);
+assert(
+  decodedOrd?.buyer === 'Sharma Kirana' && decodedOrd?.items?.[0]?.qty === 4,
+  'Encodes & decodes BGST-ORD WhatsApp B2B Order Token for 1-click Auto-Billing'
+);
+
+// 10. Multi-Firm Group Consolidated P&L with Inter-Firm Elimination
+const group = computeMultiFirmConsolidation({
+  profiles: [
+    { businessName: 'Firm A Wholesale', gstin: '09AAAAA0000A1Z5' },
+    { businessName: 'Firm B Retail', gstin: '09BBBBB1111B1Z5' },
+  ],
+  bills: [
+    { ownerGstin: '09AAAAA0000A1Z5', clientGstin: '09BBBBB1111B1Z5', status: 'paid', data: { invoiceType: 'Tax Invoice', subtotal: 100000 } }, // Inter-firm!
+    { ownerGstin: '09BBBBB1111B1Z5', clientGstin: '09CCCCC2222C1Z5', status: 'unpaid', totalAmount: 250000, amountPaid: 50000, data: { invoiceType: 'Tax Invoice', subtotal: 250000 } },
+  ],
+  purchases: [
+    { ownerGstin: '09BBBBB1111B1Z5', supplierGstin: '09AAAAA0000A1Z5', taxableAmount: 100000, totalAmount: 100000, paymentStatus: 'PAID' }, // Inter-firm!
+    { ownerGstin: '09AAAAA0000A1Z5', supplierGstin: '09DDDDD3333D1Z5', taxableAmount: 80000, totalAmount: 80000, paymentStatus: 'UNPAID' },
+  ],
+  expenses: [{ ownerGstin: '09BBBBB1111B1Z5', amount: 20000 }],
+});
+assert(
+  group.firmCount === 2 &&
+    group.interFirmEliminated === 100000 &&
+    group.netConsolidatedSales === 250000 &&
+    group.netConsolidatedPurchases === 80000 &&
+    group.consolidatedNetProfit === 150000,
+  'Consolidates Multi-Firm P&L & Balance Sheet and eliminates ₹1,00,000 inter-firm sales/purchases'
 );
 
 console.log(`v5-autonomous-os-test: ${passed} passed, ${failed} failed`);

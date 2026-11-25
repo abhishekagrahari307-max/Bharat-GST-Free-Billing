@@ -28,6 +28,7 @@ import { withReturns, returnableLines, debitNoteTotals, editProblem, notesToRest
 import { Barcode } from 'lucide-react';
 import BarcodeLabels from './BarcodeLabels';
 import { findByBarcode } from '../utils/barcode';
+import { detectMarginErosion } from '../utils/autonomousMunimAnd43B';
 // v1.10.85 (#148) - alternate units on a purchase line, and the low-stock PO
 // handed over from Products or the Dashboard.
 import { lineFactor, altLineFields } from '../utils';
@@ -844,9 +845,11 @@ export default function PurchaseBills({ onOpenGstReturns } = {}) {
       // the productId, so a renamed line or a new spelling no longer makes a
       // second product. See utils/purchaseStock.js.
       let plan = null;
+      let prevProductsForMargin = [];
       try {
         const priorLines = before?.items || [];
-        plan = purchaseStockPlan(await getAllProducts(), purchase.items, priorLines, newProductId);
+        prevProductsForMargin = await getAllProducts();
+        plan = purchaseStockPlan(prevProductsForMargin, purchase.items, priorLines, newProductId);
         purchase = { ...purchase, items: plan.items };
       } catch (e) {
         console.warn('Reading Products for the purchase failed (non-fatal):', e);
@@ -857,6 +860,20 @@ export default function PurchaseBills({ onOpenGstReturns } = {}) {
         if (!plan) throw new Error('no products');
         await Promise.all(plan.writes.map(p => saveProduct(p)));
         toast(editingId ? 'Purchase updated' : from2b ? 'Purchase added. Back to GSTR-2B.' : 'Purchase added — items synced to Products', 'success');
+
+        // v5.0 Autonomous Munim: Real-time Purchase Rate Hike & Margin Erosion Alert (<10% margin)
+        const prevMap = new Map(prevProductsForMargin.map((op) => [String(op.id), op]));
+        for (const updatedProd of plan.writes) {
+          const oldProd = prevMap.get(String(updatedProd.id));
+          if (oldProd && Number(oldProd.sellingPrice ?? oldProd.price ?? 0) > 0) {
+            const newCost = Number(updatedProd.purchasePrice ?? updatedProd.purchaseRate ?? 0);
+            const erosion = detectMarginErosion(oldProd, newCost, 10);
+            if (erosion && (erosion.rateHike > 0 || erosion.newMarginPercent < 10)) {
+              toast(`⚠️ Margin Alert (${erosion.itemName}): Update Sale Price to ₹${erosion.suggestedSaleRate} to protect 10% margin!`, 'warning');
+              break;
+            }
+          }
+        }
       } catch (e) {
         console.warn('Products auto-sync from purchase failed (non-fatal):', e);
         toast('Purchase saved, but updating stock in Products failed - check them there', 'warning');
