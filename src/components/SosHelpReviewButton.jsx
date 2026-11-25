@@ -85,6 +85,7 @@ export default function SosHelpReviewButton({ onOpenHelpDesk }) {
   return (
     <div
       ref={rootRef}
+      data-sos-open={menuOpen ? '1' : '0'}
       className={`sos-floating-root${hasVisibleActivityDrawer ? ' sos-above-drawer' : ''}`}
       aria-label="SOS Help and Review Quick Launcher"
     >

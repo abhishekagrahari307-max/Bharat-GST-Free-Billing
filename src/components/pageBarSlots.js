@@ -18,7 +18,7 @@ export function fitPageBar(bar) {
   // A phone has its own top bar (search and icons); this row keeps the title
   // and the main button, the other buttons are always in the ⋯ menu.
   let from = 0;
-  if (window.matchMedia('(max-width: 768px)').matches) {
+  if (window.matchMedia('(max-width: 860px)').matches) {
     bar.classList.add(STEPS[0], STEPS[1]);
     from = 2;
   }

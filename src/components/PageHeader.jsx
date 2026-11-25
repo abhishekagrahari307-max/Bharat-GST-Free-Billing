@@ -60,8 +60,8 @@ export default function PageHeader({ title, help, subtitle, meta, extras, second
     <>
       {createPortal(
         <div className="page-bar-head">
-          <h1 className="page-title">
-            {title}
+          <h1 className="page-title" title={typeof title === 'string' ? title : undefined}>
+            <span className="page-title-text">{title}</span>
             {help && <HelpButton title={help.title} doc={help.doc} hint={subtitle} size={16} />}
           </h1>
           {meta ? <span className="page-bar-meta">{meta}</span> : null}

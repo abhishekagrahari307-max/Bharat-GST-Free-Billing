@@ -5731,5 +5731,309 @@ textarea:focus-visible,
   color: #60a5fa;
 }
 
+/* ==========================================================================
+   BHARAT GST v5.5.1 — A-TO-Z COMPLETE UI & LAYOUT AUDIT FIX
+   1. Natural Full-Page Scrolling (Unstick Header & Sidebar)
+   2. Universal Desktop & Mobile Collapsible Sidebar (100% Full-Screen View)
+   3. Single-Row Clean Top Bar with Zero Title/Search Overlap
+   4. Zero Duplicate Bill / SOS Buttons & Clean PWA Banner Visibility
+   5. Non-Clipping MSME 43B(h) Overdue Badges & Full Sidebar Labels
+   ========================================================================== */
+
+html, body, #root {
+  min-height: 100vh;
+  overflow-x: clip;
+  scroll-behavior: smooth;
+}
+
+.app-layout {
+  display: flex;
+  align-items: stretch;
+  min-height: 100vh;
+  height: auto !important;
+  overflow: visible !important;
+  width: 100%;
+  position: relative;
+}
+
+/* Desktop Sidebar: Natural Page Scroll + Wider Label Fit + Smooth Collapse */
+@media (min-width: 861px) {
+  .sidebar,
+  .app-sidebar {
+    position: relative !important;
+    top: auto !important;
+    bottom: auto !important;
+    height: auto !important;
+    min-height: 100vh;
+    width: 268px !important;
+    min-width: 268px !important;
+    padding: 1.15rem 0.85rem !important;
+    overflow-y: visible !important;
+    overflow-x: hidden;
+    flex-shrink: 0;
+    transition: margin-left 0.24s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
+    z-index: 30;
+  }
+
+  .app-layout.sidebar-collapsed > .sidebar,
+  .app-sidebar.is-collapsed {
+    margin-left: -268px !important;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .settings-savebar {
+    left: 268px;
+    transition: left 0.24s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .app-layout.sidebar-collapsed .settings-savebar {
+    left: 0 !important;
+  }
+}
+
+/* Prevent Sidebar Label Truncation Glitches */
+.sidebar-nav .nav-btn {
+  padding: 0.56rem 0.72rem;
+  gap: 0.58rem;
+  font-size: 0.855rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Main Content Area: Natural Full-Page Scroll & 100% Expansion */
+.main-content {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow-y: visible !important;
+  overflow-x: hidden;
+  padding: 1.25rem 1.75rem 2.25rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-bar {
+  top: auto !important;
+  position: static !important;
+}
+
+.print-settings-preview-pane {
+  top: 1rem !important;
+}
+
+/* Top Header Bar: Unstick on Scroll + Clean Single Row + Zero Title Overlap */
+.app-topbar {
+  position: static !important;
+  top: auto !important;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 14px;
+  margin: 0 0 1.15rem !important;
+  padding: 10px 16px !important;
+  border-radius: var(--radius-md, 12px);
+  background: var(--bg-card, #ffffff);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  box-shadow: var(--shadow-xs, 0 1px 2px rgba(15, 23, 42, 0.04));
+}
+
+.header-left-cluster {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1 1 260px;
+}
+
+.header-left-cluster > .page-bar-title {
+  flex: 0 1 auto !important;
+  min-width: 0 !important;
+  margin-right: 0 !important;
+  overflow: hidden;
+}
+
+.page-bar-head {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem 0.65rem;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.page-bar-head .page-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0 !important;
+  font-size: 1.18rem !important;
+  font-weight: 700 !important;
+  line-height: 1.3 !important;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.page-bar-head .page-title .page-title-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header-right-cluster {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.header-icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+}
+
+.header-icon-btn:hover {
+  transform: translateY(-1px);
+  border-color: var(--brand-primary, #2563eb);
+}
+
+.topbar-global {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 6px;
+  margin-left: 2px;
+  border-left: 1px solid var(--border-subtle, #e2e8f0);
+}
+
+/* Hide Floating Bottom-Right SOS Pill (Prevents covering PWA Install Banner; Alt+S still opens menu) */
+.sos-floating-root:not([data-sos-open="1"]) {
+  display: none !important;
+}
+
+/* Fix MSME 43B(h) "5d Overdue" Text Clipping */
+.msme-alert-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.msme-alert-party {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.msme-overdue-tag {
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  font-weight: 700;
+  font-size: 0.71rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(244, 63, 94, 0.2);
+  color: #fda4af;
+}
+
+/* Unified Tablet & Mobile Responsive Drawer (<= 860px) */
+@media (max-width: 860px) {
+  .exec-hide-mobile {
+    display: none !important;
+  }
+
+  .mobile-topbar {
+    display: flex;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 52px;
+    z-index: 900;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0 0.75rem;
+    background: #0f172a;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
+  }
+
+  .sidebar,
+  .app-sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    height: 100vh !important;
+    overflow-y: auto !important;
+    width: min(280px, 86vw) !important;
+    min-width: 0 !important;
+    margin-left: 0 !important;
+    z-index: 1200;
+    transform: translateX(-100%);
+    transition: transform 0.24s ease;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
+  }
+
+  .sidebar.sidebar-open,
+  .app-sidebar.mobile-open {
+    transform: translateX(0) !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1150;
+    background: rgba(15, 23, 42, 0.55);
+  }
+
+  .sidebar-autohide-toggle {
+    display: flex !important;
+  }
+
+  .app-layout > .main-content {
+    padding: calc(52px + 0.9rem) 1rem calc(5.25rem + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .app-topbar {
+    padding: 8px 12px !important;
+    margin: 0 0 0.85rem !important;
+  }
+
+  .app-topbar:not(:has(.page-title)) {
+    display: none !important;
+  }
+
+  .header-right-cluster > .topbar-search,
+  .header-right-cluster > .topbar-global {
+    display: none !important;
+  }
+
+  .generator-toolbar {
+    top: 52px !important;
+  }
+}
+
+
 
 

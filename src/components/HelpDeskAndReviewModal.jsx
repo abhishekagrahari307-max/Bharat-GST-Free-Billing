@@ -84,13 +84,15 @@ const INPUT_STYLE = {
 };
 
 export default function HelpDeskAndReviewModal({
-  appVersion = 'v5.5.0',
+  appVersion = 'v5.5.1',
   initialTab = 'HELP', // 'HELP' | 'DICTIONARY' | 'ERROR' | 'REVIEW' | 'TOOLS'
   prefilledErrorJob = null,
   recentSafeErrors = [],
   supportWhatsApp = '',
   onDataSeeded,
   onStaffLockChanged,
+  onOpenGuide,
+  onOpenShortcuts,
   onClose,
 }) {
   const [activeTab, setActiveTab] = useState(
@@ -400,25 +402,65 @@ export default function HelpDeskAndReviewModal({
               </span>
             </div>
           </div>
-          {onClose && (
-            <button
-              type="button"
-              onClick={onClose}
-              style={{
-                background: '#f1f5f9',
-                color: '#0f172a',
-                border: '1px solid #cbd5e1',
-                borderRadius: '8px',
-                padding: '0.35rem 0.7rem',
-                fontSize: '0.78rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                flexShrink: 0,
-              }}
-            >
-              ✕ बंद करें
-            </button>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            {onOpenGuide && (
+              <button
+                type="button"
+                onClick={onOpenGuide}
+                style={{
+                  background: '#eff6ff',
+                  color: '#1d4ed8',
+                  border: '1px solid #bfdbfe',
+                  borderRadius: '8px',
+                  padding: '0.34rem 0.62rem',
+                  fontSize: '0.74rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+                title="Open 35-page User Guide"
+              >
+                📖 User Guide
+              </button>
+            )}
+            {onOpenShortcuts && (
+              <button
+                type="button"
+                onClick={onOpenShortcuts}
+                style={{
+                  background: '#f8fafc',
+                  color: '#334155',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '8px',
+                  padding: '0.34rem 0.62rem',
+                  fontSize: '0.74rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+                title="Keyboard Shortcuts (Ctrl+/)"
+              >
+                ⌨️ Shortcuts
+              </button>
+            )}
+            {onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                style={{
+                  background: '#f1f5f9',
+                  color: '#0f172a',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '8px',
+                  padding: '0.35rem 0.7rem',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                }}
+              >
+                ✕ बंद करें
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Navigation Tabs */}

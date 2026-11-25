@@ -1875,7 +1875,7 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
       />
 
       {/* Quick Connect & Smart OS Shortcuts Strip */}
-      {(onOpenConnectSync || onOpenAllNewFunctions || onOpenHelpDesk) && (
+      {(onOpenConnectSync || onOpenAllNewFunctions) && (
         <div
           className="pro-card"
           style={{
@@ -1900,11 +1900,6 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
             {onOpenAllNewFunctions && (
               <button type="button" className="btn btn-secondary btn-sm" onClick={onOpenAllNewFunctions}>
                 <Sparkles size={14} /> All New Functions (14)
-              </button>
-            )}
-            {onOpenHelpDesk && (
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => onOpenHelpDesk('REVIEW')}>
-                <LifeBuoy size={14} /> SOS Help &amp; Review
               </button>
             )}
           </div>

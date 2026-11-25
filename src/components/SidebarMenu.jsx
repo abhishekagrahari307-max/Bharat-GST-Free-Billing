@@ -44,13 +44,15 @@ export default function SidebarMenu({ items, currentView, onPick, dots = {} }) {
   const connectItems = [
     {
       id: 'connect-sync',
-      label: 'Mobile ↔ PC Sync & B2B',
+      label: 'Mobile ↔ PC Sync',
+      fullTitle: 'Mobile ↔ PC 5G Live Sync, WhatsApp B2B Storefront & PC Folder Backup',
       icon: Smartphone,
       badge: '5G',
     },
     {
       id: 'newfeatures',
-      label: 'All New Functions Hub',
+      label: 'All New Functions',
+      fullTitle: 'All 14 New AI, GST, Year-End Rollover & CA Functions Hub',
       icon: Sparkles,
       badge: '14',
     },
@@ -93,10 +95,11 @@ export default function SidebarMenu({ items, currentView, onPick, dots = {} }) {
                 type="button"
                 className={`nav-btn ${active ? 'nav-btn-active' : ''}`}
                 aria-current={active ? 'page' : undefined}
+                title={it.fullTitle || it.label}
                 onClick={() => onPick(it)}
               >
-                <Icon size={18} />
-                <span style={{ flex: 1, textAlign: 'left' }}>{it.label}</span>
+                <Icon size={18} style={{ flexShrink: 0 }} />
+                <span style={{ flex: 1, minWidth: 0, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.label}</span>
                 {it.badge && (
                   <span
                     style={{
@@ -104,6 +107,7 @@ export default function SidebarMenu({ items, currentView, onPick, dots = {} }) {
                       fontWeight: 700,
                       padding: '1px 6px',
                       borderRadius: '999px',
+                      flexShrink: 0,
                       background: active ? 'rgba(255,255,255,0.22)' : 'rgba(56, 189, 248, 0.16)',
                       color: active ? '#ffffff' : '#7dd3fc',
                     }}

@@ -913,14 +913,14 @@ export default function SettingsView({ onSaved }) {
            Company edits made visible; v1.10.67 (#66 item 9) one Save always
            on screen. */}
       <div ref={saveBarRef} className="settings-bar" style={{
-          position: 'sticky',
-          zIndex: 30,
+          position: 'static',
+          zIndex: 10,
           padding: '0.45rem 0.55rem',
           marginBottom: '1.25rem',
           borderRadius: 12,
           border: '1px solid var(--border)',
-          background: 'var(--bg-secondary)', // solid: content must not show through
-          boxShadow: '0 4px 20px rgba(15, 23, 42, 0.08)',
+          background: 'var(--bg-secondary)',
+          boxShadow: '0 4px 20px rgba(15, 23, 42, 0.06)',
         }}>
         <style>{ALL_SECTIONS
           .filter((id) => !sectionsOf(activeSection).includes(id))
