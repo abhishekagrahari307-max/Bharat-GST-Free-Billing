@@ -59,12 +59,23 @@ export default function EnterpriseAiHub({
   ownerProfile = null,
   onBillsUpdated,
   onProductsUpdated,
+  initialSection = null,
+  activeSection = null,
+  onSectionChange = null,
+  hideTopPills = false,
 }) {
   const initialP2p = useMemo(
     () => (typeof window !== 'undefined' ? parseP2pParamsFromSearch(window.location.search) : null),
     []
   );
-  const [section, setSection] = useState(() => (initialP2p ? 'p2p' : 'notice'));
+  const [internalSection, setInternalSection] = useState(() =>
+    initialP2p ? 'p2p' : initialSection || 'notice'
+  );
+  const section = activeSection || internalSection;
+  const setSection = (nextSec) => {
+    setInternalSection(nextSec);
+    if (typeof onSectionChange === 'function') onSectionChange(nextSec);
+  };
   const [reconResult, setReconResult] = useState(null);
   const [fyFilter, setFyFilter] = useState(() => getIndianFinancialYear());
   const [saved2bDecisions, setSaved2bDecisions] = useState(() =>
@@ -590,47 +601,49 @@ export default function EnterpriseAiHub({
 
   return (
     <div>
-      {/* Sub-navigation pills */}
-      <div className="glass-panel" style={{ padding: '1rem', marginBottom: '1.25rem' }}>
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <button type="button" className={`btn ${section === 'notice' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSection('notice')}>
-            <ShieldAlert size={15} /> GST Notice Shield &amp; GSTR-9
-          </button>
-          <button type="button" className={`btn ${section === 'fuzzy2b' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSection('fuzzy2b')}>
-            <SearchCheck size={15} /> GSTR-2B Matcher &amp; Action Sheet
-          </button>
-          <button type="button" className={`btn ${section === 'rollover' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSection('rollover')}>
-            <CalendarCheck2 size={15} /> Year-End FY Rollover
-          </button>
-          <button type="button" className={`btn ${section === 'cahub' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSection('cahub')}>
-            <Briefcase size={15} /> CA Multi-Client Hub
-          </button>
-          <button type="button" className={`btn ${section === 'forecast' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSection('forecast')}>
-            <TrendingUp size={15} /> 30-Day Cash &amp; Dead-Stock AI
-          </button>
-          <button type="button" className={`btn ${section === 'fifo' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSection('fifo')}>
-            <ShoppingBag size={15} /> FIFO Settlement &amp; B2B Catalog
-          </button>
-          <button type="button" className={`btn ${section === 'hardware' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSection('hardware')}>
-            <Cpu size={15} /> WebSerial Scale &amp; Silent POS
-          </button>
-          <button type="button" className={`btn ${section === 'p2p' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSection('p2p')}>
-            <Smartphone size={15} /> 5G Mobile-PC P2P Sync
-          </button>
-          <button type="button" className={`btn ${section === 'migrate' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSection('migrate')}>
-            <Database size={15} /> Tally XML &amp; Vyapar Import
-          </button>
-          <button type="button" className={`btn ${section === 'itr' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSection('itr')}>
-            <FileSpreadsheet size={15} /> ITR-3/4, AIS &amp; Portal Bridge
-          </button>
-          <button type="button" className={`btn ${section === 'supplychain' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSection('supplychain')}>
-            <Warehouse size={15} /> Multi-Godown, FEFO &amp; BOM
-          </button>
-          <button type="button" className={`btn ${section === 'munim' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSection('munim')}>
-            <Brain size={15} /> AI Munim, Sec 43B(h) &amp; Storefront
-          </button>
+      {/* Sub-navigation pills (hidden when parent dedicated view provides structured navigation) */}
+      {!hideTopPills && (
+        <div className="glass-panel" style={{ padding: '1rem', marginBottom: '1.25rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button type="button" className={`btn ${section === 'notice' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSection('notice')}>
+              <ShieldAlert size={15} /> GST Notice Shield &amp; GSTR-9
+            </button>
+            <button type="button" className={`btn ${section === 'fuzzy2b' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSection('fuzzy2b')}>
+              <SearchCheck size={15} /> GSTR-2B Matcher &amp; Action Sheet
+            </button>
+            <button type="button" className={`btn ${section === 'rollover' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSection('rollover')}>
+              <CalendarCheck2 size={15} /> Year-End FY Rollover
+            </button>
+            <button type="button" className={`btn ${section === 'cahub' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSection('cahub')}>
+              <Briefcase size={15} /> CA Multi-Client Hub
+            </button>
+            <button type="button" className={`btn ${section === 'forecast' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSection('forecast')}>
+              <TrendingUp size={15} /> 30-Day Cash &amp; Dead-Stock AI
+            </button>
+            <button type="button" className={`btn ${section === 'fifo' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSection('fifo')}>
+              <ShoppingBag size={15} /> FIFO Settlement &amp; B2B Catalog
+            </button>
+            <button type="button" className={`btn ${section === 'hardware' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSection('hardware')}>
+              <Cpu size={15} /> WebSerial Scale &amp; Silent POS
+            </button>
+            <button type="button" className={`btn ${section === 'p2p' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSection('p2p')}>
+              <Smartphone size={15} /> 5G Mobile-PC P2P Sync
+            </button>
+            <button type="button" className={`btn ${section === 'migrate' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSection('migrate')}>
+              <Database size={15} /> Tally XML &amp; Vyapar Import
+            </button>
+            <button type="button" className={`btn ${section === 'itr' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSection('itr')}>
+              <FileSpreadsheet size={15} /> ITR-3/4, AIS &amp; Portal Bridge
+            </button>
+            <button type="button" className={`btn ${section === 'supplychain' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSection('supplychain')}>
+              <Warehouse size={15} /> Multi-Godown, FEFO &amp; BOM
+            </button>
+            <button type="button" className={`btn ${section === 'munim' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSection('munim')}>
+              <Brain size={15} /> AI Munim, Sec 43B(h) &amp; Storefront
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {section === 'notice' && (
         <div>

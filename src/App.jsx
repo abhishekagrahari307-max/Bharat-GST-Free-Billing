@@ -56,12 +56,16 @@ import ServerlessB2BStorefront from './components/ServerlessB2BStorefront';
 import WorkspaceModeToggle, { getSavedWorkspaceMode, SHOP_POS_ALLOWED_IDS } from './components/WorkspaceModeToggle';
 import OperationProgressBar from './components/OperationProgressBar';
 import HelpDeskAndReviewModal from './components/HelpDeskAndReviewModal';
+import SosHelpReviewButton from './components/SosHelpReviewButton';
 import { decodeServerlessCatalogLink } from './utils/autonomousMunimAnd43B';
+import { parseP2pParamsFromSearch } from './utils/webrtcP2pSync';
 import { isStaffModeLocked } from './utils/shopEssentials';
 import { playWelcomeVoice, armSessionWelcomeGreeting } from './utils/welcomeSound';
 import { WhatsNewAfterUpdate, SEEN_KEY as WHATS_NEW_SEEN_KEY } from './components/WhatsNewSlides';
 const InvoiceGenerator = lazy(() => import('./components/InvoiceGenerator'));
 const SettingsView = lazy(() => import('./components/SettingsView'));
+const ConnectAndSyncHub = lazy(() => import('./components/ConnectAndSyncHub'));
+const AllNewFunctionsHubView = lazy(() => import('./components/NewFunctionsAndSyncHub'));
 // v1.10.86 - loaded on first Ctrl+K (it carries the How do I… list and the help index).
 const QuickSearch = lazy(() => import('./components/QuickSearch'));
 const ClientsView = lazy(() => import('./components/ClientsView'));
@@ -124,10 +128,13 @@ function App() {
     // the pinned taskbar icon → "New Invoice" opens /?view=new). Honour that
     // before falling back to whatever the user was last looking at.
     try {
+      if (parseP2pParamsFromSearch(window.location.search)) {
+        return 'connect-sync';
+      }
       const params = new URLSearchParams(window.location.search);
       const v = params.get('view');
       // v1.10.74 - 'controlpanel' added so ?view=controlpanel deep links work too.
-      const valid = ['dashboard', 'new', 'clients', 'inventory', 'expenses', 'purchases', 'recurring', 'receipts', 'cashbook', 'reports', 'filing', 'incometax', 'settings', 'controlpanel', 'support'];
+      const valid = ['dashboard', 'new', 'clients', 'inventory', 'expenses', 'purchases', 'recurring', 'receipts', 'cashbook', 'reports', 'filing', 'incometax', 'connect-sync', 'p2psync', 'newfeatures', 'settings', 'controlpanel', 'support'];
       if (v && valid.includes(v)) {
         // Strip the query string so a refresh doesn't keep snapping back to
         // the shortcut target — only the *first* navigation honours it.
@@ -862,7 +869,20 @@ function App() {
   const [barTitleEl, setBarTitleEl] = useState(null);
   const [barActionsEl, setBarActionsEl] = useState(null);
   const [helpDeskState, setHelpDeskState] = useState({ open: false, tab: 'HELP', job: null });
+  const [isP2pSynced, setIsP2pSynced] = useState(false);
+  const [browserOnline, setBrowserOnline] = useState(() => (typeof navigator !== 'undefined' ? navigator.onLine !== false : true));
   const openHelpDesk = (tab = 'HELP', job = null) => setHelpDeskState({ open: true, tab, job });
+
+  useEffect(() => {
+    const onUp = () => setBrowserOnline(true);
+    const onDown = () => setBrowserOnline(false);
+    window.addEventListener('online', onUp);
+    window.addEventListener('offline', onDown);
+    return () => {
+      window.removeEventListener('online', onUp);
+      window.removeEventListener('offline', onDown);
+    };
+  }, []);
   const barSlots = useMemo(() => (barTitleEl && barActionsEl ? { title: barTitleEl, actions: barActionsEl } : null), [barTitleEl, barActionsEl]);
   const barRef = useRef(null);
   useEffect(() => {
@@ -919,9 +939,14 @@ function App() {
   useEffect(() => {
     const onKey = (e) => {
       const mod = e.ctrlKey || e.metaKey;
-      if (!mod) return;
       const tag = (e.target?.tagName || '').toLowerCase();
       const editable = tag === 'input' || tag === 'textarea' || e.target?.isContentEditable;
+      if (e.key === 'F2' && !editable) {
+        e.preventDefault();
+        handleNewInvoice();
+        return;
+      }
+      if (!mod) return;
       if (e.key === 'k' || e.key === 'K') {
         e.preventDefault();
         setShowPalette(p => !p);
@@ -1115,6 +1140,15 @@ function App() {
         <span className="mobile-topbar-title">Bharat GST</span>
         <span className="mobile-topbar-business">{profile?.businessName || ''}</span>
         {searchBox}
+        <button
+          type="button"
+          onClick={() => openHelpDesk('REVIEW')}
+          className="sos-topbar-btn"
+          title="SOS Help & Review"
+          aria-label="SOS Help and Review"
+        >
+          <span>🆘 SOS</span>
+        </button>
         {topActions}
       </div>
       {navOpen && <div className="sidebar-backdrop" onClick={() => setNavOpen(false)} aria-hidden="true" />}
@@ -1331,9 +1365,17 @@ function App() {
                 type="button"
                 onClick={() => { setNavOpen(false); openHelpDesk('HELP'); }}
                 className="btn btn-secondary btn-sm"
-                style={{ fontSize: '0.68rem', padding: '0.2rem 0.55rem' }}
+                style={{
+                  width: '100%',
+                  justifyContent: 'center',
+                  fontSize: '0.75rem',
+                  padding: '0.42rem 0.65rem',
+                  background: 'rgba(255,255,255,0.06)',
+                  borderColor: 'rgba(255,255,255,0.14)',
+                  color: '#f8fafc',
+                }}
               >
-                <LifeBuoy size={12} /> Help, Dictionary &amp; Review
+                <LifeBuoy size={14} color="#38bdf8" /> SOS · Help, Dictionary &amp; Review
               </button>
             </div>
             <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', paddingBottom: '0.2rem', fontSize: '0.66rem', color: 'var(--text-muted)' }}>
@@ -1353,8 +1395,39 @@ function App() {
       <main id="main-content" className="main-content">
         <div className="app-topbar" ref={barRef}>
           <div className="page-bar-title" ref={setBarTitleEl} />
+          <span
+            className={`exec-status-pill exec-hide-mobile ${browserOnline && !isOfflineMode() ? 'exec-status-online' : 'exec-status-offline'}`}
+            title={browserOnline && !isOfflineMode() ? 'Online & Offline PWA Ready' : 'Working 100% Offline on this device'}
+          >
+            {browserOnline && !isOfflineMode() ? '● Online & PWA Ready' : '● Offline Mode'}
+          </span>
+          {isP2pSynced && (
+            <span className="exec-status-pill exec-status-p2p exec-hide-mobile">
+              📱 Mobile Synced
+            </span>
+          )}
           {searchBox}
           <div className="page-bar-actions" ref={setBarActionsEl} />
+          {currentView !== 'new' && (
+            <button
+              type="button"
+              onClick={handleNewInvoice}
+              className="btn-gradient exec-hide-mobile"
+              title="Create New Invoice / POS Bill (F2 or Ctrl+N)"
+            >
+              <Plus size={15} /> + New Bill
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => openHelpDesk('REVIEW')}
+            className="sos-topbar-btn"
+            title="SOS Help, Zero-Login Error Support & Review (Alt+S)"
+            aria-label="SOS Help and Review"
+          >
+            <span>🆘 SOS</span>
+            <span className="sos-topbar-label-extra">Help &amp; Review</span>
+          </button>
           <div className="topbar-global">{topActions}</div>
         </div>
         <PageBarSlots.Provider value={barSlots}>
@@ -1372,6 +1445,9 @@ function App() {
             onConvert={handleConvertToInvoice}
             onOpenProducts={() => setCurrentView('inventory')}
             onOpenPurchases={() => setCurrentView('purchases')}
+            onOpenGstReturns={() => setCurrentView('filing')}
+            onOpenConnectSync={() => setCurrentView('connect-sync')}
+            onOpenAllNewFunctions={() => setCurrentView('newfeatures')}
             onOpenSettings={() => {
               if (isStaffModeLocked()) {
                 toast('Settings पर Staff Lock लगा है — अनलॉक करने के लिए Admin PIN डालें।', 'warning');
@@ -1431,6 +1507,24 @@ function App() {
         )}
         {currentView === 'incometax' && (
           <IncomeTax key={businessKey} />
+        )}
+        {(currentView === 'connect-sync' || currentView === 'p2psync') && (
+          <ConnectAndSyncHub
+            key={businessKey}
+            activeProfile={profile}
+            onOpenSettingsData={() => openSettingsSection('section-data')}
+            onOpenAllNewFunctions={() => setCurrentView('newfeatures')}
+            onP2pConnectionChange={setIsP2pSynced}
+          />
+        )}
+        {currentView === 'newfeatures' && (
+          <AllNewFunctionsHubView
+            key={businessKey}
+            activeProfile={profile}
+            onOpenHelpDesk={openHelpDesk}
+            onOpenSettingsData={() => openSettingsSection('section-data')}
+            onOpenDedicatedP2p={() => setCurrentView('connect-sync')}
+          />
         )}
         {currentView === 'settings' && (
           <SettingsView onSaved={(p) => setProfile(p)} />
@@ -1614,6 +1708,7 @@ function App() {
         anyDot={anyDot}
       />
 
+      <SosHelpReviewButton onOpenHelpDesk={openHelpDesk} />
       <OperationProgressBar onReportError={(job) => openHelpDesk('ERROR', job)} />
       {helpDeskState.open && (
         <HelpDeskAndReviewModal

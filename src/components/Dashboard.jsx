@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
-import { FileText, Trash2, Plus, IndianRupee, Receipt, Edit3, TrendingUp, Search, Copy, X, CheckCircle, Clock, AlertTriangle, MessageCircle, Mail, StickyNote, Send, Package, Download, Printer, Ban, Undo2, Eye, QrCode, Upload, ClipboardList, Truck } from 'lucide-react';
+import { FileText, Trash2, Plus, IndianRupee, Receipt, Edit3, Search, Copy, X, CheckCircle, Clock, AlertTriangle, MessageCircle, Mail, StickyNote, Send, Package, Download, Printer, Ban, Undo2, Eye, QrCode, Upload, ClipboardList, Truck, Smartphone, Sparkles, LifeBuoy } from 'lucide-react';
 import HelpButton from './HelpButton';
+import ExecutiveKpiGrid from './ExecutiveKpiGrid';
 import { getAllBills, saveBill, getAllProducts, applyStockChanges, getProfile, getAllClients, getStockAlertSettings, saveReceipt, deleteReceipt, getAllReceipts, reserveReceiptNo, markSavedPdfCancelled, getEnabledModules, trashBill, getTrashedBills, restoreBillFromTrash, purgeTrashedBill, syncTakenChallans } from '../store';
 import { formatCurrency, parseLocalDate, INVOICE_TYPES, getFYOptions, numberToWords, belongsToProfile, salesSign, isCancelledBill, markPaidPatch, markUnpaidPatch, stockEffect, appliedStock, stockDelta, SALES_INVOICE_TYPES, localToday, amountDue, paymentStatusFor, isModuleEnabled, TDS_SECTIONS, tdsSectionsFor, findLowStock, trackedStock, billMatchesSearch, clientKey } from '../utils';
 import { billInInr, billCurrency as fxBillCurrency, baseCurrencyOf } from '../utils/fx';
@@ -232,7 +233,7 @@ const foreignReceiptFields = (input) => {
   };
 };
 
-export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConvert, onOpenProducts, onOpenPurchases, onOpenSettings, onOpenGuide, onOpenSupport, onOpenHelpDesk, activeProfile }) {
+export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConvert, onOpenProducts, onOpenPurchases, onOpenSettings, onOpenGuide, onOpenSupport, onOpenHelpDesk, onOpenConnectSync, onOpenAllNewFunctions, onOpenGstReturns, activeProfile }) {
   const [reviewDismissed, setReviewDismissed] = useState(() => {
     try { return localStorage.getItem('bharatgst_review_prompt_dismissed') === '1'; } catch { return false; }
   });
@@ -1855,59 +1856,60 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
       )}
 
       {blockOn('totals') && <div style={blockOrder('totals')}>
-      {/* v1.10.86 - dash-totals: label and (?) on one line, every card laid out alike (index.css). */}
-      <div className="stats-grid stats-grid-4 dash-totals">
-        <div className="stat-card">
-          <div className="stat-icon stat-icon-blue"><IndianRupee size={22} /></div>
-          <div style={{ flex: 1 }}>
-            <p className="stat-label">Total Invoiced <HelpButton title="Total Invoiced" doc="dashboard#total-invoiced" size={14} /></p>
-            {Object.entries(stats.byCurrency).map(([cur, v]) => (
-              <div key={cur} className="stat-value" style={{ fontSize: Object.keys(stats.byCurrency).length > 1 ? '1.1rem' : undefined, '--len': formatCurrency(v.total, cur).length }}>
-                {formatCurrency(v.total, cur)}
-              </div>
-            ))}
-            {Object.keys(stats.byCurrency).length === 0 && <h2 className="stat-value">—</h2>}
-            {Object.keys(stats.byCurrency).length > 1 && (
-              <div className="text-muted" style={{ fontSize: '0.72rem', marginTop: 2 }} title="Each invoice at the exchange rate saved on it">
-                ≈ {formatCurrency(stats.inBase, baseCur)} in all{stats.noRate ? ` (${stats.noRate} without a rate left out)` : ''}
-              </div>
+      {/* v5.4.0 — Commercial SaaS Executive KPI Grid (Top Accent + Hover Elevation + 1-Click Drill-Down) */}
+      <ExecutiveKpiGrid
+        byCurrency={stats.byCurrency}
+        outstandingByCurrency={outstandingShown}
+        baseCurrency={baseCur}
+        inBaseTotal={stats.inBase}
+        noRateCount={stats.noRate}
+        openingOwed={openingOwed}
+        invoiceCount={stats.count}
+        lowStockCount={lowStockProducts.length}
+        onOpenGstReturns={onOpenGstReturns}
+        onOpenReceivables={() => {
+          setStatusFilter('unpaid');
+          listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }}
+        onOpenLowStock={onOpenProducts}
+      />
+
+      {/* Quick Connect & Smart OS Shortcuts Strip */}
+      {(onOpenConnectSync || onOpenAllNewFunctions || onOpenHelpDesk) && (
+        <div
+          className="pro-card"
+          style={{
+            padding: '10px 14px',
+            marginBottom: '18px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '10px',
+          }}
+        >
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+            ⚡ Quick Workspace Shortcuts: Mobile ↔ Laptop 5G Sync, WhatsApp B2B Catalog &amp; Pro Tools
+          </span>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {onOpenConnectSync && (
+              <button type="button" className="btn btn-primary btn-sm" onClick={onOpenConnectSync}>
+                <Smartphone size={14} /> Mobile ↔ PC Sync &amp; B2B
+              </button>
+            )}
+            {onOpenAllNewFunctions && (
+              <button type="button" className="btn btn-secondary btn-sm" onClick={onOpenAllNewFunctions}>
+                <Sparkles size={14} /> All New Functions (14)
+              </button>
+            )}
+            {onOpenHelpDesk && (
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => onOpenHelpDesk('REVIEW')}>
+                <LifeBuoy size={14} /> SOS Help &amp; Review
+              </button>
             )}
           </div>
         </div>
-        <div className="stat-card">
-          <div className="stat-icon stat-icon-green"><TrendingUp size={22} /></div>
-          <div style={{ flex: 1 }}>
-            <p className="stat-label">Tax Collected <HelpButton title="Tax Collected" doc="dashboard#tax-collected" size={14} /></p>
-            {Object.entries(stats.byCurrency).map(([cur, v]) => (
-              <div key={cur} className="stat-value stat-value-green" style={{ fontSize: Object.keys(stats.byCurrency).length > 1 ? '1.1rem' : undefined, '--len': formatCurrency(v.tax, cur).length }}>
-                {formatCurrency(v.tax, cur)}
-              </div>
-            ))}
-            {Object.keys(stats.byCurrency).length === 0 && <h2 className="stat-value stat-value-green">—</h2>}
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon stat-icon-amber"><Clock size={22} /></div>
-          <div style={{ flex: 1 }}>
-            <p className="stat-label">Outstanding <HelpButton title="Outstanding" doc="dashboard#outstanding" size={14} /></p>
-            {Object.entries(outstandingShown).map(([cur, unpaid]) => (
-              <div key={cur} className="stat-value stat-value-amber" style={{ fontSize: Object.keys(outstandingShown).length > 1 ? '1.1rem' : undefined, '--len': formatCurrency(unpaid, cur).length }}>
-                {formatCurrency(unpaid, cur)}
-              </div>
-            ))}
-            {Object.keys(outstandingShown).length === 0 && <h2 className="stat-value stat-value-amber">—</h2>}
-            {openingOwed > 0 && (
-              <div className="text-muted" style={{ fontSize: '0.72rem', marginTop: 2 }} title="Opening balances saved on your clients, less what they paid against them">
-                Includes {formatCurrency(openingOwed, baseCur)} of opening balances
-              </div>
-            )}
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon stat-icon-purple"><Receipt size={22} /></div>
-          <div style={{ flex: 1 }}><p className="stat-label">Invoices <HelpButton title="Invoices count" doc="dashboard#invoice-count" size={14} /></p><h2 className="stat-value stat-value-purple">{stats.count}</h2></div>
-        </div>
-      </div>
+      )}
 
       </div>}
 

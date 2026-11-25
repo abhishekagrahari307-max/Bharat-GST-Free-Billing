@@ -1,11 +1,11 @@
-# Bharat GST Free Billing (v5.3.0 — Complete Enterprise, Year-End Rollover & CA Practice OS)
+# Bharat GST Free Billing (v5.4.0 — Commercial SaaS & POS Business OS)
 
-> 100% Free, Open-Source (MIT), Serverless Browser-Native Autonomous ERP & CA Practice OS: Year-End 31-March FY Rollover Wizard + CA Multi-Client `.bharatca` Hub + GSTR-2B ITC Action Sheet (Sec 16(2)(aa) & 17(5)) + Zero-Login Direct Support & Hinglish GST Dictionary + Canonical GST/ITR-3/4/GSTR-9 Engine + Multi-Godown & Atomic BOM + Live FEFO + Sec 43B(h) Shield + Verified-Storage 6-Digit-PIN 5G WebRTC P2P + High-Fidelity Tally XML & Vyapar Importer. Created & maintained by Abhishek Agrahari.
+> 100% Free, Open-Source (MIT), Serverless Browser-Native Commercial SaaS & POS Business OS: Glass Sticky Command Bar + 4-Section Navigation + Dedicated Connect & Sync Hub (5G Mobile ↔ Laptop Sync + WhatsApp B2B Storefront + PC Folder Mirror) + All New Functions Hub + 4-Pillar Segmented Reports + Year-End 31-March FY Rollover + CA Multi-Client `.bharatca` Hub + GSTR-2B ITC Action Sheet + SOS Zero-Login Direct Support. Created & maintained by Abhishek Agrahari.
 
 - Live Application (Instant Offline PWA & Web): https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/
 - Complete Self-Hosted Documentation (35 Pages): https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/user-guide/
 - Public Open-Source Repository & Multi-OS Releases (MIT License): https://github.com/abhishekagrahari307-max/Bharat-GST-Free-Billing
-- Latest Release: v5.3.0 (2026-11-21) — Year-End FY Rollover Wizard, CA Multi-Client .bharatca Hub, GSTR-2B ITC Action Sheet, Zero-Login Support & Settings-Scoped Health Edition
+- Latest Release: v5.4.0 (2026-11-21) — Commercial SaaS & POS UI Overhaul, Dedicated 5G Connect & Sync Hub, All New Functions Hub, 4-Pillar Segmented Reports & SOS Help/Review Button
 
 ---
 

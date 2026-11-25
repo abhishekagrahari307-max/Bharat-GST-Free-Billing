@@ -284,7 +284,16 @@ function extractApiPath(input) {
   }
 }
 
-const BHARAT_CHANGELOG_MD = `## [5.3.0] - 2026-11-21
+const BHARAT_CHANGELOG_MD = `## [5.4.0] - 2026-11-21
+**Commercial SaaS & POS Design Overhaul — Glass Sticky Command Bar, 4-Section Executive Sidebar, Dedicated Connect & Sync Hub, All New Functions Hub, Dynamic Executive KPI Grid, 4-Pillar Segmented Reports & Always-Accessible SOS Button.**
+
+### Added & Upgraded
+- **Modern SaaS & POS Design System (\`src/index.css\`)**: Clean Slate & Royal Indigo light/dark design tokens, \`.pro-card\` hover elevation, \`.btn-gradient\` primary CTA, \`.segmented-tabs\`, and sticky glassmorphism \`.app-topbar\` with live \`Online & PWA Ready\` / \`Mobile Synced\` status pills and \`F2\` New Bill shortcut.
+- **4-Section Sidebar + Dedicated Connect & Sync Hub (\`src/components/ConnectAndSyncHub.jsx\`, \`src/components/SidebarMenu.jsx\`)**: Organizes navigation into **Billing & Khata**, **Stock & Purchase**, **Connect & Sync**, and **Tax, Accounting & CA**, giving **5G Mobile ↔ Laptop Sync**, **WhatsApp B2B Storefront**, and **PC Folder Live Mirror** a dedicated step-by-step hub.
+- **Dedicated All New Functions Hub + 4-Pillar Segmented Reports + Executive KPI Grid (\`NewFunctionsAndSyncHub.jsx\`, \`ReportsWorkspace.jsx\`, \`ExecutiveKpiGrid.jsx\`)**: Adds a searchable 14-module **All New Functions** tab, groups Reports into 4 clean segmented pillars (**Financial Statements**, **Party, Stock & Aging**, **Income Tax & 2B**, **CA Audit & Year-End**), and upgrades Dashboard KPI cards.
+- **Always-Accessible SOS Help & Review Launcher (\`src/components/SosHelpReviewButton.jsx\`)**: Adds Topbar \`🆘 SOS\` pill + floating \`🆘 SOS · Help & Review\` menu (\`Alt+S\`) with 1-click Zero-Login Error Support & Star Review.
+
+## [5.3.0] - 2026-11-21
 **Enterprise Year-End Closing, CA Practice Hub & Zero-Login Support Edition — Multi-Financial Year Rollover Wizard (31-Mar -> 1-Apr), CA Multi-Client \`.bharatca\` Reviewer Hub, GSTR-2B ITC Action Sheet (Sec 16(2)(aa) & 17(5)), Settings-Scoped Health Scorecard & Zero-Login Direct Support.**
 
 ### Added & Hardened

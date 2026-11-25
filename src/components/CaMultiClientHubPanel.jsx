@@ -154,7 +154,7 @@ export default function CaMultiClientHubPanel({
         sellerGstin: ownerProfile?.gstin || '',
         sellerState: ownerProfile?.state || '',
       });
-      const res43b = checkSection43BCompliance(purchases, []);
+      const res43b = checkSection43BCompliance({ purchases, clients: [] });
       const itrRes = computeBusinessITR({
         bills,
         purchases,

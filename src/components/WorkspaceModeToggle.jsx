@@ -1,6 +1,6 @@
 const MODE_KEY = 'bharatgst_ui_mode'; // 'SHOP' | 'PRO'
 
-export const SHOP_POS_ALLOWED_IDS = ['dashboard', 'new', 'inventory', 'clients'];
+export const SHOP_POS_ALLOWED_IDS = ['dashboard', 'new', 'inventory', 'clients', 'connect-sync', 'p2psync', 'newfeatures'];
 
 export function getSavedWorkspaceMode() {
   try {
