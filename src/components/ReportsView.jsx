@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, Wallet, BarChart3, Clock, Search, X, Users, Package, Boxes, Building2, Percent, BookOpen, Landmark, ShieldCheck, Sparkles } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, Search, X, Package } from 'lucide-react';
 import { getAllBills, getAllExpenses, getAllProducts, getProfile, getAllPurchases } from '../store';
 import { costOfGoodsSold, costOfGoodsSoldIn } from '../utils/products';
 import { formatCurrency, getFYOptions, belongsToProfile, isCancelledBill, salesSign, countsAsSales, parseLocalDate, amountDue } from '../utils';
@@ -16,6 +16,7 @@ import { costCentresOn } from './useCostCentres';
 import TdsTcsReport from './TdsTcsReport';
 import AccountingDesk from './AccountingDesk';
 import EnterpriseAiHub from './EnterpriseAiHub';
+import ReportsWorkspace, { REPORT_PILLARS } from './ReportsWorkspace';
 import { productSales, categoryOptions, brandOptions, serialTrail } from '../utils/stock';
 
 const MONTHS = [
@@ -51,6 +52,8 @@ export default function ReportsView() {
   const [bills, setBills] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [products, setProducts] = useState([]);
+  const [activePillar, setActivePillar] = useState('FINANCIAL');
+  const [enterpriseSec, setEnterpriseSec] = useState('fuzzy2b');
   const [activeTab, setActiveTab] = useState(() => {
     try {
       return new URLSearchParams(window.location.search).get('p2p') ? 'enterprise' : 'pl';
@@ -58,6 +61,19 @@ export default function ReportsView() {
       return 'pl';
     }
   });
+
+  const activeSubTabKey = activeTab === 'enterprise' ? `ent:${enterpriseSec}` : activeTab;
+
+  const handleSelectReportSubTab = (subId) => {
+    if (subId.startsWith('ent:')) {
+      setEnterpriseSec(subId.slice(4));
+      setActiveTab('enterprise');
+    } else {
+      setActiveTab(subId);
+    }
+    const foundPillar = REPORT_PILLARS.find((p) => p.tabs.some((t) => t.id === subId));
+    if (foundPillar) setActivePillar(foundPillar.id);
+  };
   const [filterMode, setFilterMode] = useState('fy');
   const [fyFilter, setFyFilter] = useState('');
   const [monthFilter, setMonthFilter] = useState('');
@@ -262,65 +278,29 @@ export default function ReportsView() {
   return (
     <div className="dashboard-container">
       <PageHeader
-        title="Reports"
+        title="Reports, Accounting & CA Desk"
         help={{ title: 'Reports — how to use', doc: 'reports' }}
-        subtitle="Financial reports and receivables analysis"
+        subtitle="Financial statements, party aging, tax computation and tamper-proof CA audit tools"
       />
 
-      {/* Tab Selector — v1.9.5 adds Client + Product tabs */}
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
-        <button className={`btn ${activeTab === 'pl' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setActiveTab('pl')}>
-          <BarChart3 size={16} /> Profit & Loss
-        </button>
-        <button className={`btn ${activeTab === 'doubleentry' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setActiveTab('doubleentry')}>
-          <BookOpen size={16} /> Trial Balance &amp; JV (F4–F7)
-        </button>
-        <button className={`btn ${activeTab === 'balancesheet' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setActiveTab('balancesheet')}>
-          <Landmark size={16} /> Balance Sheet
-        </button>
-        <button className={`btn ${activeTab === 'cadesk' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setActiveTab('cadesk')}>
-          <ShieldCheck size={16} /> Audit Chain &amp; CA Desk
-        </button>
-        <button className={`btn ${activeTab === 'enterprise' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setActiveTab('enterprise')}>
-          <Sparkles size={16} /> Enterprise AI &amp; POS Hub
-        </button>
-        <button className={`btn ${activeTab === 'aging' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setActiveTab('aging')}>
-          <Clock size={16} /> Outstanding & Aging
-        </button>
-        <button className={`btn ${activeTab === 'party' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setActiveTab('party')}>
-          <Users size={16} /> Party Outstanding
-        </button>
-        <button className={`btn ${activeTab === 'clients' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setActiveTab('clients')}>
-          <Users size={16} /> Client Analytics
-        </button>
-        <button className={`btn ${activeTab === 'products' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setActiveTab('products')}>
-          <Package size={16} /> Product Performance
-        </button>
-        <button className={`btn ${activeTab === 'stock' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setActiveTab('stock')}>
-          <Boxes size={16} /> Stock
-        </button>
-        <button className={`btn ${activeTab === 'tds' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setActiveTab('tds')}>
-          <Percent size={16} /> TDS &amp; TCS
-        </button>
-        {ccOn && (
-          <button className={`btn ${activeTab === 'costcentres' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setActiveTab('costcentres')}>
-            <Building2 size={16} /> By cost centre
-          </button>
-        )}
-        <HelpButton title={TAB_HELP[activeTab][0]} doc={TAB_HELP[activeTab][1]} size={16} style={{ alignSelf: 'center' }} />
-      </div>
+      {/* v5.4.0 — Clean 4-Pillar Segmented Sub-Tab Workspace */}
+      <ReportsWorkspace
+        activePillar={activePillar}
+        activeSubTab={activeSubTabKey}
+        costCentresEnabled={ccOn}
+        onSelectPillar={(pillarId, firstSubTab) => {
+          setActivePillar(pillarId);
+          handleSelectReportSubTab(firstSubTab);
+        }}
+        onSelectSubTab={handleSelectReportSubTab}
+        helpSlot={
+          <HelpButton
+            title={(TAB_HELP[activeTab] || TAB_HELP.pl)[0]}
+            doc={(TAB_HELP[activeTab] || TAB_HELP.pl)[1]}
+            size={16}
+          />
+        }
+      />
 
       {/* v1.10.74 - Period + Currency Selector, shared by P&L, Client Analytics
           and Product Performance (they all read the same period/currency). */}
@@ -884,6 +864,9 @@ export default function ReportsView() {
           expenses={expenses.filter((e) => belongsToProfile(e, ownerProfile))}
           products={products}
           ownerProfile={ownerProfile}
+          activeSection={enterpriseSec}
+          onSectionChange={setEnterpriseSec}
+          hideTopPills
           onBillsUpdated={() => getAllBills().then(setBills).catch(() => {})}
           onProductsUpdated={() => getAllProducts().then(setProducts).catch(() => {})}
         />

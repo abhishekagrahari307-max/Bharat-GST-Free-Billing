@@ -5,6 +5,22 @@ Bharat GST Free Billing follows a **Daily Continuous Release & Safe Auto-Update*
 
 ---
 
+## [5.4.0] - 2026-11-21
+
+**Commercial SaaS & POS Design Overhaul — Glass Sticky Command Bar, 4-Section Executive Navigation, Dedicated Connect & Sync Hub, All New Functions Hub, Dynamic Executive KPI Grid, 4-Pillar Segmented Reports & Always-Accessible SOS Button.**
+
+### Added & Upgraded
+- **Modern SaaS & POS Design System (`src/index.css`)**: Clean Slate & Royal Indigo Light/Dark tokens (`--bg-app`, `--bg-glass`, `--brand-gradient`, `--border-subtle`, `--shadow-sm`), `.pro-card` hover elevation, `.btn-gradient` primary CTA, `.segmented-tabs`, and sticky glassmorphism `.app-topbar` with live `Online & PWA Ready` / `Mobile Synced` status pills and `F2` New Bill shortcut.
+- **4-Section Sidebar + Dedicated Connect & Sync Hub (`src/components/ConnectAndSyncHub.jsx`, `src/components/SidebarMenu.jsx`)**: Organizes sidebar navigation into **Billing & Khata**, **Stock & Purchase**, **Connect & Sync**, and **Tax, Accounting & CA**, elevating **1. Mobile ↔ Laptop 5G Live Sync**, **2. WhatsApp B2B Storefront**, **3. PC Folder & Auto-Backup**, and **4. Scale, POS & Tally Import** into a dedicated step-by-step workspace.
+- **Dedicated All New Functions Tab + 4-Pillar Segmented Reports + Executive KPI Grid (`src/components/NewFunctionsAndSyncHub.jsx`, `src/components/ReportsWorkspace.jsx`, `src/components/ExecutiveKpiGrid.jsx`)**: Adds a searchable 14-module **All New Functions Hub** tab, organizes Reports into 4 clean segmented sub-tabs (**Financial Statements**, **Party, Stock & Aging**, **Income Tax & 2B**, **CA Audit & Year-End**), and upgrades Dashboard headline stats with top-accent `.pro-card` KPI cards.
+- **Always-Accessible SOS Help & Review Button (`src/components/SosHelpReviewButton.jsx`)**: Adds Topbar `🆘 SOS` button + floating `🆘 SOS · Help & Review` launcher (`Alt+S`, hidden on `@media print`) wired directly to Zero-Login Error Support, Star Review, Hinglish GST Dictionary & Demo Store.
+
+### How to update
+- **Web & Installable PWA**: Refresh the page or click **Update** in **Settings → About & Updates** (`v5.3.0` → `v5.4.0`).
+- **Desktop / Portable (`Free-GST-Billing.zip`)**: Click **Update** in **Settings**, or download `Free-GST-Billing-v5.4.0.zip` and copy all files except your `data/` folder over your existing installation.
+
+---
+
 ## [5.3.0] - 2026-11-21
 
 **Enterprise Year-End Rollover, CA Multi-Client `.bharatca` Hub, GSTR-2B ITC Action Sheet & Zero-Login Support Edition.**

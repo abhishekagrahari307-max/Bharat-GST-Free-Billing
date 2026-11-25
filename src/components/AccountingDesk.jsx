@@ -213,7 +213,7 @@ export default function AccountingDesk({
           setPhase('Auditing GST books & assembling Trial Balance…');
           const gstHealth = auditInvoicesForGst(bills, { sellerGstin: ownerProfile?.gstin || '', sellerState: ownerProfile?.state || '' });
           const fy = getIndianFinancialYear();
-          const res43b = checkSection43BCompliance(purchases, []);
+          const res43b = checkSection43BCompliance({ purchases, clients: [] });
           const itrRes = computeBusinessITR({
             bills,
             purchases,

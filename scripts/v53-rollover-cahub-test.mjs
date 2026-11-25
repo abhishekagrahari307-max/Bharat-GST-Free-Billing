@@ -299,4 +299,23 @@ await test('5. Zero-Login Feedback Bridge submits without login, redacts PII, an
   assert.equal(history[0].id, res.entry.id);
 });
 
-console.log(`v5.3.0 Rollover, CA Hub, 2B Action Sheet & Zero-Login Tests: ${passed} passed, 0 failed`);
+await test('6. v5.4.0 Commercial UI Overhaul: ConnectAndSyncHub, AllNewFunctionsHub, 4-Pillar ReportsWorkspace, ExecutiveKpiGrid & SOS Button', () => {
+  const css = readFileSync('src/index.css', 'utf8');
+  const app = readFileSync('src/App.jsx', 'utf8');
+  const dash = readFileSync('src/components/Dashboard.jsx', 'utf8');
+  const reports = readFileSync('src/components/ReportsView.jsx', 'utf8');
+  const sidebar = readFileSync('src/components/SidebarMenu.jsx', 'utf8');
+  const connectHub = readFileSync('src/components/ConnectAndSyncHub.jsx', 'utf8');
+  const newFnHub = readFileSync('src/components/NewFunctionsAndSyncHub.jsx', 'utf8');
+
+  assert.ok(css.includes('--bg-glass:') && css.includes('.pro-card') && css.includes('.segmented-tabs'), 'SaaS design tokens & classes must exist in index.css');
+  assert.ok(css.includes('.sos-floating-root') && css.includes('.sos-topbar-btn'), 'SOS print-safe & floating styles must exist in index.css');
+  assert.ok(app.includes('<SosHelpReviewButton') && app.includes('ConnectAndSyncHub') && app.includes('AllNewFunctionsHubView'), 'App.jsx must wire SOS, ConnectAndSyncHub & AllNewFunctionsHubView');
+  assert.ok(sidebar.includes('Connect &amp; Sync') && sidebar.includes('Billing & Khata'), 'SidebarMenu must expose 4-section commercial groups including Connect & Sync');
+  assert.ok(dash.includes('<ExecutiveKpiGrid'), 'Dashboard must render ExecutiveKpiGrid');
+  assert.ok(reports.includes('<ReportsWorkspace'), 'ReportsView must render 4-pillar ReportsWorkspace');
+  assert.ok(connectHub.includes('1. Mobile ↔ Laptop Sync') && connectHub.includes('2. WhatsApp B2B Storefront') && connectHub.includes('3. PC Folder'), 'ConnectAndSyncHub must expose guided sub-tabs');
+  assert.ok(newFnHub.includes('NEW_FUNCTIONS_CATALOG'), 'AllNewFunctionsHubView must expose full new-functions directory');
+});
+
+console.log(`v5.3–v5.4 Rollover, CA Hub, 2B Action Sheet, Zero-Login & Commercial UI Tests: ${passed} passed, 0 failed`);

@@ -30,18 +30,42 @@
      App colour (utils/appColour.js) sets all of these for its own colour. */
   --primary-soft: #60a5fa;
   --primary-pale: #93c5fd;
-  --bg: #f0f2f5;
-  --bg-primary: #f0f2f5;
+  --bg: #f4f6fa;
+  --bg-app: #f4f6fa;
+  --bg-primary: #f4f6fa;
+  --bg-sidebar: #0f172a;
+  --bg-sidebar-hover: rgba(255, 255, 255, 0.08);
   --bg-secondary: #f8fafc;       /* card / inset surface — light grey on light, dark slate on dark */
+  --bg-subtle: #f8fafc;
   --bg-tertiary: #f1f5f9;        /* hover / selected inset */
   --bg-card: #ffffff;
-  --card-bg: rgba(255, 255, 255, 0.92);
-  --text: #111827;
-  --text-primary: #111827;       /* alias used by newer components */
-  --text-secondary: #6b7280;
-  --text-muted: #9ca3af;
-  --border: rgba(229, 231, 235, 0.8);
+  --surface-card: #ffffff;
+  --surface-subtle: #f8fafc;
+  --bg-glass: rgba(255, 255, 255, 0.86);
+  --card-bg: rgba(255, 255, 255, 0.96);
+  --text: #0f172a;
+  --text-primary: #0f172a;       /* alias used by newer components */
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --text-on-dark: #f8fafc;
+  --brand-primary: #2563eb;
+  --brand-primary-hover: #1d4ed8;
+  --brand-accent: #0ea5e9;
+  --brand-gradient: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+  --status-success: #10b981;
+  --status-warning: #f59e0b;
+  --status-danger: #ef4444;
+  --border: rgba(226, 232, 240, 0.9);
   --border-color: #e2e8f0;       /* solid border alias for inline styles */
+  --border-subtle: #e2e8f0;
+  --border-focus: #3b82f6;
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-sm: 0 4px 12px rgba(15, 23, 42, 0.06);
+  --shadow-lg: 0 16px 36px rgba(15, 23, 42, 0.12);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --font-sans: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
   --note-bg: #fefce8;            /* yellow callout */
   --note-border: #fde68a;
   --note-text: #78350f;
@@ -72,18 +96,35 @@
   --primary-darker: #1e3a8a;
   --primary-soft: #60a5fa;
   --primary-pale: #93c5fd;
-  --bg: #0f172a;
-  --bg-primary: #0f172a;
+  --bg: #090d16;
+  --bg-app: #090d16;
+  --bg-primary: #090d16;
+  --bg-sidebar: #060911;
+  --bg-sidebar-hover: rgba(255, 255, 255, 0.08);
   --bg-secondary: #1e293b;       /* card / inset surface in dark mode */
+  --bg-subtle: #1e293b;
   --bg-tertiary: #334155;
-  --bg-card: #1e293b;
-  --card-bg: rgba(30, 41, 59, 0.92);
+  --bg-card: #111827;
+  --surface-card: #111827;
+  --surface-subtle: #1e293b;
+  --bg-glass: rgba(17, 24, 39, 0.86);
+  --card-bg: rgba(17, 24, 39, 0.94);
   --text: #f1f5f9;
   --text-primary: #f1f5f9;
   --text-secondary: #94a3b8;
   --text-muted: #64748b;
-  --border: rgba(51, 65, 85, 0.8);
-  --border-color: #334155;
+  --text-on-dark: #f8fafc;
+  --brand-primary: #3b82f6;
+  --brand-primary-hover: #2563eb;
+  --brand-accent: #38bdf8;
+  --brand-gradient: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+  --border: rgba(31, 41, 55, 0.95);
+  --border-color: #1f2937;
+  --border-subtle: #1f2937;
+  --border-focus: #60a5fa;
+  --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.28);
+  --shadow-sm: 0 4px 14px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 18px 40px rgba(0, 0, 0, 0.5);
   --note-bg: rgba(202, 138, 4, 0.12);
   --note-border: rgba(202, 138, 4, 0.4);
   --note-text: #fde68a;
@@ -477,10 +518,20 @@ body {
    padding, so it costs almost no height. On phones the same buttons sit in
    the phone top bar instead. */
 .app-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  margin: -1.25rem 0 1rem;
+  gap: 0.5rem;
+  margin: -1.1rem 0 1.15rem;
+  padding: 0.6rem 0.95rem;
+  border-radius: var(--radius-md, 12px);
+  background: var(--bg-glass, rgba(255, 255, 255, 0.86));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  box-shadow: var(--shadow-xs, 0 1px 2px rgba(15, 23, 42, 0.04));
 }
 .topbar-free {
   margin-right: 0.35rem;
@@ -5410,8 +5461,275 @@ textarea:focus-visible,
   .skip-link,
   .mobile-bottom-nav,
   .mobile-pane-switch,
-  .pwa-install-float {
+  .pwa-install-float,
+  .sos-floating-root,
+  .sos-topbar-btn {
     display: none !important;
   }
 }
+
+/* v5.3.1 — Always-Accessible SOS Help & Review Quick-Launcher */
+.sos-topbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  padding: 0.32rem 0.62rem;
+  border-radius: 999px;
+  border: 1px solid #ef4444;
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  color: #ffffff !important;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(220, 38, 38, 0.25);
+  white-space: nowrap;
+  transition: transform 0.14s ease, box-shadow 0.14s ease;
+}
+.sos-topbar-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(220, 38, 38, 0.35);
+}
+
+.sos-floating-root {
+  position: fixed;
+  right: 1.1rem;
+  bottom: 1.1rem;
+  z-index: 9992;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.55rem;
+}
+.sos-floating-root.sos-above-drawer {
+  bottom: 5.5rem;
+}
+
+.sos-fab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.52rem 0.9rem 0.52rem 0.62rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: linear-gradient(135deg, #dc2626 0%, #1d4ed8 100%);
+  color: #ffffff;
+  font-size: 0.81rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.32);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.sos-fab-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.4);
+}
+.sos-fab-btn.sos-fab-compact {
+  padding: 0.48rem 0.72rem;
+  background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+}
+
+.sos-pill-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.12rem 0.42rem;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #b91c1c;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+.sos-alert-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #fef08a;
+  color: #7f1d1d;
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+.sos-alert-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fde047;
+}
+
+.sos-popover-card {
+  width: min(335px, calc(100vw - 1.75rem));
+  background: #ffffff;
+  color: #0f172a;
+  color-scheme: light;
+  border: 1px solid #cbd5e1;
+  border-radius: 14px;
+  padding: 0.85rem;
+  box-shadow: 0 20px 44px rgba(15, 23, 42, 0.32);
+}
+
+.sos-menu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.52rem 0.65rem;
+  border-radius: 9px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #0f172a;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.sos-menu-item:hover {
+  background: #eff6ff;
+  border-color: #93c5fd;
+}
+.sos-menu-item-urgent {
+  background: #fff1f2;
+  border-color: #fecdd3;
+}
+.sos-menu-item-urgent:hover {
+  background: #ffe4e6;
+  border-color: #fda4af;
+}
+.sos-menu-item-review {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+.sos-menu-item-review:hover {
+  background: #fef3c7;
+  border-color: #fcd34d;
+}
+
+@media (max-width: 768px) {
+  .sos-floating-root {
+    right: 0.85rem;
+    bottom: 5.15rem;
+  }
+  .sos-floating-root.sos-above-drawer {
+    bottom: 8.75rem;
+  }
+  .sos-topbar-label-extra {
+    display: none;
+  }
+  .exec-hide-mobile {
+    display: none !important;
+  }
+}
+
+/* v5.4.0 — Commercial SaaS & POS Design System Components */
+.pro-card {
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  border-radius: var(--radius-md, 12px);
+  box-shadow: var(--shadow-xs, 0 1px 2px rgba(15, 23, 42, 0.04));
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+.pro-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm, 0 4px 12px rgba(15, 23, 42, 0.06));
+  border-color: rgba(37, 99, 235, 0.28);
+}
+
+.btn-gradient {
+  background: var(--brand-gradient, linear-gradient(135deg, #2563eb 0%, #4f46e5 100%));
+  color: #ffffff !important;
+  border: none;
+  border-radius: var(--radius-sm, 8px);
+  padding: 0.48rem 0.92rem;
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+.btn-gradient:hover {
+  opacity: 0.95;
+  transform: translateY(-1px);
+}
+
+.btn-xs {
+  padding: 0.25rem 0.55rem;
+  font-size: 0.74rem;
+  border-radius: 6px;
+}
+
+.segmented-tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 5px;
+  background: var(--bg-subtle, #f8fafc);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  border-radius: 11px;
+}
+
+.segmented-tab {
+  padding: 7px 13px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary, #475569);
+  font-weight: 600;
+  font-size: 0.81rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 160ms ease;
+}
+.segmented-tab:hover {
+  color: var(--text-primary, #0f172a);
+}
+.segmented-tab.active {
+  background: var(--bg-card, #ffffff);
+  color: var(--brand-primary, #2563eb);
+  box-shadow: var(--shadow-xs, 0 1px 2px rgba(15, 23, 42, 0.06));
+}
+
+.exec-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.22rem 0.6rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.exec-status-online {
+  background: rgba(16, 185, 129, 0.13);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.28);
+}
+[data-theme="dark"] .exec-status-online {
+  color: #34d399;
+}
+.exec-status-offline {
+  background: rgba(245, 158, 11, 0.16);
+  color: #d97706;
+  border: 1px solid rgba(245, 158, 11, 0.32);
+}
+.exec-status-p2p {
+  background: rgba(37, 99, 235, 0.13);
+  color: #2563eb;
+  border: 1px solid rgba(37, 99, 235, 0.28);
+}
+[data-theme="dark"] .exec-status-p2p {
+  color: #60a5fa;
+}
+
+
 
