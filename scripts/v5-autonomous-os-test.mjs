@@ -30,6 +30,12 @@ import {
   decodeB2BOrderToken,
   computeMultiFirmConsolidation,
 } from '../src/utils/autonomousMunimAnd43B.js';
+import {
+  buildGstr9AndCmp08WorkingPapers,
+} from '../src/utils/gstNoticeShield.js';
+import {
+  buildShareableB2bCatalogHtml,
+} from '../src/utils/fifoAndCatalog.js';
 
 let passed = 0;
 let failed = 0;
@@ -215,6 +221,84 @@ const group = computeMultiFirmConsolidation({
   expenses: [],
 });
 assert(group.interFirmEliminated === 100000 && group.netConsolidatedSales === 250000, 'Eliminates inter-firm sales/purchases in Consolidated P&L');
+
+// --- Website Audit P0-1: Real InventoryView Product (`taxPercent: 18`) -> #b2b-catalog=z. & HTML Catalog ---
+const realInventoryItem = [{ id: 'rice-1', name: 'Rice', sellingPrice: 100, taxPercent: 18, stock: 10, unit: 'KG' }];
+const realCatLink = generateServerlessCatalogLink('https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/', { businessName: 'Test Shop' }, realInventoryItem);
+const decodedRealCat = decodeServerlessCatalogLink(new URL(realCatLink).hash);
+const htmlCat = buildShareableB2bCatalogHtml(realInventoryItem, { businessName: 'Test Shop' });
+assert(
+  decodedRealCat?.i?.[0]?.g === 18 && htmlCat.includes('"gst":18'),
+  'Website Audit P0-1: Encodes `g: 18` (never 0!) when product uses InventoryView `taxPercent: 18`'
+);
+
+// --- Website Audit P0-2: Real InvoiceGenerator Schema (`data.totals.taxableAmount`, `'credit-note'`, FY & Firm Filter) ---
+const realSavedTaxInvoice = {
+  id: 'inv-100',
+  invoiceType: 'tax-invoice',
+  invoiceNumber: 'INV/26-27/0001',
+  invoiceDate: '2026-11-25',
+  ownerGstin: '09AAAAA0000A1Z5',
+  totalAmount: 118,
+  status: 'unpaid',
+  data: {
+    invoiceType: 'tax-invoice',
+    details: { invoiceNumber: 'INV/26-27/0001', invoiceDate: '2026-11-25' },
+    client: { name: 'Walk-in Buyer', gstin: '' },
+    items: [{ name: 'Rice', hsn: '1006', quantity: 1, rate: 100, taxPercent: 18 }],
+    totals: { subtotal: 100, totalDiscount: 0, taxableAmount: 100, cgst: 9, sgst: 9, utgst: 0, igst: 0, cess: 0, total: 118 },
+  },
+};
+const realSavedCreditNote = {
+  id: 'cn-50',
+  invoiceType: 'credit-note',
+  invoiceNumber: 'CN/26-27/0001',
+  invoiceDate: '2026-11-25',
+  ownerGstin: '09AAAAA0000A1Z5',
+  totalAmount: 59,
+  status: 'paid',
+  data: {
+    invoiceType: 'credit-note',
+    details: { invoiceNumber: 'CN/26-27/0001', invoiceDate: '2026-11-25' },
+    client: { name: 'Walk-in Buyer', gstin: '' },
+    items: [{ name: 'Rice', hsn: '1006', quantity: 0.5, rate: 100, taxPercent: 18 }],
+    totals: { subtotal: 50, totalDiscount: 0, taxableAmount: 50, cgst: 4.5, sgst: 4.5, utgst: 0, igst: 0, cess: 0, total: 59 },
+  },
+};
+const oldPriorFyInvoice = {
+  ...realSavedTaxInvoice,
+  id: 'inv-old-fy',
+  invoiceDate: '2025-05-10',
+  data: { ...realSavedTaxInvoice.data, details: { invoiceNumber: 'INV/25-26/0099', invoiceDate: '2025-05-10' } },
+};
+
+const itrSingle118 = computeBusinessITR({ bills: [realSavedTaxInvoice], fy: '2026-27', ownerGstin: '09AAAAA0000A1Z5' });
+const g9Single118 = buildGstr9AndCmp08WorkingPapers({ bills: [realSavedTaxInvoice], fy: '2026-27', ownerGstin: '09AAAAA0000A1Z5' });
+assert(
+  itrSingle118.grossTurnover === 100 &&
+    itrSingle118.itr3.netProfit === 100 &&
+    g9Single118.gstr9.table4B2C.taxable === 100 &&
+    g9Single118.gstr9.table4B2C.tax === 18,
+  'Website Audit P0-2a: ₹100 + ₹18 GST saved invoice yields ITR-3 profit ₹100 (not ₹118) and GSTR-9 taxable ₹100 + ₹18 GST (not ₹118 / ₹0)'
+);
+
+const itrWithCreditNoteAndOldFy = computeBusinessITR({
+  bills: [realSavedTaxInvoice, realSavedCreditNote, oldPriorFyInvoice],
+  fy: '2026-27',
+  ownerGstin: '09AAAAA0000A1Z5',
+});
+const g9WithCreditNoteAndOldFy = buildGstr9AndCmp08WorkingPapers({
+  bills: [realSavedTaxInvoice, realSavedCreditNote, oldPriorFyInvoice],
+  fy: '2026-27',
+  ownerGstin: '09AAAAA0000A1Z5',
+});
+assert(
+  itrWithCreditNoteAndOldFy.grossTurnover === 50 &&
+    itrWithCreditNoteAndOldFy.creditNotesReduced === 50 &&
+    g9WithCreditNoteAndOldFy.gstr9.netOutwardTaxable === 50 &&
+    g9WithCreditNoteAndOldFy.gstr9.netOutwardTax === 9,
+  'Website Audit P0-2b: Subtracts hyphenated `credit-note` (₹100 - ₹50 = ₹50, never ₹177!) and excludes prior-FY (2025-26) invoices'
+);
 
 console.log(`v5-autonomous-os-test: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

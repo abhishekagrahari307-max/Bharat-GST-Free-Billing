@@ -5,6 +5,22 @@ Bharat GST Free Billing follows a **Daily Continuous Release & Safe Auto-Update*
 
 ---
 
+## [5.2.0] - 2026-11-21
+
+**Complete Polish, Honest Global Progress, Scoped System Health, Hinglish GST Dictionary & In-App Help Desk Edition — Full `P0`/`P1` Tax & Schema Hardening + Unified Global Activity Drawer + Privacy-Safe Support & Shopkeeper Essentials.**
+
+### Added & Hardened
+- **Unified Global Activity & Progress Drawer + Honest Tracked Downloads (`src/utils/operationRegistry.js`, `src/utils/trackedDownload.js`, `src/components/OperationProgressBar.jsx`)**: Tracks concurrent Invoice PDF, Bulk PDF/ZIP (`done/total` + Cancel), GSTR-1/3B JSON/CSV, GSTR-2B Reconciliation, `.json`/`.fgsb` Backups & Restore/Verify, `.bharatca`, Tally/Vyapar Import (`n/total`), P2P Queue → Host ACK, and Storage Self-Heal (`1/9..9/9`) with category icons, WCAG ARIA (`aria-valuenow` omitted when indeterminate), strict PII redaction (`[GSTIN]`, `[PAN]`, `[PHONE]`, `[PIN]`), and honest `DOWNLOAD_INITIATED` (`"File ready; browser download initiated"`) semantics.
+- **8-Point Scoped System, Backup & Data Hygiene Scorecard (`src/utils/systemHealthEvaluator.js`, `src/components/SystemHealthScorecard.jsx`)**: Evaluates real profile/FY-scoped records across `System`, `Backup`, `Sync`, `Data Hygiene` (strict 4/6/8-digit numeric HSN regex), and `Compliance Advisory` (reporting `unknown` on empty inventory or untagged MSME purchases rather than false `"100% Safe"`).
+- **Serverless In-App Help Desk, Privacy-Safe Error Reporter, Review Card & Hinglish GST Dictionary (`src/components/HelpDeskAndReviewModal.jsx`, `src/components/HelpDictionaryPanel.jsx`, `src/data/helpDictionary.js`)**: Instant Hinglish troubleshooting FAQ, searchable 14-term GST & Income Tax glossary (`HSN`, `ITC`, `GSTR-1/2B/3B/9`, `Sec 43B(h)`, `44AD`, `87A`, `Credit Note`, `FEFO`, `BOM`, `RCM`, `E-Way Bill`), 1-click PII-sanitized GitHub/WhatsApp diagnostic reporter wired to failed operations, and structured 1–5 star review cards.
+- **Shopkeeper Essentials (`src/utils/shopEssentials.js`)**: Salted hash + 5-attempt lockout **Staff / Operator Lock PIN**, **1-Click Canonical Sandbox / Demo Store** loader, and **1-Click WhatsApp + Dynamic `upi://pay` Khata Reminder**.
+- **`P0-1` Canonical Product GST Schema (`src/utils/canonicalAdapter.js`)**: Unifies `taxPercent` and `gstRate` across `InventoryView`, `InvoiceGenerator`, `#b2b-catalog=z.`, Shareable HTML Catalog, WebRTC P2P, and Tally/Vyapar Importer so standard 5%/12%/18%/28% products never drop to `0%` GST.
+- **`P0-2` Canonical Invoice, Credit Note, FY & COGS Engine (`itrAndTaxEngine.js`, `gstNoticeShield.js`, `autonomousMunimAnd43B.js`)**: Reads `data.totals.taxableAmount` & `cgst`/`sgst`/`utgst`/`igst`/`cess` (so a ₹100 + ₹18 GST saved invoice reports exact ₹100 taxable turnover & ₹18 GST in both ITR-3/4 and GSTR-9), subtracts hyphenated `'credit-note'` documents, skips cancelled/quotation/proforma/challan/sales-order documents, enforces Financial Year (`FY`) + Business (`ownerGstin`) filtering, and adds Opening/Closing Stock COGS inputs.
+- **`P0-5` & `P1` Verified WebRTC P2P Storage, Persistent Host Dedupe & 6-Digit Rate-Limited PIN (`webrtcP2pSync.js`)**: Verifies `localStorage` read-back before claiming `queued: true` (returning `storageError: true` + auto-downloading emergency JSON on `QuotaExceededError`), persists Counter PC `queueId` deduplication across reloads, upgrades to a 6-digit PIN with 5-attempt lockout, and scrubs `?pin=` from browser history.
+- **`P0-6` & `P1` High-Fidelity Tally XML / Vyapar Migration, Atomic Rollback, `SECURITY.md` & Portal Extension (`legacyImporter.js`, `SECURITY.md`, `companion-extension/`)**: Preserves Tally `<ALLINVENTORYENTRIES.LIST>` items and `<LEDGERENTRIES.LIST>` CGST/SGST/IGST breakup, surfaces warnings on ledger-only vouchers, adds atomic batch rollback on migration & BOM saves, updates `SECURITY.md` to official repository advisories, and reports exact matched/missing field counts in `companion-extension`.
+
+---
+
 ## [5.1.0] - 2026-11-21
 
 **Audit-Hardened Statutory Tax & POS Polish Edition — CBDT Sec 44AD/44ADA 5%-Cash Cap, Sec 87A Marginal Relief, MSMED Sec 15 (15d vs 45d) 43B(h) Accuracy, `fflate`-Compressed `#b2b-catalog=z.` URLs, Shop POS / CA Pro Mode Toggle & Rich OpenGraph Banner.**

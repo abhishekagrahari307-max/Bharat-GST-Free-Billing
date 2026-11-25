@@ -6,15 +6,10 @@
 import { Download, FileSpreadsheet, Printer } from 'lucide-react';
 import { toCsvLine } from '../utils';
 import { buildXlsx } from '../utils/xlsx';
+import { triggerTrackedBrowserDownload } from '../utils/trackedDownload';
 import { toast } from './Toast';
 
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-const save = (blob, name) => {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = name; a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-};
 const safeName = (s) => String(s || 'report').replace(/[^A-Za-z0-9 _.-]+/g, '-').replace(/\s+/g, '_').slice(0, 80);
 
 // headers: column titles; rows: arrays of cells (numbers stay numbers).
@@ -26,13 +21,23 @@ export default function TableExport({ title, subtitle = '', headers, rows, filen
 
   const csv = () => {
     if (guard()) return;
-    save(new Blob([[headers, ...rows].map(toCsvLine).join('\n')], { type: 'text/csv;charset=utf-8;' }), `${name}.csv`);
-    toast('CSV downloaded', 'success');
+    triggerTrackedBrowserDownload({
+      blob: new Blob([[headers, ...rows].map(toCsvLine).join('\n')], { type: 'text/csv;charset=utf-8;' }),
+      filename: `${name}.csv`,
+      category: 'report',
+      label: `${title || 'Report'} CSV (${rows.length} rows)`,
+    });
+    toast('CSV ready — browser download initiated', 'success');
   };
   const excel = () => {
     if (guard()) return;
-    save(new Blob([buildXlsx([headers, ...rows], title)], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `${name}.xlsx`);
-    toast('Excel file downloaded', 'success');
+    triggerTrackedBrowserDownload({
+      blob: new Blob([buildXlsx([headers, ...rows], title)], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
+      filename: `${name}.xlsx`,
+      category: 'report',
+      label: `${title || 'Report'} Excel (${rows.length} rows)`,
+    });
+    toast('Excel ready — browser download initiated', 'success');
   };
   const print = () => {
     if (guard()) return;

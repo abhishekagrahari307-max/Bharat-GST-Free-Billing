@@ -26,15 +26,22 @@ const QUARTERS = [
 
 // v1.10.6 — audit L4: local copy removed, imported from utils above.
 
+import { triggerTrackedBrowserDownload } from '../utils/trackedDownload';
+
 function downloadCSV(filename, headers, rows) {
   // v1.10.66 (#63) — toCsvLine stops a cell such as a client name starting
   // with "=" from running as a spreadsheet formula when the file is opened.
   const lines = [toCsvLine(headers)];
   rows.forEach(row => lines.push(toCsvLine(row)));
   const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
-  URL.revokeObjectURL(url);
+  triggerTrackedBrowserDownload({
+    blob,
+    filename,
+    category: 'gstr',
+    label: `GST CSV Export (${filename})`,
+    allowEmpty: true,
+    portalAdvisory: 'Verify figures before portal filing',
+  });
 }
 
 function round2(n) { return Math.round(n * 100) / 100; }
@@ -1230,10 +1237,14 @@ export default function GSTReturns({ onOpenPurchases } = {}) {
       sup_details, itc_elg, inward_sup,
     };
     const blob = new Blob([JSON.stringify(gstr3b, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = `GSTR3B_${gstin || 'export'}_${ret_period}.json`; a.click();
-    URL.revokeObjectURL(url);
-    toast('GSTR-3B JSON exported — upload to GST portal offline tool', 'success');
+    triggerTrackedBrowserDownload({
+      blob,
+      filename: `GSTR3B_${gstin || 'export'}_${ret_period}.json`,
+      category: 'gstr',
+      label: `GSTR-3B JSON (${ret_period})`,
+      portalAdvisory: 'Validate on GST Portal Offline Tool before filing',
+    });
+    toast('GSTR-3B JSON ready — download initiated (validate on GST Portal before filing)', 'success');
   };
 
   // v1.10.43 — GSTR portal validation pre-flight. Reported: users
@@ -1517,9 +1528,13 @@ export default function GSTReturns({ onOpenPurchases } = {}) {
     });
 
     const blob = new Blob([JSON.stringify(gstr1, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = `GSTR1_${gstin || 'export'}_${fp}.json`; a.click();
-    URL.revokeObjectURL(url);
+    triggerTrackedBrowserDownload({
+      blob,
+      filename: `GSTR1_${gstin || 'export'}_${fp}.json`,
+      category: 'gstr',
+      label: `GSTR-1 JSON (${fp})`,
+      portalAdvisory: 'Validate in GST Offline Tool / Portal before submission',
+    });
 
     // Collect any lossy warnings (from pre-flight + UQC fallback) into
     // a single toast so the user knows what to fix at source without

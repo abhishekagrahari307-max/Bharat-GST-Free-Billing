@@ -7,7 +7,7 @@ export const SITE = {
   url: 'https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/user-guide/',
   appUrl: 'https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/',
   publisher: { name: 'Abhishek Agrahari', url: 'https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/' },
-  version: '5.1.0',
+  version: '5.2.0',
   repo: 'https://github.com/abhishekagrahari307-max/Bharat-GST-Free-Billing',
   download: '../',
 };

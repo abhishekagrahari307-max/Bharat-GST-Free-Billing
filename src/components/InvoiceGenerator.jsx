@@ -35,6 +35,12 @@ import ClientModal from './ClientModal';
 import { EInvoiceEditorModal } from './EInvoiceModal';
 import VoiceBillingModal from './VoiceBillingModal';
 import { toast } from './Toast';
+import {
+  startOperation,
+  updateOperation,
+  addOperationDestinationOutcome,
+  finishOperation,
+} from '../utils/operationRegistry';
 import { phoneDigits, findClientByPhone, newPhoneClient } from '../utils/phoneClients';
 import { changeSize, itemWithUnit, sizeSqft, sizeHasDims, SIZE_STEPS, withRftLines, rftSources, perimeterRft } from '../utils/glass';
 import { orderSummary, salesOrderOf, SO_STATUS_LABELS } from '../utils/salesOrders';
@@ -4213,25 +4219,59 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
     // either.
     const problem = validateForSave();
     if (problem) { showProblem(problem); return; }
+    const pdfOpId = startOperation({
+      category: 'pdf',
+      label: `Invoice PDF (${typeConfig.label})`,
+      phase: 'Saving invoice & reserving number…',
+      destination: 'Browser Download',
+    });
     try {
       setSaving(true);
       setPdfBusy(true);
       // Save first so the PDF shows the number the invoice was saved under.
       const savedNumber = await saveForOutput();
-      if (!savedNumber) return;
+      if (!savedNumber) {
+        finishOperation(pdfOpId, { status: 'cancelled', phase: 'Save cancelled before PDF render' });
+        return;
+      }
+      updateOperation(pdfOpId, { phase: `Rendering PDF for #${savedNumber}…` });
       const pdf = await buildPDF();
       const fileName = `${typeConfig.prefix}_${savedNumber.replace(/\//g, '-')}.pdf`;
       pdf.save(fileName);
+      addOperationDestinationOutcome(pdfOpId, {
+        destination: 'Browser Download',
+        status: 'initiated',
+        detail: fileName,
+      });
 
       const pdfBlob = pdf.output('blob');
 
       // Save to local "Saved Invoices" folder (Client Name / Month / file.pdf)
-      const clientName = client?.name || 'General';
-      // A cancelled invoice keeps its CANCELLED-stamped copy in Saved Invoices
-      // (and the original kept for Undo); downloading it again leaves those alone.
-      if (!(readOnlyDoc && editingBill?.status === 'cancelled')) saveToInvoicesFolder(pdfBlob, fileName).catch(() => {});
+      const clientFolder = client?.name || 'General';
+      if (!(readOnlyDoc && editingBill?.status === 'cancelled')) {
+        saveToInvoicesFolder(pdfBlob, fileName)
+          .then(() => {
+            addOperationDestinationOutcome(pdfOpId, {
+              destination: 'Saved Invoices Folder',
+              status: 'verified',
+              detail: `${clientFolder}/${fileName}`,
+            });
+          })
+          .catch(() => {
+            addOperationDestinationOutcome(pdfOpId, {
+              destination: 'Saved Invoices Folder',
+              status: 'skipped',
+              detail: 'Local server folder unavailable',
+            });
+          });
+      }
 
-      toast(`Invoice downloaded & saved to Saved Invoices/${clientName}/`, 'success');
+      finishOperation(pdfOpId, {
+        status: 'success',
+        outcome: 'DOWNLOAD_INITIATED',
+        phase: `PDF ready (#${savedNumber}); browser download initiated`,
+      });
+      toast(`Invoice PDF ready — download initiated`, 'success');
       uploadToGoogleDrive(pdfBlob, fileName);
 
       // v1.10.3 — auto-print via the shared printViaIframe helper.
@@ -4244,6 +4284,7 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
       }
     } catch (err) {
       console.error(err);
+      finishOperation(pdfOpId, { status: 'failed', phase: 'Failed to generate PDF', error: err });
       toast('Failed to generate PDF.', 'error');
     } finally {
       setSaving(false);

@@ -47,6 +47,8 @@ import {
 } from '../utils/backupManager';
 import { confirmAction } from './ConfirmModal';
 import { toast } from './Toast';
+import { triggerTrackedBrowserDownload } from '../utils/trackedDownload';
+import { startOperation, updateOperation, finishOperation } from '../utils/operationRegistry';
 
 export default function BackupCenter({ profile, onUpdateProfileField, onOpenLegacyExport, onOpenSelectiveImport }) {
   const [settings, setSettings] = useState(readBackupSettings);
@@ -101,27 +103,38 @@ export default function BackupCenter({ profile, onUpdateProfileField, onOpenLega
   // 1. Download Quick JSON Backup
   const handleQuickJsonBackup = async () => {
     setBusy('json');
+    const opId = startOperation({
+      category: 'backup',
+      label: 'Full Plain-JSON Backup',
+      phase: 'Collecting workspace records…',
+      destination: 'Browser Download',
+    });
     try {
       const payload = await exportAllData();
+      updateOperation(opId, { phase: 'Serializing JSON payload…' });
       const { fileName, content } = await serializeBackupPayload(payload, { encrypt: false });
-      const blob = new Blob([content], { type: 'application/json' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = fileName;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+      triggerTrackedBrowserDownload({
+        content,
+        mimeType: 'application/json',
+        filename: fileName,
+        category: 'backup',
+        label: 'Full Plain-JSON Backup',
+        existingOpId: opId,
+        portalAdvisory: 'Plain JSON — keep in a private folder',
+      });
       await triggerBackup().catch(() => {});
       recordBackupCompleted({
         kind: 'manual-json',
-        destination: 'Device Download (.json)',
+        destination: 'Browser Download (.json)',
         billCount: payload?.bills?.length || 0,
         clientCount: payload?.clients?.length || 0,
         encrypted: false,
         fileName,
       });
       await loadAll();
-      toast(`Backup downloaded (${fileName})`, 'success');
+      toast(`Backup ready — browser download initiated (${fileName})`, 'success');
     } catch (err) {
+      finishOperation(opId, { status: 'failed', error: err });
       toast('Backup failed: ' + (err.message || 'Unknown error'), 'error');
     } finally {
       setBusy('');
@@ -136,18 +149,26 @@ export default function BackupCenter({ profile, onUpdateProfileField, onOpenLega
       return;
     }
     setBusy('fgsb');
+    const opId = startOperation({
+      category: 'backup',
+      label: 'AES-256 Encrypted Backup (.fgsb)',
+      phase: 'Collecting & encrypting records (AES-256-GCM)…',
+      destination: 'Browser Download',
+    });
     try {
       const payload = await exportAllData();
       const { fileName, content } = await serializeBackupPayload(payload, {
         encrypt: true,
         passphrase: encPassword.trim(),
       });
-      const blob = new Blob([content], { type: 'application/octet-stream' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = fileName;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+      triggerTrackedBrowserDownload({
+        content,
+        mimeType: 'application/octet-stream',
+        filename: fileName,
+        category: 'backup',
+        label: 'AES-256 Encrypted Backup (.fgsb)',
+        existingOpId: opId,
+      });
       recordBackupCompleted({
         kind: 'manual-fgsb',
         destination: 'Encrypted Vault File (.fgsb)',
@@ -159,8 +180,9 @@ export default function BackupCenter({ profile, onUpdateProfileField, onOpenLega
       setShowEncExport(false);
       setEncPassword('');
       await loadAll();
-      toast(`AES-256 Encrypted backup downloaded (${fileName})!`, 'success');
+      toast(`Encrypted .fgsb ready — browser download initiated!`, 'success');
     } catch (err) {
+      finishOperation(opId, { status: 'failed', error: err });
       toast(err.message || 'Could not encrypt backup', 'error');
     } finally {
       setBusy('');
@@ -170,6 +192,12 @@ export default function BackupCenter({ profile, onUpdateProfileField, onOpenLega
   // 3. Restore or Verify (.json or .fgsb)
   const handleFilePicked = async (file, mode = 'restore') => {
     if (!file) return;
+    const opId = startOperation({
+      category: 'restore',
+      label: mode === 'verify' ? 'Verify Backup Integrity' : 'Restore Workspace Backup',
+      phase: 'Reading & verifying backup checksum…',
+      destination: 'Local Workspace',
+    });
     try {
       const rawText = await file.text();
       let parsed;
@@ -177,8 +205,13 @@ export default function BackupCenter({ profile, onUpdateProfileField, onOpenLega
         parsed = await parseAndVerifyBackupText(rawText, '');
       } catch (err) {
         if (err.code === 'password-required') {
+          updateOperation(opId, { status: 'waiting', phase: 'Waiting for AES-256 decryption password…' });
           const pwd = window.prompt(`"${file.name}" is AES-256 encrypted (.fgsb). Enter its Backup Password / PIN:`);
-          if (!pwd) return;
+          if (!pwd) {
+            finishOperation(opId, { status: 'cancelled', phase: 'Password entry cancelled' });
+            return;
+          }
+          updateOperation(opId, { status: 'running', phase: 'Decrypting & checking integrity…' });
           parsed = await parseAndVerifyBackupText(rawText, pwd.trim());
         } else {
           throw err;
@@ -187,24 +220,37 @@ export default function BackupCenter({ profile, onUpdateProfileField, onOpenLega
 
       if (mode === 'verify') {
         setVerifyReport({ fileName: file.name, ...parsed });
+        finishOperation(opId, {
+          status: 'success',
+          outcome: 'VERIFIED_READONLY',
+          phase: `Verified intact (${parsed.summary.bills} bills, ${parsed.summary.products} items)`,
+        });
         toast('Backup verified! File is intact and readable.', 'success');
         return;
       }
 
+      updateOperation(opId, { status: 'waiting', phase: 'Awaiting restore confirmation…' });
       const ok = await confirmAction({
         title: `Restore backup "${file.name}"?`,
         message: `Found ${parsed.summary.bills} invoices, ${parsed.summary.clients} clients, and ${parsed.summary.products} products${parsed.encrypted ? ' (AES-256 Encrypted)' : ''}. Current data will be backed up first before restoring.`,
         confirmLabel: 'Restore Now',
         tone: 'warning',
       });
-      if (!ok) return;
+      if (!ok) {
+        finishOperation(opId, { status: 'cancelled', phase: 'Restore cancelled by user' });
+        return;
+      }
 
       setBusy('restore');
+      updateOperation(opId, { status: 'running', phase: 'Creating pre-restore safety snapshot…' });
       await triggerBackup().catch(() => {});
+      updateOperation(opId, { phase: 'Applying backup records to workspace…' });
       await importData(parsed.data, true);
+      finishOperation(opId, { status: 'success', phase: 'Restore applied — reloading workspace…' });
       toast('Backup restored! Reloading workspace…', 'success');
       setTimeout(() => window.location.reload(), 900);
     } catch (err) {
+      finishOperation(opId, { status: 'failed', error: err });
       toast(err.message || 'Invalid or corrupted backup file', 'error');
     } finally {
       setBusy('');

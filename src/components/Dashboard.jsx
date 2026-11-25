@@ -19,6 +19,9 @@ import InvoiceTrash from './InvoiceTrash';
 import SupportNudge from './SupportNudge';
 import WelcomeCard from './WelcomeCard';
 import AutonomousMunimWidget from './AutonomousMunimWidget';
+import SystemHealthScorecard from './SystemHealthScorecard';
+import { startOperation, updateOperation, finishOperation } from '../utils/operationRegistry';
+import { buildWhatsAppPaymentReminder } from '../utils/shopEssentials';
 import { toast } from './Toast';
 import { confirmAction } from './ConfirmModal';
 import { useCostCentres } from './useCostCentres';
@@ -230,7 +233,10 @@ const foreignReceiptFields = (input) => {
   };
 };
 
-export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConvert, onOpenProducts, onOpenPurchases, onOpenSettings, onOpenGuide, onOpenSupport, activeProfile }) {
+export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConvert, onOpenProducts, onOpenPurchases, onOpenSettings, onOpenGuide, onOpenSupport, onOpenHelpDesk, activeProfile }) {
+  const [reviewDismissed, setReviewDismissed] = useState(() => {
+    try { return localStorage.getItem('bharatgst_review_prompt_dismissed') === '1'; } catch { return false; }
+  });
   // v1.10.64 — requested (#55, @sangwanmail-eng): "An invoice belonging to one
   // company should not appear under the other."
   //
@@ -1315,11 +1321,26 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
         try { await document.fonts.ready; } catch { /* non-fatal */ }
       }
       window.__fgsbBulkAbort = false;
+      const bulkOpId = startOperation({
+        category: 'bulk-pdf',
+        label: mode === 'separate' ? `Bulk Invoice ZIP (${sel.length} bills)` : `Bulk Combined PDF (${sel.length} bills)`,
+        phase: `Rendering 0 of ${sel.length} invoices…`,
+        destination: 'Browser Download',
+        total: sel.length,
+        completed: 0,
+        onCancel: () => { window.__fgsbBulkAbort = true; },
+      });
       let ok = 0;
+      let failedCount = 0;
       for (let i = 0; i < sel.length; i++) {
         if (window.__fgsbBulkAbort) break;
         const bill = sel[i];
         const data = bill.data || {};
+        updateOperation(bulkOpId, {
+          completed: i,
+          total: sel.length,
+          phase: `Rendering invoice ${i + 1} of ${sel.length}…`,
+        });
         // Progress every 5 invoices (or every one for very small batches).
         if (sel.length > 5 && (i % 5 === 0)) {
           toast(`Exporting ${i + 1} of ${sel.length}…`, 'info', 1500);
@@ -1350,17 +1371,31 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
             addCanvasAsA4Pages(doc, canvas, ok > 0, breaks);
           }
           ok++;
-        } catch { /* skip broken bill silently */ }
+        } catch {
+          failedCount++;
+        }
+        updateOperation(bulkOpId, { completed: i + 1, total: sel.length });
         // Yield to the event loop between invoices so the browser can
         // paint the progress toast and handle any user click on Abort.
         await new Promise(r => setTimeout(r, 0));
       }
       root.unmount();
       document.body.removeChild(container);
-      if (window.__fgsbBulkAbort) { toast(`Aborted after ${ok} of ${sel.length}`, 'warning'); }
+      const wasAborted = Boolean(window.__fgsbBulkAbort);
+      if (wasAborted) { toast(`Aborted after ${ok} of ${sel.length}`, 'warning'); }
       window.__fgsbBulkAbort = false;
-      if (ok === 0) { toast('Could not generate any PDFs', 'error'); return; }
+      if (ok === 0) {
+        finishOperation(bulkOpId, {
+          status: wasAborted ? 'cancelled' : 'failed',
+          completed: 0,
+          total: sel.length,
+          phase: wasAborted ? 'Cancelled before any PDF completed' : `Failed to render ${sel.length} selected invoice(s)`,
+        });
+        toast('Could not generate any PDFs', 'error');
+        return;
+      }
       if (mode === 'separate') {
+        updateOperation(bulkOpId, { phase: `Packaging ${ok} PDF(s) into ZIP archive…` });
         const { zipSync } = await import('fflate');
         // PDFs are already compressed: store them as they are.
         const blob = new Blob([zipSync(files, { level: 0 })], { type: 'application/zip' });
@@ -1372,7 +1407,24 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
       } else {
         doc.save(`bharat-gst-invoices-${ok}-${localToday()}.pdf`);
       }
-      toast(`Exported ${ok} of ${sel.length} invoices`, 'success');
+      finishOperation(bulkOpId, {
+        status: wasAborted ? 'cancelled' : failedCount > 0 ? 'partial' : 'success',
+        outcome: 'DOWNLOAD_INITIATED',
+        completed: ok,
+        total: sel.length,
+        summary: { succeeded: ok, failed: failedCount },
+        phase: wasAborted
+          ? `Stopped after ${ok}/${sel.length}; partial download initiated`
+          : failedCount > 0
+            ? `Prepared ${ok}/${sel.length} (${failedCount} failed); browser download initiated`
+            : `All ${ok}/${sel.length} ready; browser download initiated`,
+      });
+      toast(
+        failedCount > 0
+          ? `Prepared ${ok} of ${sel.length} invoices (${failedCount} failed) — download initiated`
+          : `Prepared ${ok} of ${sel.length} invoices — download initiated`,
+        failedCount > 0 ? 'warning' : 'success'
+      );
     } catch (e) {
       toast('Bulk PDF export failed — see console', 'error');
       console.error('bulkExportPDF', e);
@@ -1574,7 +1626,115 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
       {/* v1.10.86 - each block in a wrapper whose CSS order follows Customise Dashboard. */}
       {blockOn('welcome') && <div style={blockOrder('welcome')}>
       {onOpenSupport && billsLoaded && <WelcomeCard invoiceCount={bills.length} businessName={profile?.businessName || ''} onOpenSupport={onOpenSupport} />}
+      {billsLoaded && <SystemHealthScorecard compactDefault={true} />}
       {billsLoaded && <AutonomousMunimWidget businessProfile={profile} onBillsUpdated={loadBills} />}
+
+      {/* Gentle non-blocking Review Prompt once user completes 5+ real invoices */}
+      {billsLoaded && !reviewDismissed && bills.length >= 5 && typeof onOpenHelpDesk === 'function' && (
+        <div
+          className="glass-panel"
+          style={{
+            padding: '0.7rem 1rem',
+            marginBottom: '0.9rem',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '0.6rem',
+            flexWrap: 'wrap',
+            borderLeft: '4px solid #f59e0b',
+          }}
+        >
+          <span style={{ fontSize: '0.82rem' }}>
+            ⭐ <strong>Bharat GST कैसा चल रहा है?</strong> आपने {bills.length} बिल तैयार कर लिए हैं — 30 सेकंड में अपना अनुभव या सुझाव साझा करें!
+          </span>
+          <div style={{ display: 'flex', gap: '0.45rem', alignItems: 'center' }}>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={() => onOpenHelpDesk('REVIEW')}
+            >
+              ⭐ रिव्यू दें
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => {
+                try { localStorage.setItem('bharatgst_review_prompt_dismissed', '1'); } catch { /* ignore */ }
+                setReviewDismissed(true);
+              }}
+            >
+              अभी नहीं
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Quick 1-Click WhatsApp + UPI Khata Reminder & Help Dictionary Strip */}
+      {billsLoaded && (() => {
+        const unpaidBill = bills.find((b) => {
+          if (b.status === 'cancelled') return false;
+          const total = Number(b.totalAmount ?? b.data?.totals?.grandTotal ?? 0);
+          const paid = Number(b.amountPaid ?? 0);
+          return total - paid > 1;
+        });
+        if (!unpaidBill && typeof onOpenHelpDesk !== 'function') return null;
+        const dueAmt = unpaidBill
+          ? Math.max(0, Number(unpaidBill.totalAmount ?? unpaidBill.data?.totals?.grandTotal ?? 0) - Number(unpaidBill.amountPaid ?? 0))
+          : 0;
+        return (
+          <div
+            className="glass-panel"
+            style={{
+              padding: '0.65rem 1rem',
+              marginBottom: '0.9rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: '0.6rem',
+              flexWrap: 'wrap',
+            }}
+          >
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+              {unpaidBill
+                ? `📲 बकाया स्मरण: ${unpaidBill.clientName || unpaidBill.data?.client?.name || 'ग्राहक'} (#${unpaidBill.invoiceNumber}) — ₹${dueAmt.toLocaleString('en-IN', { maximumFractionDigits: 2 })} शेष`
+                : '💡 नया यूज़र या CA? 1-क्लिक में Hinglish GST शब्दकोश या सैंपल डेमो स्टोर खोलें:'}
+            </span>
+            <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap' }}>
+              {unpaidBill && (
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  onClick={() => {
+                    const reminder = buildWhatsAppPaymentReminder({
+                      businessName: profile?.businessName || 'हमारी दुकान',
+                      partyName: unpaidBill.clientName || unpaidBill.data?.client?.name || 'ग्राहक',
+                      partyPhone: unpaidBill.data?.client?.phone || '',
+                      pendingAmount: dueAmt,
+                      upiId: profile?.upiId || '',
+                      dueInvoiceNo: unpaidBill.invoiceNumber || '',
+                    });
+                    window.open(reminder.url, '_blank', 'noopener,noreferrer');
+                  }}
+                >
+                  📲 WhatsApp + UPI उधारी रिमाइंडर
+                </button>
+              )}
+              {typeof onOpenHelpDesk === 'function' && (
+                <>
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => onOpenHelpDesk('DICTIONARY')}>
+                    📖 GST शब्दकोश
+                  </button>
+                  {bills.length === 0 && (
+                    <button type="button" className="btn btn-secondary btn-sm" onClick={() => onOpenHelpDesk('TOOLS')}>
+                      🧪 Load Demo Store
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {startedSteps && (
         <div className="glass-panel p-6 mb-6">

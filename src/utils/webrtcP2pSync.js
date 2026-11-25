@@ -1,52 +1,116 @@
-// Hardened Browser-Native WebRTC P2P Mobile-to-PC Live Billing & Stock Sync Engine (v3.3.0)
-// Includes:
-// 1. 4-Digit Counter Security PIN Handshake
-// 2. Durable Offline Sync Queue (bharatgst_p2p_offline_queue) — zero lost orders if 5G drops
-// 3. Automatic 10s PING/PONG Heartbeat + 3s Auto-Reconnect + Signaling Reconnect + Queue Auto-Flush
-// 4. Idempotent queueId De-Duplication on Counter PC
+// Hardened Browser-Native WebRTC P2P Mobile-to-PC Live Billing & Stock Sync Engine (v5.2.0 — Audit Hardened)
+// Fixes P0-1, P0-5 & P1:
+// 1. Canonical Product & Invoice Schema (`taxPercent` + `gstRate`, `data.totals.taxableAmount`, `'tax-invoice'`)
+// 2. Verified Storage Persistence (`saveP2pOfflineQueue`) — NEVER claims `{ queued: true }` on QuotaExceededError!
+// 3. Persistent Host Deduplication (`bharatgst_p2p_host_ack_map`) across Counter PC reloads/restarts
+// 4. 6-Digit Pairing PIN + 5-Attempt Brute-Force Lockout + URL `?pin=` History Scrub Helper
 // NOTE: Keep free of ../store.js and ../components/* imports (server test isolation).
 
+import {
+  resolveProductTaxPercent,
+  resolveProductSellingPrice,
+  normalizeCanonicalProduct,
+} from './canonicalAdapter.js';
+
 export const P2P_QUEUE_STORAGE_KEY = 'bharatgst_p2p_offline_queue';
+export const P2P_HOST_ACK_STORAGE_KEY = 'bharatgst_p2p_host_ack_map';
+export const MAX_P2P_AUTH_ATTEMPTS = 5;
 
-const memoryQueueFallback = [];
+const nodeOnlyMemoryQueue = [];
 
-function getStorage() {
-  try {
-    if (typeof globalThis !== 'undefined' && globalThis.localStorage) {
-      return globalThis.localStorage;
+function resolveStorageState() {
+  // If `localStorage` property exists on globalThis (all browsers + storage quota mocks):
+  if (typeof globalThis !== 'undefined' && 'localStorage' in globalThis) {
+    try {
+      const st = globalThis.localStorage;
+      if (!st || typeof st.getItem !== 'function' || typeof st.setItem !== 'function') {
+        return { mode: 'unavailable', storage: null };
+      }
+      return { mode: 'web', storage: st };
+    } catch {
+      return { mode: 'unavailable', storage: null };
     }
-  } catch { /* ignore */ }
-  return null;
+  }
+  // Pure Node.js CLI without DOM/localStorage
+  if (typeof window === 'undefined') {
+    return { mode: 'node-memory', storage: null };
+  }
+  return { mode: 'unavailable', storage: null };
 }
 
 export function getP2pOfflineQueue() {
-  const st = getStorage();
-  if (!st) return [...memoryQueueFallback];
+  const { mode, storage } = resolveStorageState();
+  if (mode === 'node-memory') return [...nodeOnlyMemoryQueue];
+  if (mode !== 'web' || !storage) return [];
   try {
-    const parsed = JSON.parse(st.getItem(P2P_QUEUE_STORAGE_KEY) || '[]');
+    const parsed = JSON.parse(storage.getItem(P2P_QUEUE_STORAGE_KEY) || '[]');
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
   }
 }
 
+/**
+ * Writes the offline queue to durable localStorage AND verifies read-back.
+ * Never swallows QuotaExceededError silently — returns `{ ok: boolean, error?: string }`.
+ */
 export function saveP2pOfflineQueue(queue = []) {
   const clean = Array.isArray(queue) ? queue : [];
-  const st = getStorage();
-  if (!st) {
-    memoryQueueFallback.length = 0;
-    memoryQueueFallback.push(...clean);
-    return;
+  const { mode, storage } = resolveStorageState();
+  if (mode === 'node-memory') {
+    nodeOnlyMemoryQueue.length = 0;
+    nodeOnlyMemoryQueue.push(...clean);
+    return { ok: true };
+  }
+  if (mode !== 'web' || !storage) {
+    return {
+      ok: false,
+      error: 'Durable browser storage (localStorage) is blocked or unavailable.',
+    };
   }
   try {
-    st.setItem(P2P_QUEUE_STORAGE_KEY, JSON.stringify(clean));
-  } catch { /* quota */ }
+    const serialized = JSON.stringify(clean);
+    storage.setItem(P2P_QUEUE_STORAGE_KEY, serialized);
+    const readBack = storage.getItem(P2P_QUEUE_STORAGE_KEY);
+    if (readBack !== serialized) {
+      return {
+        ok: false,
+        error: 'Storage verification read-back mismatch — offline queue could not be persisted.',
+      };
+    }
+    return { ok: true };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err?.message || 'Storage quota exceeded — offline queue could not be persisted.',
+    };
+  }
 }
 
 export function removeP2pQueueItem(queueId) {
   const updated = getP2pOfflineQueue().filter((item) => item?.queueId !== queueId);
   saveP2pOfflineQueue(updated);
   return updated;
+}
+
+export function loadPersistedHostAckMap() {
+  const { mode, storage } = resolveStorageState();
+  if (mode !== 'web' || !storage) return new Map();
+  try {
+    const entries = JSON.parse(storage.getItem(P2P_HOST_ACK_STORAGE_KEY) || '[]');
+    return new Map(Array.isArray(entries) ? entries : []);
+  } catch {
+    return new Map();
+  }
+}
+
+export function savePersistedHostAckMap(ackMap) {
+  const { mode, storage } = resolveStorageState();
+  if (mode !== 'web' || !storage || !(ackMap instanceof Map)) return;
+  try {
+    const bounded = [...ackMap.entries()].slice(-500);
+    storage.setItem(P2P_HOST_ACK_STORAGE_KEY, JSON.stringify(bounded));
+  } catch { /* best-effort host dedupe cache */ }
 }
 
 function r2(n) {
@@ -63,19 +127,21 @@ function randomDigits(len) {
 export function generateP2pCredentials() {
   return {
     roomId: `BGST-${randomDigits(6)}`,
-    pin: randomDigits(4),
+    pin: randomDigits(6),
   };
 }
 
-export function buildP2pPairingUrl(baseHref = '', { roomId = '', pin = '' } = {}) {
+export function buildP2pPairingUrl(baseHref = '', { roomId = '', pin = '', includePin = true } = {}) {
   try {
     const u = new URL(baseHref || 'https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/');
     u.searchParams.set('view', 'reports');
     u.searchParams.set('p2p', String(roomId).trim().toUpperCase());
-    if (pin) u.searchParams.set('pin', String(pin).trim());
+    if (includePin && pin) u.searchParams.set('pin', String(pin).trim());
+    else u.searchParams.delete('pin');
     return u.toString();
   } catch {
-    return `?view=reports&p2p=${encodeURIComponent(roomId)}&pin=${encodeURIComponent(pin)}`;
+    const base = `?view=reports&p2p=${encodeURIComponent(roomId)}`;
+    return includePin && pin ? `${base}&pin=${encodeURIComponent(pin)}` : base;
   }
 }
 
@@ -88,7 +154,52 @@ export function parseP2pParamsFromSearch(search = '') {
 }
 
 /**
- * Builds a complete GST-compliant invoice / sales order payload on the Mobile Staff Order Pad.
+ * Removes `?pin=` from the browser URL bar after pairing scan so PIN never lingers in history/referrers.
+ */
+export function scrubPinFromBrowserUrl() {
+  try {
+    if (typeof window === 'undefined' || !window.location?.search || !window.history?.replaceState) return;
+    const u = new URL(window.location.href);
+    if (u.searchParams.has('pin')) {
+      u.searchParams.delete('pin');
+      window.history.replaceState({}, '', u.toString());
+    }
+  } catch { /* ignore */ }
+}
+
+export function mapProductsToP2pCatalog(products = []) {
+  return (Array.isArray(products) ? products : [])
+    .filter((p) => p && p.name)
+    .map((p) => {
+      const norm = normalizeCanonicalProduct(p);
+      return {
+        id: norm.id,
+        name: norm.name,
+        hsn: norm.hsn,
+        unit: norm.unit,
+        price: norm.sellingPrice,
+        sellingPrice: norm.sellingPrice,
+        taxPercent: norm.taxPercent,
+        gstRate: norm.gstRate,
+        stock: norm.stock,
+      };
+    });
+}
+
+function canonicalInvoiceTypeSlug(docType = 'Tax Invoice') {
+  const s = String(docType || 'tax-invoice').trim().toLowerCase().replace(/[_\s]+/g, '-');
+  if (s.includes('sales-order') || s === 'order') return 'sales-order';
+  if (s.includes('quotation') || s === 'quote') return 'quotation';
+  if (s.includes('proforma') || s.includes('estimate')) return 'proforma';
+  if (s.includes('credit-note')) return 'credit-note';
+  if (s.includes('bill-of-supply')) return 'bill-of-supply';
+  return 'tax-invoice';
+}
+
+/**
+ * Builds a complete GST-compliant canonical invoice payload on the Mobile Staff Order Pad.
+ * Populates BOTH `data.totals` (`taxableAmount`, `cgst`, `sgst`, `igst`, `total`) AND legacy fields
+ * so Dashboard, P&L, GSTR-1, GSTR-9, and ITR-3/4 read exact taxable & GST figures!
  */
 export function buildP2pInvoicePayload({
   invoiceNumber = '',
@@ -104,6 +215,8 @@ export function buildP2pInvoicePayload({
   const cleanGstin = String(customerGstin || '').trim().toUpperCase();
   const inferredBuyerState = buyerState || (cleanGstin.length >= 2 ? cleanGstin.slice(0, 2) : sellerState);
   const isInterState = Boolean(sellerState && inferredBuyerState && sellerState !== inferredBuyerState);
+  const typeSlug = canonicalInvoiceTypeSlug(docType);
+  const zeroGstDoc = typeSlug === 'bill-of-supply';
 
   let taxableSubtotal = 0;
   let totalCgst = 0;
@@ -111,11 +224,11 @@ export function buildP2pInvoicePayload({
   let totalIgst = 0;
 
   const normalizedItems = (Array.isArray(items) ? items : [])
-    .filter((it) => it && (Number(it.quantity ?? it.qty ?? 0) > 0))
+    .filter((it) => it && Number(it.quantity ?? it.qty ?? 0) > 0)
     .map((it) => {
       const quantity = Number(it.quantity ?? it.qty ?? 1);
-      const price = r2(Number(it.price ?? it.rate ?? 0));
-      const gstRate = Number(it.gstRate ?? it.taxRate ?? 0) || 0;
+      const price = resolveProductSellingPrice(it);
+      const gstRate = zeroGstDoc ? 0 : resolveProductTaxPercent(it);
       const taxableValue = r2(quantity * price);
       const taxAmt = r2((taxableValue * gstRate) / 100);
       const cgst = isInterState ? 0 : r2(taxAmt / 2);
@@ -134,8 +247,12 @@ export function buildP2pInvoicePayload({
         hsn: String(it.hsn || ''),
         unit: String(it.unit || 'PCS'),
         quantity,
+        rate: price,
         price,
+        taxPercent: gstRate,
         gstRate,
+        discount: 0,
+        cessPercent: 0,
         taxableValue,
         cgst,
         sgst,
@@ -147,26 +264,44 @@ export function buildP2pInvoicePayload({
   const grandTotal = r2(taxableSubtotal + totalCgst + totalSgst + totalIgst);
   const today = new Date().toISOString().slice(0, 10);
   const finalInvNo = String(invoiceNumber || '').trim() || `P2P-${Date.now().toString().slice(-6)}`;
+  const cleanCustomer = String(customerName || 'Walk-in Customer').trim() || 'Walk-in Customer';
 
   return {
+    invoiceType: typeSlug,
     invoiceNumber: finalInvNo,
     invoiceDate: today,
-    clientName: String(customerName || 'Walk-in Customer').trim() || 'Walk-in Customer',
+    clientName: cleanCustomer,
     clientGstin: cleanGstin,
     totalAmount: grandTotal,
     amountPaid: 0,
     status: 'unpaid',
     data: {
-      invoiceType: docType,
+      invoiceType: typeSlug,
       invoiceNumber: finalInvNo,
       invoiceDate: today,
+      details: {
+        invoiceNumber: finalInvNo,
+        invoiceDate: today,
+      },
       client: {
-        name: String(customerName || 'Walk-in Customer').trim() || 'Walk-in Customer',
+        name: cleanCustomer,
         phone: String(customerPhone || '').trim(),
         gstin: cleanGstin,
         state: inferredBuyerState,
       },
       items: normalizedItems,
+      totals: {
+        subtotal: taxableSubtotal,
+        totalDiscount: 0,
+        taxableAmount: taxableSubtotal,
+        cgst: totalCgst,
+        sgst: totalSgst,
+        utgst: 0,
+        igst: totalIgst,
+        cess: 0,
+        total: grandTotal,
+        isInterstate: isInterState,
+      },
       subtotal: taxableSubtotal,
       totalCgst,
       totalSgst,
@@ -188,7 +323,8 @@ export class WebRtcP2pController {
     this.peer = null;
     this.connections = new Map();
     this.authenticatedPeers = new Set();
-    this.seenQueueIds = new Map(); // queueId -> saved invoiceNumber (idempotency guard)
+    this.failedAuthAttempts = new Map(); // peerId -> count (rate-limit guard)
+    this.seenQueueIds = loadPersistedHostAckMap(); // persistent across Counter PC reloads!
     this.heartbeatTimer = null;
     this.reconnectTimer = null;
     this.stoppedManually = false;
@@ -204,6 +340,7 @@ export class WebRtcP2pController {
   } = {}) {
     this.disconnectAll();
     this.stoppedManually = false;
+    this.seenQueueIds = loadPersistedHostAckMap();
     const creds = roomId && pin ? { roomId, pin } : generateP2pCredentials();
     const { default: Peer } = await import('peerjs');
 
@@ -212,7 +349,7 @@ export class WebRtcP2pController {
     });
 
     this.peer.on('open', (id) => {
-      onStatus?.({ state: 'HOST_READY', message: `Host ready on ${id} (PIN: ${creds.pin})`, peerId: id });
+      onStatus?.({ state: 'HOST_READY', message: `Host ready on ${id} (6-digit PIN active)`, peerId: id });
     });
 
     this.peer.on('disconnected', () => {
@@ -233,14 +370,26 @@ export class WebRtcP2pController {
         if (!msg || typeof msg !== 'object') return;
 
         if (msg.type === 'AUTH_HELLO') {
+          const priorFailures = this.failedAuthAttempts.get(conn.peer) || 0;
+          if (priorFailures >= MAX_P2P_AUTH_ATTEMPTS) {
+            conn.send({ type: 'AUTH_DENIED', reason: 'Locked out after 5 failed PIN attempts. Restart Counter session.' });
+            setTimeout(() => conn.close(), 200);
+            return;
+          }
           if (String(msg.pin || '').trim() !== String(creds.pin).trim()) {
-            conn.send({ type: 'AUTH_DENIED', reason: 'Incorrect 4-digit Counter PIN' });
-            onStatus?.({ state: 'AUTH_REJECTED', message: `Blocked unauthorized peer ${conn.peer} (wrong PIN)` });
+            const nextFail = priorFailures + 1;
+            this.failedAuthAttempts.set(conn.peer, nextFail);
+            conn.send({
+              type: 'AUTH_DENIED',
+              reason: `Incorrect Counter PIN (${Math.max(0, MAX_P2P_AUTH_ATTEMPTS - nextFail)} attempts remaining)`,
+            });
+            onStatus?.({ state: 'AUTH_REJECTED', message: `Blocked unauthorized peer ${conn.peer} (attempt ${nextFail}/${MAX_P2P_AUTH_ATTEMPTS})` });
             setTimeout(() => conn.close(), 300);
             return;
           }
+          this.failedAuthAttempts.delete(conn.peer);
           this.authenticatedPeers.add(conn.peer);
-          const catalog = getCatalog();
+          const catalog = mapProductsToP2pCatalog(getCatalog());
           conn.send({
             type: 'AUTH_OK',
             shopName,
@@ -255,7 +404,7 @@ export class WebRtcP2pController {
         }
 
         if (!this.authenticatedPeers.has(conn.peer)) {
-          conn.send({ type: 'AUTH_DENIED', reason: 'Authenticate with PIN first' });
+          conn.send({ type: 'AUTH_DENIED', reason: 'Authenticate with Counter PIN first' });
           return;
         }
 
@@ -265,12 +414,11 @@ export class WebRtcP2pController {
         }
 
         if (msg.type === 'PULL_CATALOG') {
-          conn.send({ type: 'CATALOG_SNAPSHOT', shopName, catalog: getCatalog() });
+          conn.send({ type: 'CATALOG_SNAPSHOT', shopName, catalog: mapProductsToP2pCatalog(getCatalog()) });
           return;
         }
 
         if (msg.type === 'SYNC_INVOICE' && msg.invoice) {
-          // Idempotent deduplication for retried offline-queue packets
           if (msg.queueId && this.seenQueueIds.has(msg.queueId)) {
             conn.send({
               type: 'ACK_INVOICE',
@@ -286,7 +434,10 @@ export class WebRtcP2pController {
           try {
             const saved = await onInvoiceReceived?.(msg.invoice);
             const savedNo = saved?.invoiceNumber || msg.invoice.invoiceNumber;
-            if (msg.queueId) this.seenQueueIds.set(msg.queueId, savedNo);
+            if (msg.queueId) {
+              this.seenQueueIds.set(msg.queueId, savedNo);
+              savePersistedHostAckMap(this.seenQueueIds);
+            }
             conn.send({
               type: 'ACK_INVOICE',
               queueId: msg.queueId || null,
@@ -349,7 +500,7 @@ export class WebRtcP2pController {
       const conn = this.peer.connect(target, { reliable: true });
 
       conn.on('open', () => {
-        onStatus?.({ state: 'AUTHENTICATING', message: `Connected to ${target}, verifying PIN…` });
+        onStatus?.({ state: 'AUTHENTICATING', message: `Connected to ${target}, verifying Counter PIN…` });
         conn.send({ type: 'AUTH_HELLO', pin: String(pin || '').trim(), deviceName });
       });
 
@@ -394,7 +545,7 @@ export class WebRtcP2pController {
         this.connections.delete(target);
         clearInterval(this.heartbeatTimer);
         if (!this.stoppedManually) {
-          onStatus?.({ state: 'RECONNECTING_IN_3S', message: '5G/Wi-Fi link dropped — auto-reconnecting in 3s (offline queue safe)…' });
+          onStatus?.({ state: 'RECONNECTING_IN_3S', message: 'Link dropped — auto-reconnecting in 3s…' });
           clearTimeout(this.reconnectTimer);
           this.reconnectTimer = setTimeout(establishDataChannel, 3000);
         } else {
@@ -411,13 +562,18 @@ export class WebRtcP2pController {
     });
 
     this.peer.on('error', (err) => {
-      onStatus?.({ state: 'ERROR', message: err?.message || 'Could not reach Counter PC — queued bills remain safe offline' });
+      onStatus?.({
+        state: 'ERROR',
+        message: err?.message || 'Could not reach Counter PC (note: symmetric carrier NAT without TURN may require Wi-Fi/hotspot)',
+      });
     });
   }
 
   /**
-   * Queue-Safe Bill Push: saves to durable local Offline Queue BEFORE transmitting.
-   * Never loses an order even if 5G drops mid-click; flushes automatically on reconnect!
+   * Verified Queue-Safe Bill Push:
+   * Persists to localStorage AND verifies read-back BEFORE claiming `queued: true`.
+   * If storage fails (e.g. QuotaExceededError) while offline, returns `{ queued: false, storageError: true }`
+   * so the UI can block silent data loss and trigger an immediate emergency JSON download!
    */
   pushBillSafe(hostRoomId, invoicePayload) {
     const target = String(hostRoomId || '').trim().toUpperCase();
@@ -430,16 +586,45 @@ export class WebRtcP2pController {
       invoice: invoicePayload,
     };
 
-    const queue = getP2pOfflineQueue();
-    queue.push(packet);
-    saveP2pOfflineQueue(queue);
+    const existingQueue = getP2pOfflineQueue();
+    const nextQueue = [...existingQueue, packet];
+    const saveResult = saveP2pOfflineQueue(nextQueue);
+    const actualPersistedQueue = getP2pOfflineQueue();
 
     const conn = this.connections.get(target);
     if (conn && conn.open) {
       conn.send(packet);
-      return { queued: false, sentImmediately: true, queueId, pendingCount: queue.length };
+      return {
+        queued: false,
+        sentImmediately: true,
+        storageError: !saveResult.ok,
+        warning: saveResult.ok ? null : saveResult.error,
+        queueId,
+        pendingCount: actualPersistedQueue.length,
+        packet,
+      };
     }
-    return { queued: true, sentImmediately: false, queueId, pendingCount: queue.length };
+
+    if (!saveResult.ok) {
+      return {
+        queued: false,
+        sentImmediately: false,
+        storageError: true,
+        error: saveResult.error,
+        queueId,
+        pendingCount: actualPersistedQueue.length,
+        packet,
+      };
+    }
+
+    return {
+      queued: true,
+      sentImmediately: false,
+      storageError: false,
+      queueId,
+      pendingCount: actualPersistedQueue.length,
+      packet,
+    };
   }
 
   flushOfflineQueue(hostRoomId) {
@@ -453,7 +638,6 @@ export class WebRtcP2pController {
     return queue.length;
   }
 
-  // Backward-compatible alias using queue-safe delivery
   sendInvoiceToHost(hostRoomId, invoicePayload) {
     return this.pushBillSafe(hostRoomId, invoicePayload);
   }

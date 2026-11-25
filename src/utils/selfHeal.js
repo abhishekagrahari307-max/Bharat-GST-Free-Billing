@@ -215,16 +215,22 @@ function checkSafeMode() {
   };
 }
 
-export async function runSelfHeal({ repair = true } = {}) {
-  const idb = await checkIndexedDb();
-  const prof = await checkBusinessProfiles();
-  const activeProf = await checkActiveProfile(prof.profiles);
-  const counter = await checkInvoiceCounter();
-  const printSchema = checkPrintSettingsSchema(repair);
-  const features = checkFeatureFlags();
-  const sw = await checkServiceWorker();
-  const quota = await checkStorageQuota();
-  const safeMode = checkSafeMode();
+export async function runSelfHeal({ repair = true, onStep } = {}) {
+  const total = 9;
+  const emit = (done, entry) => {
+    if (typeof onStep === 'function') {
+      onStep(done, total, entry);
+    }
+  };
+  const idb = await checkIndexedDb(); emit(1, idb);
+  const prof = await checkBusinessProfiles(); emit(2, prof);
+  const activeProf = await checkActiveProfile(prof.profiles); emit(3, activeProf);
+  const counter = await checkInvoiceCounter(); emit(4, counter);
+  const printSchema = checkPrintSettingsSchema(repair); emit(5, printSchema);
+  const features = checkFeatureFlags(); emit(6, features);
+  const sw = await checkServiceWorker(); emit(7, sw);
+  const quota = await checkStorageQuota(); emit(8, quota);
+  const safeMode = checkSafeMode(); emit(9, safeMode);
 
   const checks = [idb, prof, activeProf, counter, printSchema, features, sw, quota, safeMode].map((c) => ({
     id: c.id,

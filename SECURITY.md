@@ -1,112 +1,58 @@
-# Security Policy
+# Security Policy — Bharat GST Free Billing
 
-Free GST Billing Software handles invoices, GSTINs and client records for
-real businesses. Reports are taken seriously.
+**Bharat GST Free Billing** handles GST invoices, GSTINs, accounting ledgers, and party records for real Indian businesses and Chartered Accountants. Security reports are taken seriously.
 
-## Supported versions
+## Supported Versions
 
-This is a single-maintainer project that ships as a downloadable ZIP.
-Only the **latest release** receives security fixes — there are no
-maintained back-branches, and fixes are not backported.
+Only the **latest release** receives security fixes — please update to the latest version before reporting.
 
 | Version | Supported |
 | ------- | --------- |
-| Latest release ([see Releases](https://github.com/IamRamgarhia/Free-GST-Billing-Software/releases/latest)) | ✅ |
-| Anything older | ❌ — please update first |
+| Latest release (`v5.2.0` — [see Releases](https://github.com/abhishekagrahari307-max/Bharat-GST-Free-Billing/releases/latest)) | ✅ |
+| Older versions | ❌ — please update first |
 
-If you are reporting against an older build, please confirm it still
-happens on the latest release. Updating is the launcher's **Update**
-button, or a manual ZIP download.
+## Reporting a Vulnerability
 
-## Reporting a vulnerability
+**Do not open a public GitHub issue for a security vulnerability.**
 
-**Do not open a public issue for a security problem.**
-
-Two private options:
-
-1. **GitHub private reporting** (preferred) — the
-   [Report a vulnerability](https://github.com/IamRamgarhia/Free-GST-Billing-Software/security/advisories/new)
-   button on the Security tab. Keeps everything in one thread and lets us
-   credit you on the published advisory.
-2. **Email** — Contact@dicecodes.com, with `SECURITY` in the subject.
+Please report privately via **GitHub Security Advisories** (preferred):
+- **[Report a private security vulnerability](https://github.com/abhishekagrahari307-max/Bharat-GST-Free-Billing/security/advisories/new)**
 
 Please include:
+- App version (shown in *Settings → App & updates*)
+- Operating system and browser (Chrome, Edge, Firefox, Safari, or Desktop package)
+- Minimal reproduction steps using **synthetic/dummy data only** (never include real client GSTINs, PANs, or live invoices)
+- Expected vs actual impact
 
-- Version (shown in the app's Settings → App & updates / launcher)
-- Operating system and browser — **the browser matters**; several real
-  bugs here have reproduced only in Firefox and not Chrome
-- Steps to reproduce, and what an attacker gains
-- A screenshot or the browser console output if relevant
-
-**Never include real invoice data, client details or GSTINs in a report.**
-Reproduce with dummy data.
-
-### What to expect
+### Response Targets
 
 | Stage | Target |
 | ----- | ------ |
 | Acknowledgement | within 7 days |
-| Initial assessment (valid / not / severity) | within 14 days |
-| Fix released for a confirmed high or critical issue | as soon as practical, typically the next release |
+| Assessment & severity triage | within 14 days |
+| Patch release for confirmed high/critical issues | next release cycle |
 
-This is maintained by one person alongside other work — these are honest
-targets, not a commercial SLA. If you have not heard back in 14 days,
-please chase; it means the message was missed, not ignored.
+## Threat Model & Scope
 
-If a report is declined you will get a reason, not silence.
+Bharat GST Free Billing is **local-first and serverless by default**:
+- On the web/PWA (`https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/`), business data stays in the user's own browser IndexedDB, optional user-authorized PC folder (`File System Access API` — plain JSON for Tally/Excel portability), or AES-256-GCM encrypted `.fgsb` backup archives (`Backup Center` / `Vault`).
+- On desktop/local server mode (`server.js`), HTTP binds to `127.0.0.1` by default; LAN phone pairing uses a self-signed TLS listener gated by pairing code + PIN (`src/utils/phoneAccess.js`).
+- Optional 5G/Wi-Fi WebRTC P2P sync uses WebRTC DataChannels authenticated with a 6-digit Counter PIN and 5-attempt lockout (`src/utils/webrtcP2pSync.js`).
 
-## Scope
+### In Scope
+- Stored or reflected XSS / HTML injection via invoice fields, party names, imported CSV/XLSX/Tally XML/AIS JSON, or OCR text
+- Content Security Policy (CSP) bypasses
+- Unauthorized network access to local `server.js` / phone-access endpoints without valid pairing
+- Cryptographic weaknesses in AES-256-GCM `.fgsb` / local vault sealing (`src/utils/vaultCrypto.js`)
+- Supply-chain vulnerabilities in shipped runtime dependencies (`npm audit --omit=dev`)
 
-This app is **offline-first and runs entirely on the user's own machine**.
-The bundled server binds to `127.0.0.1` and data lives in a local
-`_system/data/` folder. Optional, off by default (v1.10.85): *Use on phone
-or tablet* adds an HTTPS listener on the local network (port 47443, the
-PC's own self-signed certificate) that answers only private-network
-addresses and only devices paired with a one-time code and the app's PIN
-(`src/utils/phoneAccess.js`). There is no hosted backend and no multi-tenant
-service, so the threat model is not a typical web app's.
+### Out of Scope
+- Attacks requiring prior local OS compromise or physical unlocked device access
+- `devDependencies`-only advisories that are never shipped to runtime bundles
+- Unverified scanner output without a working proof-of-concept
 
-**In scope**
+## Official Distribution
 
-- Code execution or file access beyond the app's own folder
-- Anything reachable from another machine on the network without a
-  paired device (the plain HTTP server is meant to be loopback-only; the
-  phone listener must refuse everything but pairing until a device is
-  paired)
-- XSS or HTML injection via invoice fields, client names, rich-text Terms,
-  imported JSON/CSV, or OCR'd content
-- Content Security Policy weaknesses or bypasses
-- Tampering with or exfiltrating local invoice data
-- Supply-chain issues in shipped dependencies
-- Flaws in backup, restore or the in-app updater — including anything
-  letting an update pull code from an unintended source
-
-**Out of scope**
-
-- Anything requiring the attacker to already have the user's Windows
-  account or physical machine access
-- Missing hardening headers with no demonstrated impact
-- Vulnerabilities only in `devDependencies`, which are not shipped to
-  users (`npm run release:zip` ships runtime dependencies only)
-- Automated scanner output with no working proof of concept
-- Social engineering, or reports about a fork or modified build
-
-## Disclosure
-
-Coordinated disclosure. Please give a reasonable window to ship a fix
-before publishing — users have to download and install an update by hand,
-so a fix in `main` is not yet a fix on anyone's computer.
-
-Reporters are credited by name or handle in the release notes and the
-advisory, unless you would rather stay anonymous.
-
-## For users
-
-- Download **only** from
-  [this repository's Releases page](https://github.com/IamRamgarhia/Free-GST-Billing-Software/releases).
-  Copies hosted anywhere else are not published by us and have not been
-  checked.
-- Keep automatic backups on — the updater writes one to
-  `Documents\FreeGSTBill Backups\` before applying any update.
-- Your data never leaves your machine unless you explicitly export it or
-  turn on Google Drive backup.
+Download desktop builds and verify releases **only** from:
+- **Repository Releases:** https://github.com/abhishekagrahari307-max/Bharat-GST-Free-Billing/releases
+- **Official Web / Offline PWA:** https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/

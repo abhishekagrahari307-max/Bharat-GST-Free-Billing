@@ -1,6 +1,12 @@
 // Smart FIFO Lump-Sum Payment Allocator + B2B Shareable Digital Catalog & WhatsApp Order Parser (v3.1.0)
 // NOTE: Keep free of ../store.js and ../components/* imports (server test isolation).
 
+import {
+  resolveProductTaxPercent,
+  resolveProductSellingPrice,
+  normalizeInvoiceBreakdown,
+} from './canonicalAdapter.js';
+
 function r2(n) {
   const x = Number(n);
   return Number.isFinite(x) ? Math.round((x + Number.EPSILON) * 100) / 100 : 0;
@@ -18,13 +24,12 @@ export function computeFifoPaymentAllocation(bills = [], { clientName = '', lump
 
   const eligible = (Array.isArray(bills) ? bills : [])
     .filter((b) => {
-      if (!b || b.cancelled || b?.data?.cancelled) return false;
+      const norm = normalizeInvoiceBreakdown(b);
+      if (norm.sign !== 1) return false; // Excludes cancelled, credit-note, quotation, proforma, challan, sales-order
       const d = b.data || {};
-      const type = String(d.invoiceType || b.invoiceType || 'Tax Invoice');
-      if (/quotation|estimate|proforma|challan|order|credit note/i.test(type)) return false;
       const party = String(b.clientName || d.client?.name || '').trim().toLowerCase();
       if (party !== target) return false;
-      const total = r2(Number(b.totalAmount ?? d.grandTotal ?? 0));
+      const total = norm.grossTotal;
       const paid = String(b.status || '').toLowerCase() === 'paid' ? total : r2(Number(b.amountPaid ?? d.amountPaid ?? 0));
       return total - paid > 0.01;
     })
@@ -94,8 +99,8 @@ export function buildShareableB2bCatalogHtml(products = [], profile = {}) {
       id: String(p.id || p.name),
       name: String(p.name),
       hsn: String(p.hsn || ''),
-      rate: Number(p.sellingPrice ?? p.price ?? 0) || 0,
-      gst: Number(p.gstRate ?? p.taxRate ?? 0) || 0,
+      rate: resolveProductSellingPrice(p),
+      gst: resolveProductTaxPercent(p),
       unit: String(p.unit || 'PCS'),
     }));
 

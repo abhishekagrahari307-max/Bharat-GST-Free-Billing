@@ -59,7 +59,7 @@ const SETTINGS_TABS = [
   // v1.10.86 - App colour, Text size and Compact lists.
   ['tab-look',     'Appearance',         ['section-appearance']],
   // v1.10.86 - "App & updates" + Complete Offline App Installer (PC, Laptop & Mobile).
-  ['tab-updates',  'App & Offline Install', ['section-offline-app', 'section-updates', 'section-app']],
+  ['tab-updates',  'App & updates', ['section-offline-app', 'section-updates', 'section-app']],
 ];
 const ALL_SECTIONS = SETTINGS_TABS.flatMap(([, , sections]) => sections);
 // A tab id or a section id -> its tab (the first tab for anything unknown).

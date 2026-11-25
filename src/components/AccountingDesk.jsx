@@ -23,6 +23,7 @@ import {
 import { auditInvoicesForGst } from '../utils/gstAudit';
 import TableExport from './TableExport';
 import { toast } from './Toast';
+import { runTrackedExportJob } from '../utils/trackedDownload';
 
 function defaultLinesForType(type) {
   if (type === 'CONTRA') {
@@ -199,31 +200,37 @@ export default function AccountingDesk({
 
   const handleExportCaPackage = async () => {
     try {
-      const gstHealth = auditInvoicesForGst(bills, { sellerGstin: ownerProfile?.gstin || '', sellerState: ownerProfile?.state || '' });
-      const bundle = await buildCaWorkpaperBundle({
-        profile: ownerProfile || {},
-        periodLabel,
-        trialBalance,
-        balanceSheet,
-        gstHealth,
-        vouchers: allVouchers,
-        auditChain,
-      });
-      const serialized = await sealCaPackage(bundle, caPassphrase);
-      const blob = new Blob([serialized], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const isEnc = Boolean(caPassphrase.trim());
       const bizSlug = String(ownerProfile?.businessName || 'BharatGST').replace(/[^a-zA-Z0-9_-]+/g, '-');
-      a.href = url;
-      a.download = `${bizSlug}-CA-Workpapers-${new Date().toISOString().slice(0, 10)}.bharatca`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      await runTrackedExportJob({
+        category: 'ca-package',
+        label: isEnc ? 'Encrypted CA Package (.bharatca)' : 'CA Workpaper Package (.bharatca)',
+        portalAdvisory: 'Contains accounting & GST workpapers — share privately with your CA',
+        buildFn: async ({ setPhase }) => {
+          setPhase('Auditing GST books & assembling Trial Balance…');
+          const gstHealth = auditInvoicesForGst(bills, { sellerGstin: ownerProfile?.gstin || '', sellerState: ownerProfile?.state || '' });
+          const bundle = await buildCaWorkpaperBundle({
+            profile: ownerProfile || {},
+            periodLabel,
+            trialBalance,
+            balanceSheet,
+            gstHealth,
+            vouchers: allVouchers,
+            auditChain,
+          });
+          setPhase(isEnc ? 'Sealing package with AES-256-GCM…' : 'Serializing .bharatca bundle…');
+          const serialized = await sealCaPackage(bundle, caPassphrase);
+          return {
+            content: serialized,
+            mimeType: 'application/json',
+            filename: `${bizSlug}-CA-Workpapers-${new Date().toISOString().slice(0, 10)}.bharatca`,
+          };
+        },
+      });
       toast(
-        caPassphrase.trim()
-          ? 'AES-256-GCM encrypted .bharatca CA Workpaper Package downloaded!'
-          : 'CA Workpaper Package (.bharatca) downloaded!',
+        isEnc
+          ? 'AES-256-GCM .bharatca ready — browser download initiated!'
+          : 'CA Workpaper Package (.bharatca) ready — browser download initiated!',
         'success'
       );
     } catch (err) {

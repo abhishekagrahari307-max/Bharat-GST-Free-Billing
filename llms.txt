@@ -1,11 +1,11 @@
-# Bharat GST Free Billing (v5.1.0 — Audit-Hardened Autonomous Bharat Business & Statutory Tax OS)
+# Bharat GST Free Billing (v5.2.0 — Full-Stack Audit-Hardened Autonomous Bharat Business & Statutory Tax OS)
 
-> 100% Free, Open-Source (MIT), Serverless Browser-Native Autonomous ERP & Statutory Tax OS: ITR-3/4 (5% Cash Rule + Sec 87A Marginal Relief) + Validated Income Tax AIS/26AS Parser + Live Form 26Q + Zero-GSP Chrome/Edge Portal Auto-Fill Bridge + Multi-Godown Stock Transfer + Live FEFO Batch Allocator + Manufacturing BOM Costing + MSMED Sec 15 (15d/45d) Income Tax Sec 43B(h) Shield + Autonomous AI Munim + `fflate`-Compressed `#b2b-catalog=z.` WhatsApp Storefront + Shop POS / CA Pro Toggle + Resilient 5G WebRTC P2P Sync + 1-Click Tally XML & Vyapar Excel Importer + Studio Human Welcome Voice. Created & maintained by Abhishek Agrahari.
+> 100% Free, Open-Source (MIT), Serverless Browser-Native Autonomous ERP & Statutory Tax OS: Canonical GST/ITR-3/4/GSTR-9 Engine (5% Cash Rule + Sec 87A Marginal Relief + FY & COGS) + Validated AIS/26AS Parser + Live Form 26Q + Verified Zero-GSP Portal Bridge + Multi-Godown & Atomic BOM + Live FEFO + MSMED Sec 15 (15d/45d) Sec 43B(h) Shield + `fflate`-Compressed `#b2b-catalog=z.` Storefront + Shop POS / CA Pro Toggle + Verified-Storage 6-Digit-PIN 5G WebRTC P2P + High-Fidelity Tally XML & Vyapar Importer + Studio Human Welcome Voice. Created & maintained by Abhishek Agrahari.
 
 - Live Application (Instant Offline PWA & Web): https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/
 - Complete Self-Hosted Documentation (35 Pages): https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/user-guide/
 - Public Open-Source Repository & Multi-OS Releases (MIT License): https://github.com/abhishekagrahari307-max/Bharat-GST-Free-Billing
-- Latest Release: v5.1.0 (2026-11-21) — Audit-Hardened Statutory Tax & POS Polish Edition (Sec 44AD 5%-Cash Cap, Sec 87A Marginal Relief, MSMED 15d/45d Sec 43B(h), fflate `#b2b-catalog=z.` & Shop POS Toggle)
+- Latest Release: v5.2.0 (2026-11-21) — Full-Stack Audit-Hardened Release (Canonical Product/Invoice/FY Adapter, Verified P2P Queue, High-Fidelity Tally XML/Vyapar Migration & Statutory Tax Accuracy)
 
 ---
 
