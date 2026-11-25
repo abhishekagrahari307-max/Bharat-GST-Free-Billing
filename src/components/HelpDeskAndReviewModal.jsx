@@ -84,7 +84,7 @@ const INPUT_STYLE = {
 };
 
 export default function HelpDeskAndReviewModal({
-  appVersion = 'v5.5.2',
+  appVersion = 'v5.5.3',
   initialTab = 'HELP', // 'HELP' | 'DICTIONARY' | 'ERROR' | 'REVIEW' | 'TOOLS'
   prefilledErrorJob = null,
   recentSafeErrors = [],

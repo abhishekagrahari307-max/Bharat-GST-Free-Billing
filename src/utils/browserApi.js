@@ -284,7 +284,14 @@ function extractApiPath(input) {
   }
 }
 
-const BHARAT_CHANGELOG_MD = `## [5.5.2] - 2026-11-21
+const BHARAT_CHANGELOG_MD = `## [5.5.3] - 2026-11-21
+**1-Click Govt GST Offline Tool V3.2.4 Full CSV Bundle (\`All CSVs (V3.2.4)\`), Strict Phase-III HSN Goods UQC Guard & Verified Portable Release ZIP.**
+
+### Added & Hardened
+- **1-Click \`All CSVs (V3.2.4)\` Button (\`GSTReturns.jsx\`)**: Exports all populated GSTR-1 CSV files formatted 100% for Government GST Offline Tool V3.2.4 in one click.
+- **Strict Goods vs Services HSN UQC Guard (\`src/utils/gstExport.js\`)**: Restricts \`NA\` UQC strictly to \`99xxxx\` Service SACs and maps blank/\`NA\` units on Goods HSNs to \`OTH-OTHERS\` with safe fallback descriptions.
+
+## [5.5.2] - 2026-11-21
 **100% Official Government GST Offline Tool V3.2.4 CSV Export Compliance — Exact Templates for B2CS (Table 7), HSN B2B & B2C (Table 12), B2B (Table 4), B2CL, CDNR/CDNUR, Exports, Nil/Exempt & Docs.**
 
 ### Fixed & Upgraded

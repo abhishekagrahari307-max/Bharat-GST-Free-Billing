@@ -92,6 +92,7 @@ test('HSN (Table 12) CSV outputs exact 11 headers, CODE-NAME UQC ("KGS-KILOGRAMS
   assert.equal(formatGovtUqc('PCS', '4802'), 'PCS-PIECES');
   assert.equal(formatGovtUqc('KGS', '1006'), 'KGS-KILOGRAMS');
   assert.equal(formatGovtUqc('NOS', '998314'), 'NA');
+  assert.equal(formatGovtUqc('NA', '8443'), 'OTH-OTHERS');
   assert.equal(formatGovtUqc('HRS', '8471'), 'OTH-OTHERS');
 
   const upProfile = { state: 'Uttar Pradesh', country: 'India' };

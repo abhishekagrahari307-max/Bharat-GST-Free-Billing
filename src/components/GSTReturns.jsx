@@ -1101,7 +1101,10 @@ export default function GSTReturns({ onOpenPurchases } = {}) {
   };
 
   const exportHSN = () => {
-    if (hsnRows.length === 0) { toast('No HSN data', 'warning'); return; }
+    if (hsnRows.length === 0) {
+      toast('No HSN codes found on invoices in this period — add 4/6-digit HSN on items to export Table 12 HSN CSV', 'warning');
+      return;
+    }
     // v1.10.84 (#166) - from the May 2025 return the portal takes Table 12 as
     // two lists (B2B and B2C). Uses exact Govt Offline Tool V3.2.4 UQC strings ("PCS-PIECES", "NA").
     if (!hsnSplit) {
@@ -1148,6 +1151,36 @@ export default function GSTReturns({ onOpenPurchases } = {}) {
     if (nilRows.length === 0) { toast('No Nil/Exempt/Non-GST supplies', 'warning'); return; }
     downloadGovtCsv('GSTR1_Exemp_Nil_NonGST.csv', generateGovtGstr1ExempCsv(nilRows));
     toast('Nil / Exempt / Non-GST CSV downloaded — matches Govt GST Offline Tool V3.2.4 (Table 8)', 'success');
+  };
+
+  const exportAllGovtCsvs = () => {
+    let count = 0;
+    if (b2bRegular.length > 0) { downloadGovtCsv('GSTR1_B2B_Invoices.csv', generateGovtGstr1B2bCsv(b2bRegular, profile)); count += 1; }
+    const unregSmallNotes = creditNotes.filter(
+      (b) => !b.data?.client?.gstin && !isExportBill(b) && !(billIsInterstate(b) && (b.totalAmount || 0) > b2clThreshold(b.invoiceDate))
+    );
+    const b2csRows = buildGovtB2csRows(b2cSmall, unregSmallNotes, profile);
+    if (b2csRows.length > 0) { downloadGovtCsv('GSTR1_B2C_Small.csv', generateGovtGstr1B2csCsv(b2csRows)); count += 1; }
+    if (b2cLarge.length > 0) { downloadGovtCsv('GSTR1_B2C_Large.csv', generateGovtGstr1B2clCsv(b2cLarge, profile)); count += 1; }
+    if (hsnRows.length > 0) {
+      if (!hsnSplit) { downloadGovtCsv('GSTR1_HSN_Summary.csv', generateGovtGstr1HsnCsv(mergeHsnRows(hsnRows))); count += 1; }
+      else {
+        [['B2B', hsnB2B], ['B2C', hsnB2C]].forEach(([part, rows]) => {
+          if (rows.length) { downloadGovtCsv(`GSTR1_HSN_${part}.csv`, generateGovtGstr1HsnCsv(rows)); count += 1; }
+        });
+      }
+    }
+    const cdnrBills = creditNotes.filter((b) => b.data?.client?.gstin && !isExportBill(b));
+    const cdnurBills = creditNotes.filter(
+      (b) => !b.data?.client?.gstin && (isExportBill(b) || (billIsInterstate(b) && (b.totalAmount || 0) > b2clThreshold(b.invoiceDate)))
+    );
+    if (cdnrBills.length > 0) { downloadGovtCsv('GSTR1_CDNR.csv', generateGovtGstr1CdnrCsv(cdnrBills, profile)); count += 1; }
+    if (cdnurBills.length > 0) { downloadGovtCsv('GSTR1_CDNUR.csv', generateGovtGstr1CdnurCsv(cdnurBills, profile)); count += 1; }
+    if (exportBills.length > 0) { downloadGovtCsv('GSTR1_Exports_6A.csv', generateGovtGstr1ExpCsv(exportBills)); count += 1; }
+    if (nilRows.length > 0) { downloadGovtCsv('GSTR1_Exemp_Nil_NonGST.csv', generateGovtGstr1ExempCsv(nilRows)); count += 1; }
+    if (Object.keys(docSummary).length > 0) { downloadGovtCsv('GSTR1_Doc_Summary.csv', generateGovtGstr1DocsCsv(docSummary)); count += 1; }
+    if (count === 0) { toast('No GSTR-1 data in this period to export', 'warning'); return; }
+    toast(`${count} Govt GST Offline Tool V3.2.4 CSV file(s) downloaded`, 'success');
   };
 
   const exportGSTR3B = () => {
@@ -1701,6 +1734,7 @@ export default function GSTReturns({ onOpenPurchases } = {}) {
           {/* Actions bar */}
           <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
             <button className="btn btn-primary" onClick={exportGSTR1JSON} style={{ fontSize: '0.78rem', padding: '0.3rem 0.6rem' }}><Upload size={13} /> JSON Export</button>
+            <button className="btn btn-secondary" onClick={exportAllGovtCsvs} style={{ fontSize: '0.78rem', padding: '0.3rem 0.6rem', fontWeight: 600 }} title="Download all populated GSTR-1 CSVs formatted 100% for Govt GST Offline Tool V3.2.4"><Download size={13} /> All CSVs (V3.2.4)</button>
             <button className="btn btn-secondary" onClick={exportB2B} style={{ fontSize: '0.78rem', padding: '0.3rem 0.6rem' }}><Download size={13} /> B2B</button>
             <button className="btn btn-secondary" onClick={exportB2C} style={{ fontSize: '0.78rem', padding: '0.3rem 0.6rem' }}><Download size={13} /> B2C</button>
             <button className="btn btn-secondary" onClick={exportHSN} style={{ fontSize: '0.78rem', padding: '0.3rem 0.6rem' }}><Download size={13} /> HSN</button>

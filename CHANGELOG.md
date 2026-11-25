@@ -5,6 +5,22 @@ Bharat GST Free Billing follows a **Daily Continuous Release & Safe Auto-Update*
 
 ---
 
+## [5.5.3] - 2026-11-21
+
+**1-Click Govt GST Offline Tool V3.2.4 Full CSV Bundle (`All CSVs (V3.2.4)`), Strict Phase-III HSN Goods UQC Validation & Verified Portable Release ZIP (`Free-GST-Billing-v5.5.3.zip`).**
+
+### Added & Hardened
+- **1-Click `All CSVs (V3.2.4)` Export (`src/components/GSTReturns.jsx`)**: Downloads every populated GSTR-1 CSV (`GSTR1_B2B_Invoices.csv`, `GSTR1_B2C_Small.csv`, `GSTR1_B2C_Large.csv`, `GSTR1_HSN_B2B.csv`, `GSTR1_HSN_B2C.csv`, `GSTR1_CDNR.csv`, `GSTR1_CDNUR.csv`, `GSTR1_Exports_6A.csv`, `GSTR1_Exemp_Nil_NonGST.csv`, `GSTR1_Doc_Summary.csv`) in one click.
+- **Strict Goods vs Services HSN UQC Guard (`src/utils/gstExport.js`)**: Enforces `UQC = NA` (qty `0`) strictly for `99xxxx` SAC Services while safely mapping blank/`NA` units on non-`99` Goods HSNs to `OTH-OTHERS` with fallback `Goods`/`Services` descriptions so Phase-III Table 12 CSV imports never fail.
+
+### How to update
+**Current version:** v5.5.2  →  **New version:** v5.5.3
+
+- **Web & Installable PWA**: Refresh the page or click **Update** in **Settings → About & Updates** (`v5.5.2` → `v5.5.3`).
+- **Desktop / Portable (`Free-GST-Billing-v5.5.3.zip`)**: Click **Update** in **Settings**, or download `Free-GST-Billing-v5.5.3.zip` and extract over your existing folder (your `data/` folder is never touched).
+
+---
+
 ## [5.5.2] - 2026-11-21
 
 **100% Official Government GST Offline Tool V3.2.4 CSV Export Compliance — Exact Templates for B2CS (Table 7), HSN B2B & B2C (Table 12), B2B (Table 4), B2CL (Table 5A), CDNR/CDNUR (Table 9B), Exports (Table 6A), Nil/Exempt (Table 8) & Documents Issued (Table 13).**
