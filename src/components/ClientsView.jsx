@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Users, Search, FileText, ChevronDown, ChevronUp, Trash2, X, MessageCircle, Mail, Plus, Edit3, Copy, Upload, Download, Eye, IndianRupee, Send, UserPlus } from 'lucide-react';
+import { Users, Search, FileText, ChevronDown, ChevronUp, Trash2, X, MessageCircle, Mail, Plus, Edit3, Copy, Upload, Download, Eye, IndianRupee, Send, UserPlus, AlertTriangle, Wallet, CheckCircle2 } from 'lucide-react';
+import { computeKhataPortfolioSummary, resolveMerchantUpiDetails } from '../utils/expressPosEngine';
+import { buildWhatsAppPaymentReminder } from '../utils/shopEssentials';
 import HelpButton from './HelpButton';
 import PageHeader, { BarButton } from './PageHeader';
 import { getAllClients, getAllBills, deleteClient, saveClient, saveBill, getProfile, deleteReceipt, trashBill, getAllReceipts } from '../store';
@@ -62,6 +64,7 @@ export default function ClientsView({ onEdit, onDuplicate, onNew, onPrint, onNew
   const [clients, setClients] = useState([]);
   const [bills, setBills] = useState([]);
   const [search, setSearch] = useState('');
+  const [owingOnly, setOwingOnly] = useState(false);
   const [expandedClient, setExpandedClient] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [modalClient, setModalClient] = useState(null);
@@ -699,9 +702,25 @@ export default function ClientsView({ onEdit, onDuplicate, onNew, onPrint, onNew
     return [...byKey.values()];
   })();
 
-  const filteredClients = search.trim()
+  const khataSummary = useMemo(() => {
+    const entries = allClientNames.map((name) => {
+      const s = getClientStats(name);
+      const saved = savedFor(name);
+      return {
+        total: s.total,
+        paid: s.paid,
+        unpaid: s.unpaid,
+        creditLimit: Number(saved?.creditLimit) || 0,
+      };
+    });
+    return computeKhataPortfolioSummary(entries);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allClientNames, bills, clients, receipts]);
+
+  const filteredClients = (search.trim()
     ? allClientNames.filter(name => name.toLowerCase().includes(search.toLowerCase()))
-    : allClientNames;
+    : allClientNames
+  ).filter((name) => !owingOnly || getClientStats(name).unpaid > 0.005);
 
   // Sort by outstanding amount
   const { sort: clientSort, setSort: setClientSort } = useListSort('clients', ['name', 'billed', 'recent']);
@@ -806,6 +825,25 @@ export default function ClientsView({ onEdit, onDuplicate, onNew, onPrint, onNew
     sendPdfOnWhatsApp({ phone, toast, prepare: async () => ({ blob: await billPdfBlob(bill), fileName: billPdfName(bill), message: invoiceShareMessage(bill, profileForStatement) }) });
   };
 
+  const sendClientUpiWhatsAppReminder = (clientName, savedClient, unpaidAmt) => {
+    const { unpaidBills } = getClientAging(clientName);
+    const phone =
+      savedClient?.phone ||
+      unpaidBills.map(({ bill }) => bill.clientPhone || bill.data?.client?.phone).find(Boolean) ||
+      '';
+    const resolvedUpi = resolveMerchantUpiDetails(profileForStatement || {});
+    const latestInvNo = unpaidBills[0]?.bill?.invoiceNumber || '';
+    const built = buildWhatsAppPaymentReminder({
+      businessName: profileForStatement?.businessName || 'हमारी दुकान',
+      partyName: clientName,
+      partyPhone: phone,
+      pendingAmount: unpaidAmt,
+      upiId: resolvedUpi.upiId,
+      dueInvoiceNo: latestInvNo,
+    });
+    window.open(built.url, '_blank', 'noopener,noreferrer');
+  };
+
   // v1.10.86 - "Send reminder" on a client's account: one WhatsApp message
   // with the balance and the unpaid invoices (the Dashboard's reminder is
   // per invoice), to the client's saved phone or the one on their invoices.
@@ -873,6 +911,102 @@ export default function ClientsView({ onEdit, onDuplicate, onNew, onPrint, onNew
           extraSections={viewBill.data.extraSections || []}
           invoiceOptions={viewBill.data.invoiceOptions || {}}
         />
+      )}
+
+      {/* v5.5.0 — Executive Party Khata & Udhaari Command Strip */}
+      {allClientNames.length > 0 && (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(205px, 1fr))',
+            gap: '0.75rem',
+            marginBottom: '1rem',
+          }}
+        >
+          <button
+            type="button"
+            className="pro-card"
+            onClick={() => setOwingOnly((v) => !v)}
+            style={{
+              padding: '0.85rem 1rem',
+              borderTop: `3px solid ${khataSummary.totalReceivable > 0 ? '#ef4444' : '#10b981'}`,
+              textAlign: 'left',
+              cursor: 'pointer',
+              outline: owingOnly ? '2px solid #ef4444' : 'none',
+            }}
+            title="Click to filter parties with pending Udhaari"
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+              <span style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>
+                Market Udhaari (Due)
+              </span>
+              <Wallet size={15} color={khataSummary.totalReceivable > 0 ? '#ef4444' : '#10b981'} />
+            </div>
+            <div style={{ fontSize: '1.18rem', fontWeight: 800, color: khataSummary.totalReceivable > 0 ? '#dc2626' : 'var(--text-primary)' }}>
+              {formatCurrency(khataSummary.totalReceivable)}
+            </div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 2 }}>
+              {owingOnly
+                ? 'Showing owing parties only · Click to show all'
+                : `${khataSummary.owingPartiesCount} part${khataSummary.owingPartiesCount === 1 ? 'y owes' : 'ies owe'} · Click to filter`}
+            </div>
+          </button>
+
+          <div className="pro-card" style={{ padding: '0.85rem 1rem', borderTop: '3px solid #10b981' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+              <span style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>
+                Total Collected
+              </span>
+              <CheckCircle2 size={15} color="#10b981" />
+            </div>
+            <div style={{ fontSize: '1.18rem', fontWeight: 800, color: '#059669' }}>
+              {formatCurrency(khataSummary.totalCollected)}
+            </div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 2 }}>
+              {khataSummary.totalAdvanceCredit > 0
+                ? `+ ${formatCurrency(khataSummary.totalAdvanceCredit)} customer advance`
+                : 'Across all settled & partial bills'}
+            </div>
+          </div>
+
+          <div className="pro-card" style={{ padding: '0.85rem 1rem', borderTop: '3px solid #4f46e5' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+              <span style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>
+                Total Billed Volume
+              </span>
+              <Users size={15} color="#4f46e5" />
+            </div>
+            <div style={{ fontSize: '1.18rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+              {formatCurrency(khataSummary.totalBilled)}
+            </div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 2 }}>
+              {khataSummary.totalParties} active Khata part{khataSummary.totalParties === 1 ? 'y' : 'ies'}
+            </div>
+          </div>
+
+          <div
+            className="pro-card"
+            style={{
+              padding: '0.85rem 1rem',
+              borderTop: `3px solid ${khataSummary.overCreditLimitCount > 0 ? '#f59e0b' : '#10b981'}`,
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+              <span style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>
+                Credit Limit Watch
+              </span>
+              <AlertTriangle size={15} color={khataSummary.overCreditLimitCount > 0 ? '#f59e0b' : '#10b981'} />
+            </div>
+            <div style={{ fontSize: '1.18rem', fontWeight: 800, color: khataSummary.overCreditLimitCount > 0 ? '#d97706' : 'var(--text-primary)' }}>
+              {khataSummary.overCreditLimitCount === 0
+                ? 'All Within Limit'
+                : `${khataSummary.overCreditLimitCount} Over Limit`}
+            </div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 2 }}>
+              Set party credit caps in Edit Client
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Search */}
@@ -991,11 +1125,18 @@ export default function ClientsView({ onEdit, onDuplicate, onNew, onPrint, onNew
                         </button>
                       )}
                       {stats.unpaid > 0.005 && (
-                        <button className="btn btn-secondary" style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem' }}
-                          onClick={() => sendClientReminder(clientName, savedClient)}
-                          title="WhatsApp them a reminder of the balance and the unpaid invoices">
-                          <Send size={14} /> Send reminder
-                        </button>
+                        <>
+                          <button className="btn btn-secondary" style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem' }}
+                            onClick={() => sendClientReminder(clientName, savedClient)}
+                            title="WhatsApp them a reminder of the balance and the unpaid invoices">
+                            <Send size={14} /> Send reminder
+                          </button>
+                          <button className="btn btn-secondary" style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem', borderColor: 'rgba(16,185,129,0.45)', color: '#059669' }}
+                            onClick={() => sendClientUpiWhatsAppReminder(clientName, savedClient, stats.unpaid)}
+                            title="Send Hindi/English Khata reminder on WhatsApp with 1-tap UPI payment link">
+                            <MessageCircle size={14} /> WhatsApp + UPI Link
+                          </button>
+                        </>
                       )}
                       <HelpButton title="Quick actions for a client" doc="clients#quick-actions" size={16} style={{ alignSelf: 'center' }} />
                       <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>

@@ -34,6 +34,7 @@ import { getClientCredit, planCreditApplication } from '../utils/clientCredit';
 import ClientModal from './ClientModal';
 import { EInvoiceEditorModal } from './EInvoiceModal';
 import VoiceBillingModal from './VoiceBillingModal';
+import ExpressPosCounterBar from './ExpressPosCounterBar';
 import { toast } from './Toast';
 import {
   startOperation,
@@ -4684,6 +4685,36 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
               }
             }}
           />
+
+          {/* v5.5.0 — Express POS Counter, Walk-In Cash, Change Return & Live UPI QR */}
+          {SALES_INVOICE_TYPES.includes(invoiceType) && !readOnlyDoc && (
+            <ExpressPosCounterBar
+              profile={profile}
+              selectedAccountId={invoiceOptions.selectedAccountId}
+              invoiceNumber={details.invoiceNumber}
+              clientName={client.name}
+              billTotal={totals.total || 0}
+              receivableNow={receivableNow || 0}
+              currency={invoiceOptions.currency || 'INR'}
+              canReceiveNow={canReceiveNow}
+              readOnlyDoc={readOnlyDoc}
+              onWalkInCashSale={() => {
+                if (!String(client.name || '').trim()) {
+                  setClient((prev) => ({ ...prev, name: 'Walk-in Customer' }));
+                }
+                if (canReceiveNow && receivableNow > 0) {
+                  rememberPaidMode('cash');
+                  setReceivedNow({ amount: String(receivableNow), mode: 'cash' });
+                }
+              }}
+              onOpenVoiceModal={() => setShowVoiceModal(true)}
+              onApplyPaymentNow={(amt, mode) => {
+                const cleanMode = mode === 'upi' ? 'upi' : 'cash';
+                rememberPaidMode(cleanMode);
+                setReceivedNow({ amount: String(amt), mode: cleanMode });
+              }}
+            />
+          )}
 
           {/* v1.10.86 - the cards, in the order this browser keeps (InvoiceCards.jsx). */}
           {cards.order.map((cardId) => {

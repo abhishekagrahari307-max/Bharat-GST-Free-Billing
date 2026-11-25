@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react';
-import { Package, Search, Plus, Edit3, Trash2, X, Save, Upload, FileUp, Table2, Factory, Barcode, SlidersHorizontal, ClipboardList } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Package, Search, Plus, Edit3, Trash2, X, Save, Upload, FileUp, Table2, Factory, Barcode, SlidersHorizontal, ClipboardList, TrendingUp, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { computeInventoryValuationSummary } from '../utils/expressPosEngine';
+import { isValidNumericHsnCode } from '../utils/systemHealthEvaluator';
 import { getAllProducts, saveProduct, deleteProduct, getProfile, getStockAlertSettings, getEnabledModules, activePriceLevels } from '../store';
 import { cleanLevelPrices, levelCsvHeaders, levelCsvCells } from '../utils/priceLevels';
 import { PriceLevelPrices } from './PriceLevelFields';
@@ -85,6 +87,7 @@ export default function InventoryView({ onOpenPurchases }) {
   const [labelIds, setLabelIds] = useState(null);
   // v1.10.85 (#142, #148) - list filters, and the product whose stock is being adjusted.
   const [filters, setFilters] = useState({ category: '', brand: '', lowStock: false });
+  const [hsnGapOnly, setHsnGapOnly] = useState(false);
   const [adjusting, setAdjusting] = useState(null);
   const poOn = isModuleEnabled('purchaseOrders', getEnabledModules());
 
@@ -104,6 +107,15 @@ export default function InventoryView({ onOpenPurchases }) {
     getStockAlertSettings().then(setStockAlerts).catch(() => {});
   }, []);
 
+  const valuation = useMemo(
+    () =>
+      computeInventoryValuationSummary(products, {
+        lowStockThreshold: stockAlerts.threshold ?? 5,
+        alertsEnabled: stockAlerts.enabled !== false,
+      }),
+    [products, stockAlerts]
+  );
+
   const isLow = (p) => trackedStock(p) !== null && trackedStock(p) <= Number(stockAlerts.threshold ?? 5);
   const filtered = (search.trim()
     ? products.filter(p =>
@@ -112,8 +124,12 @@ export default function InventoryView({ onOpenPurchases }) {
         (barcodesOn && (p.barcode || '').toLowerCase().includes(search.trim().toLowerCase())) // #137
       )
     : products)
-    // #142 - category (with its sub-levels) and brand; low stock at the alert level.
-    .filter((p) => productMatches(p, filters) && (!filters.lowStock || isLow(p)));
+    // #142 - category (with its sub-levels) and brand; low stock at the alert level; v5.5.0 HSN gap filter.
+    .filter((p) =>
+      productMatches(p, filters) &&
+      (!filters.lowStock || isLow(p)) &&
+      (!hsnGapOnly || !isValidNumericHsnCode(String(p.hsn || '').trim()))
+    );
   // Low stock -> a purchase order for what the list shows, opened on Purchases.
   const makeReorderPo = () => {
     const lines = reorderLines(filtered.filter(isLow), stockAlerts.threshold ?? 5);
@@ -334,6 +350,108 @@ export default function InventoryView({ onOpenPurchases }) {
       {adjusting && <StockAdjustModal product={adjusting} onClose={() => setAdjusting(null)} onSaved={() => { setAdjusting(null); loadProducts(); }} />}
       {labelIds && <BarcodeLabels productIds={labelIds} onClose={() => setLabelIds(null)} onSaved={loadProducts} />}
       {showMake && <MakeModal products={products} currency={profileCurrency} onClose={() => setShowMake(false)} onSaved={afterProduction} />}
+
+      {/* v5.5.0 — Executive Stock Valuation, Gross Margin & HSN Hygiene Strip */}
+      {products.length > 0 && !bulkEdit && (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(205px, 1fr))',
+            gap: '0.75rem',
+            marginBottom: '1rem',
+          }}
+        >
+          <div className="pro-card" style={{ padding: '0.85rem 1rem', borderTop: '3px solid #4f46e5' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+              <span style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>
+                Stock Cost Value
+              </span>
+              <Package size={15} color="#4f46e5" />
+            </div>
+            <div style={{ fontSize: '1.18rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+              {formatCurrency(valuation.totalCostValue, profileCurrency)}
+            </div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 2 }}>
+              {valuation.goodsCount} goods{valuation.serviceCount > 0 ? ` · ${valuation.serviceCount} services` : ''}
+            </div>
+          </div>
+
+          <div className="pro-card" style={{ padding: '0.85rem 1rem', borderTop: '3px solid #10b981' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+              <span style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>
+                Selling Value &amp; Margin
+              </span>
+              <TrendingUp size={15} color="#10b981" />
+            </div>
+            <div style={{ fontSize: '1.18rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+              {formatCurrency(valuation.totalSellingValue, profileCurrency)}
+            </div>
+            <div style={{ fontSize: '0.7rem', color: valuation.potentialProfit >= 0 ? '#059669' : '#dc2626', fontWeight: 600, marginTop: 2 }}>
+              Est. Profit: {formatCurrency(valuation.potentialProfit, profileCurrency)} ({valuation.marginPercent}%)
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="pro-card"
+            onClick={() => setFilters((prev) => ({ ...prev, lowStock: !prev.lowStock }))}
+            style={{
+              padding: '0.85rem 1rem',
+              borderTop: `3px solid ${valuation.lowOrOutCount > 0 ? '#f59e0b' : '#10b981'}`,
+              textAlign: 'left',
+              cursor: 'pointer',
+              outline: filters.lowStock ? '2px solid #f59e0b' : 'none',
+            }}
+            title="Click to filter Low & Out-of-Stock items"
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+              <span style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>
+                Low / Out of Stock
+              </span>
+              <AlertTriangle size={15} color={valuation.lowOrOutCount > 0 ? '#f59e0b' : '#10b981'} />
+            </div>
+            <div style={{ fontSize: '1.18rem', fontWeight: 800, color: valuation.lowOrOutCount > 0 ? '#d97706' : 'var(--text-primary)' }}>
+              {valuation.lowOrOutCount} SKU{valuation.lowOrOutCount === 1 ? '' : 's'}
+            </div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 2 }}>
+              {filters.lowStock
+                ? 'Showing low-stock filter · Click to clear'
+                : `${valuation.outOfStockCount} out of stock · Click to filter`}
+            </div>
+          </button>
+
+          <button
+            type="button"
+            className="pro-card"
+            onClick={() => setHsnGapOnly((v) => !v)}
+            style={{
+              padding: '0.85rem 1rem',
+              borderTop: `3px solid ${valuation.missingOrInvalidHsnCount > 0 ? '#6366f1' : '#10b981'}`,
+              textAlign: 'left',
+              cursor: 'pointer',
+              outline: hsnGapOnly ? '2px solid #6366f1' : 'none',
+            }}
+            title="Click to filter products missing valid 4/6/8-digit numeric HSN/SAC codes for GSTR-1"
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+              <span style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>
+                GSTR-1 HSN Hygiene
+              </span>
+              <ShieldCheck size={15} color={valuation.missingOrInvalidHsnCount > 0 ? '#6366f1' : '#10b981'} />
+            </div>
+            <div style={{ fontSize: '1.18rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+              {valuation.missingOrInvalidHsnCount === 0
+                ? '100% Valid'
+                : `${valuation.missingOrInvalidHsnCount} Need HSN`}
+            </div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 2 }}>
+              {hsnGapOnly
+                ? 'Showing missing/invalid HSN · Click to clear'
+                : 'Checks 4/6/8-digit numeric HSN/SAC'}
+            </div>
+          </button>
+        </div>
+      )}
 
       {/* Search, and the filters (#142) */}
       <div className="glass-panel p-4 mb-6" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
