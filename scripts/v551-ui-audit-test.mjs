@@ -53,13 +53,17 @@ test('Universal Sidebar Toggle (☰): Collapses to 100% Full-Screen on Desktop &
     'Settings savebar must expand to left: 0 when sidebar is collapsed');
 });
 
-test('Mobile Sidebar Auto-Closes Immediately Upon Clicking Any Navigation Link', () => {
+test('Universal Menu Sidebar Auto-Closes Immediately Upon Selecting Any Navigation Item (Mobile, Tablet & Desktop)', () => {
   assert.ok(appJsx.includes('mobileSidebarOpen') && appJsx.includes('setMobileSidebarOpen'),
     'App.jsx must define mobileSidebarOpen / setMobileSidebarOpen');
-  assert.ok(appJsx.includes('onPick={(item) => {\n              setMobileSidebarOpen(false);'),
-    'SidebarMenu onPick must immediately call setMobileSidebarOpen(false)');
-  assert.ok(appJsx.includes("e.target.closest('button, a')"),
-    'closeNavAfterPick must close mobile drawer for both buttons and links');
+  assert.ok(appJsx.includes('const closeSidebar = useCallback(() => {') && appJsx.includes('setNavOpen(false);') && appJsx.includes('setSidebarCollapsed(true);'),
+    'App.jsx closeSidebar() must simultaneously close mobile drawer (setNavOpen(false)) and desktop/tablet sidebar (setSidebarCollapsed(true))');
+  assert.ok(appJsx.includes('onPick={(item) => {\n              setMobileSidebarOpen(false);\n              closeSidebar();'),
+    'SidebarMenu onPick must immediately invoke setMobileSidebarOpen(false) and closeSidebar()');
+  assert.ok(appJsx.includes("e.target.closest('button, a, [role=\"button\"], .sidebar-creator-credit')"),
+    'closeNavAfterPick must close sidebar for buttons, links, role="button" and creator credit');
+  assert.ok(appJsx.includes("if (e.key === 'Escape') closeSidebar();"),
+    'Escape key must close open sidebar across all viewports');
 });
 
 test('Zero Page Title vs Search Button Overlap & Zero Duplicate Reports Heading', () => {

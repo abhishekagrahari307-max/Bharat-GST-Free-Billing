@@ -1272,7 +1272,14 @@ try {
   check('#64 no invoice text is too faint for black-and-white print (4.5:1)',
     faint.offenders.length === 0, faint.offenders.slice(0, 3).join(' | '));
 
-  // ---- #59: a hide/show menu on phones, nothing new on desktop -------------
+  // ---- #59: a hide/show menu on phones, and universal toggle + auto-close on desktop
+  await page.evaluate(() => {
+    const layout = document.querySelector('.app-layout');
+    if (layout?.classList.contains('sidebar-collapsed')) {
+      document.querySelector('[aria-label="Toggle Sidebar"]')?.click();
+    }
+  });
+  await sleep(350);
   const desk = await page.evaluate(() => {
     const bar = document.querySelector('.mobile-topbar');
     const side = document.querySelector('.sidebar').getBoundingClientRect();

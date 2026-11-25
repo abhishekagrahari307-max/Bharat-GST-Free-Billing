@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspense } from 'react';
 import { Home, FileText, Settings, Plus, Users, Package, BarChart3, Wallet, RefreshCw, Receipt, BookOpen, Moon, Sun, Download, X, ShoppingCart, ChevronDown, Building2, Pencil, HelpCircle, Search, Bell, Calculator, Menu, Heart, Banknote, LifeBuoy } from 'lucide-react';
 import { getAllProfilesWithHidden, saveProfile, getEnabledModules, getMenuOrder, getMenuHidden, getMenuDots, onMenuChanged, getAllBills, getAllProducts, getAllRecurring, getStockAlertSettings, runUpdateNow, getLockStatus, visibleProfiles, hasHiddenProfiles, openHiddenCompanies, hideCompaniesAgain, isOpenedHidden, exportAllData, getBackupsList, DATA_SAVED_EVENT } from './store';
 import { isModuleEnabled, localToday, DOCS_URL } from './utils';
@@ -681,37 +681,66 @@ function App() {
   // no GSTIN yet.
   const businessKey = String(profile?.gstin || profile?.businessName || '').trim().toUpperCase();
 
-  // v1.10.66 (#59) — on a phone (<= 860px) the sidebar is a slide-in drawer.
-  // Clicking ANY navigation item immediately closes it via setMobileSidebarOpen(false).
+  // v1.10.66 (#59) & v5.5.4 — Universal auto-closing Menu Sidebar across Phone, Tablet & Desktop.
+  // Selecting ANY navigation item inside the sidebar immediately closes BOTH the mobile/tablet
+  // slide-in drawer (`navOpen`) AND the desktop/tablet collapsible sidebar (`sidebarCollapsed`).
   const [navOpen, setNavOpen] = useState(false);
   const mobileSidebarOpen = navOpen;
   const setMobileSidebarOpen = setNavOpen;
-  const closeNavAfterPick = (e) => {
-    const picked = e.target.closest('button, a');
-    // Keep open ONLY when toggling the business dropdown or expanding a group header.
-    if (picked && !picked.classList.contains('profile-switcher-btn') && !picked.hasAttribute('data-keep-open')) {
-      setMobileSidebarOpen(false);
-    }
-  };
 
   // v1.10.76 - a fresh editor for every invoice opened, so nothing (such as
   // the stock record of the last invoice) carries over to the next one.
   const [editorKey, setEditorKey] = useState(0);
-  // v5.5.1 — Universal Desktop + Mobile Collapsible Sidebar (100% full-screen mode on laptop)
+  // v5.5.1 / v5.5.4 — Universal Desktop + Mobile Collapsible Sidebar (auto-closes after menu selection)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try { return localStorage.getItem('bharatgst_sidebar_collapsed') === '1'; } catch { return false; }
   });
+
+  const closeSidebar = useCallback(() => {
+    setNavOpen(false);
+    setShowProfileMenu(false);
+    setSidebarCollapsed(true);
+    try { localStorage.setItem('bharatgst_sidebar_collapsed', '1'); } catch { /* private mode */ }
+    if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement && document.activeElement.closest('.sidebar')) {
+      document.activeElement.blur();
+    }
+  }, []);
+
+  const closeNavAfterPick = (e) => {
+    const picked = e.target.closest('button, a, [role="button"], .sidebar-creator-credit');
+    // Keep open ONLY when toggling the business dropdown or expanding a group header.
+    if (picked && !picked.classList.contains('profile-switcher-btn') && !picked.hasAttribute('data-keep-open')) {
+      setMobileSidebarOpen(false);
+      closeSidebar();
+    }
+  };
+
   const handleToggleSidebar = () => {
     if (typeof window !== 'undefined' && window.innerWidth <= 860) {
-      setMobileSidebarOpen((prev) => !prev);
+      setMobileSidebarOpen((prev) => {
+        const next = !prev;
+        if (!next) setShowProfileMenu(false);
+        return next;
+      });
     } else {
       setSidebarCollapsed((prev) => {
         const next = !prev;
+        if (next) setShowProfileMenu(false);
         try { localStorage.setItem('bharatgst_sidebar_collapsed', next ? '1' : '0'); } catch { /* private mode */ }
         return next;
       });
     }
   };
+
+  // Close open sidebar on Escape key across all viewports
+  useEffect(() => {
+    if (!navOpen && sidebarCollapsed) return undefined;
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') closeSidebar();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [navOpen, sidebarCollapsed, closeSidebar]);
   const handleNewInvoice = () => {
     setEditorKey((k) => k + 1);
     sessionStorage.removeItem('gst_invoiceDraft');
@@ -1146,7 +1175,7 @@ function App() {
         </button>
         {topActions}
       </div>
-      {mobileSidebarOpen && <div className="sidebar-backdrop" onClick={() => setMobileSidebarOpen(false)} aria-hidden="true" />}
+      {mobileSidebarOpen && <div className="sidebar-backdrop" onClick={closeSidebar} aria-hidden="true" />}
       <aside className={`sidebar app-sidebar${sidebarCollapsed ? ' is-collapsed' : ''}${mobileSidebarOpen ? ' sidebar-open mobile-open' : ''}`} onClick={closeNavAfterPick}>
         <div className="sidebar-brand">
           <div className={`sidebar-logo${ownBrand && brand.logo ? ' sidebar-logo-own' : ''}`}>
@@ -1163,7 +1192,7 @@ function App() {
             data-keep-open
             aria-pressed={sidebarCollapsed} aria-label="Collapse sidebar"
             title="Collapse sidebar for 100% full-screen view"
-            onClick={(e) => { e.stopPropagation(); handleToggleSidebar(); }}>
+            onClick={(e) => { e.stopPropagation(); closeSidebar(); }}>
             <Menu size={18} />
           </button>
         </div>
@@ -1173,7 +1202,7 @@ function App() {
           <span className="topbar-free" title="Free forever: no paid version, no locked features, no ads, no tracking. Works on this device, even offline.">Free forever</span>
           <button
             type="button"
-            onClick={() => { setMobileSidebarOpen(false); setCurrentView('settings'); setTimeout(() => document.getElementById('section-updates')?.scrollIntoView({ behavior: 'smooth' }), 120); }}
+            onClick={() => { closeSidebar(); setCurrentView('settings'); setTimeout(() => document.getElementById('section-updates')?.scrollIntoView({ behavior: 'smooth' }), 120); }}
             title="Daily Continuous Auto-Update Active — click to open App & Updates"
             style={{
               fontSize: '0.64rem', fontWeight: 700, padding: '0.18rem 0.5rem', borderRadius: 999,
@@ -1202,7 +1231,7 @@ function App() {
             <button
               type="button"
               className="profile-switcher-edit"
-              onClick={() => { setShowProfileMenu(false); setShowMenuEditor(true); }}
+              onClick={() => { closeSidebar(); setShowMenuEditor(true); }}
               title="Customise menu" aria-label="Customise menu"
             >
               <Pencil size={13} />
@@ -1214,25 +1243,25 @@ function App() {
                 <button
                   key={bp.id || bp.businessName}
                   className={`profile-switcher-item${bp.businessName?.trim().toLowerCase() === profile?.businessName?.trim().toLowerCase() ? ' active' : ''}`}
-                  onClick={() => handleSwitchProfile(bp)}
+                  onClick={() => { closeSidebar(); handleSwitchProfile(bp); }}
                 >
                   {bp.businessName}
                 </button>
               ))}
               <button
                 className="profile-switcher-item profile-switcher-details"
-                onClick={() => { setShowProfileMenu(false); setMobileSidebarOpen(false); openSettingsSection('section-company'); }}
+                onClick={() => { closeSidebar(); openSettingsSection('section-company'); }}
               >
                 <Pencil size={13} /> Edit business details
               </button>
               {anyHidden && (
-                <button className="profile-switcher-item profile-switcher-manage" onClick={() => { setMobileSidebarOpen(false); openHidden(); }}>
+                <button className="profile-switcher-item profile-switcher-manage" onClick={() => { closeSidebar(); openHidden(); }}>
                   Open a hidden company...
                 </button>
               )}
               <button
                 className="profile-switcher-item profile-switcher-manage"
-                onClick={() => { setShowProfileMenu(false); setMobileSidebarOpen(false); setCurrentView('settings'); }}
+                onClick={() => { closeSidebar(); setCurrentView('settings'); }}
               >
                 Manage profiles...
               </button>
@@ -1258,6 +1287,7 @@ function App() {
             dots={dots}
             onPick={(item) => {
               setMobileSidebarOpen(false);
+              closeSidebar();
               if (item.onClick) item.onClick();
               else setCurrentView(item.id);
             }}
@@ -1269,7 +1299,7 @@ function App() {
             {updateBannerVisible && (
               <button
                 className="nav-btn"
-                onClick={() => setShowUpdateModal(true)}
+                onClick={() => { closeSidebar(); setShowUpdateModal(true); }}
                 title={`v${updateInfo.latest} is available`}
                 style={{
                   background: 'var(--info-bg)',
@@ -1294,7 +1324,7 @@ function App() {
               <button
                 type="button"
                 className="nav-btn"
-                onClick={() => { setMobileSidebarOpen(false); openSettingsSection('section-offline-app'); }}
+                onClick={() => { closeSidebar(); openSettingsSection('section-offline-app'); }}
                 title="Install 100% Offline App on Computer, Laptop or Mobile"
               >
                 <Download size={18} /> Install Offline App
@@ -1306,7 +1336,7 @@ function App() {
               support: (
                 <button key={id}
                   className={`nav-btn nav-btn-support${currentView === 'support' ? ' nav-btn-support-active' : ''}`}
-                  onClick={() => { setMobileSidebarOpen(false); setCurrentView('support'); }}
+                  onClick={() => { closeSidebar(); setCurrentView('support'); }}
                   title="Who makes this app, and how to help"
                 >
                   <Heart size={18} /> Support &amp; About
@@ -1315,7 +1345,7 @@ function App() {
               settings: (
                 <button key={id}
                   className={`nav-btn ${currentView === 'settings' ? 'nav-btn-active' : ''}`}
-                  onClick={() => { setMobileSidebarOpen(false); setCurrentView('settings'); }}
+                  onClick={() => { closeSidebar(); setCurrentView('settings'); }}
                   title={dots.settings?.text}
                 >
                   <Settings size={18} /> Settings
@@ -1333,7 +1363,7 @@ function App() {
               <button
                 type="button"
                 className="nav-btn"
-                onClick={() => lockNow()}
+                onClick={() => { closeSidebar(); lockNow(); }}
                 title="Signed in staff profile — click to lock or switch staff user"
                 style={{ fontSize: '0.78rem', opacity: 0.92 }}
               >
@@ -1346,7 +1376,7 @@ function App() {
 
             <div
               className="sidebar-creator-credit"
-              onClick={() => { setMobileSidebarOpen(false); setCurrentView('support'); }}
+              onClick={() => { closeSidebar(); setCurrentView('support'); }}
               title="About Bharat GST Free Billing — Created by Abhishek Agrahari"
               style={{
                 padding: '0.45rem 0.65rem 0.1rem',
@@ -1373,12 +1403,21 @@ function App() {
         <MenuCustomise extras={menuExtras} onClose={() => setShowMenuEditor(false)}
           onOpenFeatures={() => { setShowMenuEditor(false); openSettingsSection('section-modules'); }} />
       )}
-      <main id="main-content" className="main-content">
+      <main
+        id="main-content"
+        className="main-content"
+        onClick={(e) => {
+          if ((mobileSidebarOpen || !sidebarCollapsed) && !e.target.closest('[data-sidebar-toggle]')) {
+            closeSidebar();
+          }
+        }}
+      >
         <header className="app-topbar" ref={barRef}>
           <div className="header-left-cluster">
             <button
               type="button"
-              onClick={handleToggleSidebar}
+              data-sidebar-toggle="1"
+              onClick={(e) => { e.stopPropagation(); handleToggleSidebar(); }}
               className="topbar-btn header-icon-btn exec-hide-mobile"
               title={sidebarCollapsed ? 'Sidebar खोलें (Show Sidebar)' : 'Sidebar बंद करें (Full-Screen View)'}
               aria-label="Toggle Sidebar"
@@ -1559,8 +1598,11 @@ function App() {
         <Suspense fallback={null}>
           <QuickSearch onClose={() => setShowPalette(false)}
             navItems={navItems} topIds={topIds} updateInfo={updateInfo}
-            onNewInvoice={handleNewInvoice} onEditInvoice={handleEditInvoice} onView={setCurrentView}
-            onSettings={openSettingsSection} onDarkMode={() => setDarkMode(d => !d)}
+            onNewInvoice={() => { closeSidebar(); handleNewInvoice(); }}
+            onEditInvoice={(bill) => { closeSidebar(); handleEditInvoice(bill); }}
+            onView={(view) => { closeSidebar(); setCurrentView(view); }}
+            onSettings={(sec) => { closeSidebar(); openSettingsSection(sec); }}
+            onDarkMode={() => setDarkMode(d => !d)}
             onShortcuts={() => setShowShortcutsHelp(true)} onUpdate={() => setShowUpdateModal(true)}
             onOpenDocs={openDocs} onOpenHelpDesk={openHelpDesk} />
         </Suspense>
@@ -1695,12 +1737,12 @@ function App() {
       <MobileBottomBar
         currentView={currentView}
         onNavigate={(view) => {
-          setNavOpen(false);
+          closeSidebar();
           setEditingBill(null);
           setCurrentView(view);
         }}
         onNewInvoice={() => {
-          setNavOpen(false);
+          closeSidebar();
           handleNewInvoice();
         }}
         onOpenMenu={() => setNavOpen((v) => !v)}

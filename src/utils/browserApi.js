@@ -284,7 +284,14 @@ function extractApiPath(input) {
   }
 }
 
-const BHARAT_CHANGELOG_MD = `## [5.5.3] - 2026-11-21
+const BHARAT_CHANGELOG_MD = `## [5.5.4] - 2026-11-21
+**Universal Auto-Closing Menu Sidebar Across Phone, Tablet & Desktop (\`src/App.jsx\`, \`src/index.css\`).**
+
+### Fixed & Hardened
+- **Instant Sidebar Auto-Close on Selection (\`src/App.jsx\`)**: Selecting any item inside the Menu Sidebar immediately closes both the mobile/tablet slide-in drawer (\`navOpen\`) and the desktop/tablet collapsible sidebar (\`sidebarCollapsed\`), plus supports outside-click and \`Escape\` dismissal.
+- **Responsive Drawer CSS Guard (\`src/index.css\`)**: Enforces off-screen transform, zero shadow bleed, and unified \`<= 860px\` mobile/tablet bottom-bar & drawer alignment.
+
+## [5.5.3] - 2026-11-21
 **1-Click Govt GST Offline Tool V3.2.4 Full CSV Bundle (\`All CSVs (V3.2.4)\`), Strict Phase-III HSN Goods UQC Guard & Verified Portable Release ZIP.**
 
 ### Added & Hardened
