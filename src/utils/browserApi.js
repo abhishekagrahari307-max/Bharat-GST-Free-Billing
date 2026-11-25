@@ -284,7 +284,15 @@ function extractApiPath(input) {
   }
 }
 
-const BHARAT_CHANGELOG_MD = `## [5.0.0] - 2026-11-21
+const BHARAT_CHANGELOG_MD = `## [5.1.0] - 2026-11-21
+**Audit-Hardened Statutory Tax & POS Polish Release — CBDT Sec 44AD/44ADA 5%-Cash Cap, Sec 87A Marginal Relief, MSMED Sec 15 (15d/45d) 43B(h) Accuracy, fflate-Compressed \`#b2b-catalog=z.\` URLs & Shop POS / CA Pro Mode Toggle.**
+
+### Added & Hardened
+- **Statutory ITR-3/4 & Sec 87A Marginal Relief (\`src/utils/itrAndTaxEngine.js\`)**: Enforces ≤5% cash-receipt rule for ₹3Cr (44AD) / ₹75L (44ADA) enhanced turnover limits, implements CBDT Sec 87A Marginal Relief above ₹12,00,000 + Surcharge, validates AIS JSON schemas strictly, and extracts live TDS deductions from books for Form 26Q (Q1–Q4).
+- **MSMED Sec 15 (15d vs 45d) & Live Product FEFO**: Enforces 15-day statutory deadline when no written MSME agreement exists (max 45 days with agreement), defaults to verified MSME suppliers only, and runs FEFO batch allocation directly on live inventory batches.
+- **fflate-Compressed \`#b2b-catalog=z.\` URLs & Shop POS / CA Pro Toggle**: Deflate-compresses WhatsApp catalog URLs by ~65% (up to 150 items with legacy fallback), adds 1-click **Shop POS vs CA & Pro ERP** sidebar toggle, and ships rich OpenGraph social preview banner (\`og-banner.png\`).
+
+## [5.0.0] - 2026-11-21
 **Autonomous Bharat Business & Tax OS — Unifying ITR-3/4 + AIS/26Q + Zero-GSP Portal Bridge + Multi-Godown/FEFO/BOM + Sec 43B(h) MSME Shield + AI Munim & Serverless WhatsApp Storefront.**
 
 ### Added

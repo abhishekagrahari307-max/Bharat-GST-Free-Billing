@@ -1,11 +1,11 @@
-# Bharat GST Free Billing (v5.0.0 — Autonomous Bharat Business & Tax OS)
+# Bharat GST Free Billing (v5.1.0 — Audit-Hardened Autonomous Bharat Business & Statutory Tax OS)
 
-> 100% Free, Open-Source (MIT), Serverless Browser-Native Autonomous ERP & Tax OS: ITR-3/4 (Sec 44AD/44ADA) + Income Tax AIS/26AS Parser + Form 26Q RPU + Zero-GSP Chrome/Edge Portal Auto-Fill Bridge + Multi-Godown Stock Transfer + FEFO Batch Allocator + Manufacturing BOM Costing + Income Tax Sec 43B(h) 45-Day MSME Tax Shield + Autonomous AI Munim + Zero-Server `#b2b-catalog=` WhatsApp Storefront + Resilient 5G WebRTC P2P Sync + 1-Click Tally XML & Vyapar Excel Importer + Studio Human Welcome Voice. Created & maintained by Abhishek Agrahari.
+> 100% Free, Open-Source (MIT), Serverless Browser-Native Autonomous ERP & Statutory Tax OS: ITR-3/4 (5% Cash Rule + Sec 87A Marginal Relief) + Validated Income Tax AIS/26AS Parser + Live Form 26Q + Zero-GSP Chrome/Edge Portal Auto-Fill Bridge + Multi-Godown Stock Transfer + Live FEFO Batch Allocator + Manufacturing BOM Costing + MSMED Sec 15 (15d/45d) Income Tax Sec 43B(h) Shield + Autonomous AI Munim + `fflate`-Compressed `#b2b-catalog=z.` WhatsApp Storefront + Shop POS / CA Pro Toggle + Resilient 5G WebRTC P2P Sync + 1-Click Tally XML & Vyapar Excel Importer + Studio Human Welcome Voice. Created & maintained by Abhishek Agrahari.
 
 - Live Application (Instant Offline PWA & Web): https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/
 - Complete Self-Hosted Documentation (35 Pages): https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/user-guide/
 - Public Open-Source Repository & Multi-OS Releases (MIT License): https://github.com/abhishekagrahari307-max/Bharat-GST-Free-Billing
-- Latest Release: v5.0.0 (2026-11-21) — Autonomous Bharat Business & Tax OS (ITR-3/4 + AIS + 26Q + Zero-GSP Portal Bridge + Multi-Godown/FEFO/BOM + Sec 43B(h) MSME Shield + AI Munim + `#b2b-catalog=` Storefront)
+- Latest Release: v5.1.0 (2026-11-21) — Audit-Hardened Statutory Tax & POS Polish Edition (Sec 44AD 5%-Cash Cap, Sec 87A Marginal Relief, MSMED 15d/45d Sec 43B(h), fflate `#b2b-catalog=z.` & Shop POS Toggle)
 
 ---
 

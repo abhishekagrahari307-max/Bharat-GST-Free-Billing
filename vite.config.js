@@ -57,7 +57,7 @@ export default defineConfig({
       // gets `cleanupOutdatedCaches: true` so orphaned assets from a
       // previous version don't shadow the new ones.
       registerType: 'prompt',
-      includeAssets: ['favicon.svg', 'og-preview.png', 'audio/welcome-en.mp3', 'audio/welcome-hinglish.mp3'],
+      includeAssets: ['favicon.svg', 'og-banner.png', 'audio/welcome-en.mp3', 'audio/welcome-hinglish.mp3'],
       manifest: {
         name: 'Bharat GST Free Billing',
         short_name: 'Bharat GST',

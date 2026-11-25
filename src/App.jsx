@@ -53,6 +53,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import ConfirmModalContainer, { promptAction } from './components/ConfirmModal';
 import WelcomeGuide from './components/WelcomeGuide';
 import ServerlessB2BStorefront from './components/ServerlessB2BStorefront';
+import WorkspaceModeToggle, { getSavedWorkspaceMode, SHOP_POS_ALLOWED_IDS } from './components/WorkspaceModeToggle';
 import { decodeServerlessCatalogLink } from './utils/autonomousMunimAnd43B';
 import { playWelcomeVoice, armSessionWelcomeGreeting } from './utils/welcomeSound';
 import { WhatsNewAfterUpdate, SEEN_KEY as WHATS_NEW_SEEN_KEY } from './components/WhatsNewSlides';
@@ -540,6 +541,7 @@ function App() {
   // Free GST Billing icon starts the server and opens the app.
 
   const [awaitingWelcomeTap, setAwaitingWelcomeTap] = useState(false);
+  const [workspaceMode, setWorkspaceMode] = useState(() => getSavedWorkspaceMode());
   const [storefrontCatalog, setStorefrontCatalog] = useState(() =>
     typeof window !== 'undefined' ? decodeServerlessCatalogLink(window.location.hash) : null
   );
@@ -1189,10 +1191,24 @@ function App() {
           )}
         </div>
 
+        <WorkspaceModeToggle
+          mode={workspaceMode}
+          onChange={(nextMode) => {
+            setWorkspaceMode(nextMode);
+            if (nextMode === 'SHOP' && !SHOP_POS_ALLOWED_IDS.includes(currentView) && currentView !== 'settings' && currentView !== 'support') {
+              setCurrentView('dashboard');
+            }
+          }}
+        />
+
         <nav className="sidebar-nav">
           {/* v1.10.86 - in groups that open and close; arranged in Customise menu (the pencil). */}
-          <SidebarMenu items={navItems.filter(i => !menuHidden.includes(i.id))} currentView={currentView} dots={dots}
-            onPick={(item) => (item.onClick ? item.onClick() : setCurrentView(item.id))} />
+          <SidebarMenu
+            items={navItems.filter(i => !menuHidden.includes(i.id) && (workspaceMode !== 'SHOP' || SHOP_POS_ALLOWED_IDS.includes(i.id)))}
+            currentView={currentView}
+            dots={dots}
+            onPick={(item) => (item.onClick ? item.onClick() : setCurrentView(item.id))}
+          />
           <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
             {/* Update-available banner — only shows when GitHub has a newer version
                 AND the user hasn't already dismissed THIS specific version. New

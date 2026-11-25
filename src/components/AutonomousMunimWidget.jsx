@@ -33,7 +33,7 @@ export default function AutonomousMunimWidget({ businessProfile, onBillsUpdated 
       const report43B = checkSection43BCompliance({
         purchases: Array.isArray(purchases) ? purchases : [],
         clients: Array.isArray(clients) ? clients : [],
-        treatAllUnpaidSuppliersAsMsmeIfUnmarked: true,
+        treatAllUnpaidSuppliersAsMsmeIfUnmarked: false,
       });
       setMsmeReport(report43B);
 
