@@ -82,7 +82,7 @@ export function reconcileGstr2bFuzzy(gstr2bJson, purchases = [], { amountToleran
         (Number(p.sgst ?? p.totalSgst ?? 0) || 0) +
         (Number(p.igst ?? p.totalIgst ?? 0) || 0)
       );
-      const tax = splitTax > 0 ? splitTax : r2(Number(p.gstAmount ?? p.taxAmount ?? 0));
+      const tax = splitTax > 0 ? splitTax : r2(Number(p.gstAmount ?? p.taxAmount ?? p.totalTax ?? 0));
       return {
         idx,
         id: p.id || `pur-${idx}`,

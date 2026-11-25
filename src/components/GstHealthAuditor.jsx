@@ -5,9 +5,9 @@ import { ShieldCheck, AlertTriangle, AlertCircle, Info, ChevronDown, ChevronUp, 
 import { auditInvoicesForGst } from '../utils/gstAudit';
 import { triggerTrackedBrowserDownload } from '../utils/trackedDownload';
 
-export default function GstHealthAuditor({ bills = [], periodLabel = '' }) {
+export default function GstHealthAuditor({ bills = [], periodLabel = '', sellerGstin = '' }) {
   const [expanded, setExpanded] = useState(false);
-  const report = useMemo(() => auditInvoicesForGst(bills), [bills]);
+  const report = useMemo(() => auditInvoicesForGst(bills, { sellerGstin }), [bills, sellerGstin]);
 
   const badgeColor = report.errorCount > 0
     ? '#dc2626'

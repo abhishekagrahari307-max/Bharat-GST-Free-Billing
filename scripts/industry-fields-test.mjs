@@ -22,7 +22,7 @@ const test = (name, fn) => {
 
 console.log('Running Industry Presets & Custom Field CRUD tests...');
 
-test('exposes all 7 industry presets including EV/Auto, Mobile, Medical, Jewellery, Optical, Garments, General', () => {
+test('exposes all 8 industry presets including EV/Auto, Mobile, Medical, Jewellery, Optical, Garments, Grain/Mandi, General', () => {
   const ids = INDUSTRY_PRESETS.map((p) => p.id);
   assert.deepEqual(ids, [
     'general',
@@ -32,6 +32,7 @@ test('exposes all 7 industry presets including EV/Auto, Mobile, Medical, Jewelle
     'jewellery',
     'optical',
     'garments_footwear',
+    'grain_mandi_kirana',
   ]);
 });
 

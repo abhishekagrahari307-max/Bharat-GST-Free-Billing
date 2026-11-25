@@ -134,6 +134,22 @@ export const INDUSTRY_PRESETS = [
       { id: 'design_no', label: 'Brand / Design No', placeholder: 'e.g. D-402' },
     ],
   },
+  {
+    id: 'grain_mandi_kirana',
+    label: '🌾 Grain / Mandi / Kirana / Agro',
+    shortLabel: 'Grain / Mandi',
+    description: 'Mandi Gate Pass (9R/6R), Lot/Marka, Bora/Bag count, Quintal/KG weight & FSSAI/Mandi billing.',
+    sectionTitle: 'Mandi & Consignment Details',
+    showSpecBox: true,
+    invoiceFields: [
+      { id: 'mandi_gate_pass', label: 'Mandi Samiti / 9R / Gate Pass No', placeholder: 'e.g. 9R/2026/00482' },
+      { id: 'bilty_ref', label: 'Bilty / Weighbridge Slip No', placeholder: 'e.g. Kanta #812' },
+    ],
+    itemFields: [
+      { id: 'lot_marka', label: 'Lot / Marka', placeholder: 'e.g. Sharbati Grade-A' },
+      { id: 'bag_bora', label: 'Bags / Bora (Count × Wt)', placeholder: 'e.g. 50 Bora × 50 Kg' },
+    ],
+  },
 ];
 
 export function getIndustryPreset(presetId) {

@@ -841,7 +841,8 @@ export default function SettingsView({ onSaved }) {
     // United States on an Indian shop and started them on a US form.
     const blank = {
       businessName: '', address: '', city: '', state: '', pin: '', country: profile.country || 'India',
-      gstin: '', pan: '', email: '', phone: '', bankName: '', accountNumber: '', ifsc: '', swift: '',
+      gstin: '', pan: '', mandiLicense: '', fssaiNo: '', drugLicenseNo: '', udyamNo: '',
+      email: '', phone: '', bankName: '', accountNumber: '', ifsc: '', swift: '',
       logo: '', logoHeight: 48, signature: '', signatureHeight: 60, stamp: '', stampHeight: 70, upiId: '', googleClientId: '', googleDriveFolder: 'GST Billing Invoices',
     };
     setProfile(blank);
@@ -1250,6 +1251,31 @@ export default function SettingsView({ onSaved }) {
                   style={profileErrors.phone ? { borderColor: '#dc2626' } : undefined}
                   value={profile.phone} onChange={handleChange} />
                 {profileErrors.phone && <small style={{ color: '#dc2626', fontSize: '0.72rem', display: 'block', marginTop: '0.2rem' }}>⚠ {profileErrors.phone}</small>}
+              </div>
+              <div className="form-group">
+                <label className="form-label">Mandi / Trade License No.</label>
+                <input type="text" name="mandiLicense" className="form-input"
+                  value={profile.mandiLicense || ''} onChange={handleChange}
+                  placeholder="e.g. L/2024/130/23005441" maxLength={45} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">FSSAI License No.</label>
+                <input type="text" name="fssaiNo" className="form-input"
+                  value={profile.fssaiNo || ''} onChange={handleChange}
+                  placeholder="14-digit FSSAI No. (Optional)" maxLength={24} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Drug License (DL) No.</label>
+                <input type="text" name="drugLicenseNo" className="form-input"
+                  value={profile.drugLicenseNo || ''} onChange={handleChange}
+                  placeholder="20B / 21B License No. (Optional)" maxLength={45} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Udyam MSME Registration No.</label>
+                <input type="text" name="udyamNo" className="form-input"
+                  value={profile.udyamNo || ''}
+                  onChange={(e) => setProfile(p => ({ ...p, udyamNo: e.target.value.toUpperCase() }))}
+                  placeholder="e.g. UDYAM-UP-09-0012345" maxLength={30} />
               </div>
               {/* v1.10.43 — GST-specific fields: AATO band + turnover
                   numbers. Drive the GSTR-1 export's HSN digit-length

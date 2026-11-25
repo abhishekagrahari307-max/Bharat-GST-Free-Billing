@@ -250,7 +250,7 @@ const DEFAULT_OPTIONS = {
 // v1.10.83 - tdsRecorded (TDS recorded with a payment) is per-invoice too.
 const LUT_OPTION_KEYS = ['isLUT', 'lutArn', 'lutFy', 'lutManual', 'tdsRecorded'];
 // v1.10.83 - order-detail boxes that only goods use (hidden on a services invoice).
-const GOODS_ONLY_DETAILS = ['vehicleNo', 'deliveryNote', 'deliveryNoteDate', 'dispatchDocNo', 'dispatchedThrough', 'destination', 'deliveryTerms'];
+const GOODS_ONLY_DETAILS = ['vehicleNo', 'distanceKm', 'transporterId', 'deliveryNote', 'deliveryNoteDate', 'dispatchDocNo', 'dispatchedThrough', 'destination', 'deliveryTerms'];
 const stripLutOptions = (o) => { LUT_OPTION_KEYS.forEach((k) => { delete o[k]; }); return o; };
 const lutOptionsOf = (o) => Object.fromEntries(LUT_OPTION_KEYS.filter((k) => k in (o || {})).map((k) => [k, o[k]]));
 
@@ -5767,6 +5767,11 @@ export default function InvoiceGenerator({ onBack, profile: profileProp, editing
                     ? 'More than the balance: the extra is kept as the client\'s credit.'
                     : 'Saved as a payment with the invoice. Cash also goes into the Cash book.'}
                 </span>
+                {String(receivedNow.mode || '').toLowerCase() === 'cash' && Number(receivedNow.amount) >= 200000 && (
+                  <div style={{ flex: '1 1 100%', padding: '0.4rem 0.65rem', borderRadius: 6, background: 'rgba(220,38,38,0.1)', color: '#dc2626', fontSize: '0.75rem', fontWeight: 600 }}>
+                    ⚠ Sec 269ST Statutory Alert: Cash receipt ≥ ₹2,00,000 attracts 100% penalty u/s 271DA! Accept via Bank/UPI/RTGS/Cheque instead.
+                  </div>
+                )}
               </div>
             )}
             {/* v1.10.85 (#189, #147) - profit on this bill: on screen only, never printed. */}

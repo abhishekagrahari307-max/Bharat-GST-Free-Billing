@@ -16,6 +16,7 @@ import { matchesCentre, centreFields, centreLabel, UNTAGGED } from '../utils/cos
 // v1.10.86 - sort by a column header, remembered in this browser.
 import { useListSort, sortRows } from '../utils/listPrefs';
 import SortTh from './SortTh';
+import { checkSingleCashExpense40A3 } from '../utils/itrAndTaxEngine';
 
 const SORT_GETTERS = {
   date: (e) => e.date,
@@ -425,6 +426,19 @@ export default function ExpenseTracker() {
                 <select className="form-input" value={form.paymentMode} onChange={e => updateField('paymentMode', e.target.value)}>
                   {PAYMENT_MODES.map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
+                {(() => {
+                  const s40a3 = checkSingleCashExpense40A3({
+                    amount: form.amount,
+                    paymentMode: form.paymentMode,
+                    category: form.category,
+                    description: form.description,
+                  });
+                  return s40a3.disallowed ? (
+                    <div style={{ marginTop: 6, padding: '0.4rem 0.6rem', borderRadius: 6, background: 'rgba(220, 38, 38, 0.1)', color: '#dc2626', fontSize: '0.73rem', fontWeight: 600 }}>
+                      ⚠ {s40a3.message}
+                    </div>
+                  ) : null;
+                })()}
               </div>
               <div className="form-group">
                 <label className="form-label" htmlFor="expense-payment">Payment</label>
@@ -516,7 +530,14 @@ export default function ExpenseTracker() {
                     <td className="text-muted">{exp.vendorName || '-'}</td>
                     <td style={{ textAlign: 'right' }} className="font-bold">{formatCurrency(exp.amount)}</td>
                     <td style={{ textAlign: 'right' }} className="text-muted">{exp.gstAmount ? formatCurrency(exp.gstAmount) : '-'}</td>
-                    <td className="text-muted">{exp.paymentMode}</td>
+                    <td className="text-muted">
+                      {exp.paymentMode}
+                      {checkSingleCashExpense40A3({ amount: exp.amount, paymentMode: exp.paymentMode, category: exp.category, description: exp.description, rule6ddExempt: exp.sec40A3Rule6ddExempt }).disallowed && (
+                        <span style={{ display: 'inline-block', marginLeft: 6, padding: '1px 6px', borderRadius: 999, background: 'rgba(220,38,38,0.12)', color: '#dc2626', fontSize: '0.68rem', fontWeight: 700 }} title="Disallowed under Income Tax Section 40A(3) (>₹10,000 daily cash expense)">
+                          Sec 40A(3) Disallowed
+                        </span>
+                      )}
+                    </td>
                     <td>
                       {expenseStatus(exp) === 'paid' ? <span className="text-muted">Paid</span> : (
                         <span style={{ color: '#d97706', fontWeight: 600 }} title={`Paid ${formatCurrency(expensePaid(exp))} of ${formatCurrency(exp.amount)}`}>

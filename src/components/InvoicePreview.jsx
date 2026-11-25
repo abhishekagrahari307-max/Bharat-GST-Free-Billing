@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback, useLayoutEffe
 import QRCode from 'qrcode';
 import SignatureImages from './SignatureImages';
 import DOMPurify from 'dompurify';
-import { sectionPrint, numberToWords, printedSubtotal, formatCurrency, INVOICE_TYPES, getCountryConfig, CURRENCY_NAMES, formatExchangeRateLine, getAccountById, getPaperSize, resolveLineDiscount, htmlHasText, splitNumberedTerms, invoiceOptionOn, DEFAULT_DECLARATION, filledOrderDetails, formatShortDate, isModuleEnabled, getStateCode, COUNTRIES } from '../utils';
+import { sectionPrint, numberToWords, printedSubtotal, formatCurrency, INVOICE_TYPES, getCountryConfig, CURRENCY_NAMES, formatExchangeRateLine, getAccountById, getPaperSize, resolveLineDiscount, htmlHasText, splitNumberedTerms, invoiceOptionOn, DEFAULT_DECLARATION, filledOrderDetails, formatSellerLicenses, formatShortDate, isModuleEnabled, getStateCode, COUNTRIES } from '../utils';
 import { getEnabledModules } from '../store';
 import { getPrintSettings, getLabel, formatCurrencyEx, formatDate, PRINT_SETTINGS_EVENT } from '../utils/printSettings';
 import { code128Svg } from '../utils/barcode';
@@ -391,6 +391,8 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
       : []),
   ];
 
+  const sellerLicenses = formatSellerLicenses(profile);
+
   // Header renderers per style
   const renderModernHeader = () => (
     <>
@@ -411,6 +413,7 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
             {showBusinessAddress && (profile?.city || profile?.pin) && <p style={{ margin: 0 }}>{[profile.city, profile.pin].filter(Boolean).join(' - ')}</p>}
             {showState && profile?.state && <p style={{ margin: 0 }}>{profile.state}</p>}
             {showGSTIN && profile?.gstin && <p style={{ margin: 0 }}>{getCountryConfig(profile?.country).taxIdLabel}: {profile.gstin}</p>}
+            {sellerLicenses.length > 0 && <p style={{ margin: 0, overflowWrap: 'anywhere' }}>{sellerLicenses.join(' | ')}</p>}
             {showBusinessEmail && profile?.email && <p style={{ margin: 0 }}>{profile.email}</p>}
             {showBusinessPhone && profile?.phone && <p style={{ margin: 0 }}>Ph: {profile.phone}</p>}
           </div>
@@ -443,6 +446,7 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
             {showBusinessAddress && (profile?.city || profile?.pin) && <p style={{ margin: 0 }}>{[profile.city, profile.pin].filter(Boolean).join(' - ')}</p>}
             {showState && profile?.state && <p style={{ margin: 0 }}>{profile.state}</p>}
             {showGSTIN && profile?.gstin && <p style={{ margin: 0 }}>{getCountryConfig(profile?.country).taxIdLabel}: {profile.gstin}</p>}
+            {sellerLicenses.length > 0 && <p style={{ margin: 0, overflowWrap: 'anywhere' }}>{sellerLicenses.join(' | ')}</p>}
             {showBusinessEmail && profile?.email && <p style={{ margin: 0 }}>{profile.email}</p>}
             {showBusinessPhone && profile?.phone && <p style={{ margin: 0 }}>Ph: {profile.phone}</p>}
           </div>
@@ -499,6 +503,7 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
             {showBusinessAddress && (profile?.city || profile?.pin) && <p>{[profile.city, profile.pin].filter(Boolean).join(' - ')}</p>}
             {showState && profile?.state && <p>{profile.state}</p>}
             {showGSTIN && profile?.gstin && <p>{getCountryConfig(profile?.country).taxIdLabel}: <strong>{profile.gstin}</strong></p>}
+            {sellerLicenses.length > 0 && <p style={{ overflowWrap: 'anywhere' }}>{sellerLicenses.join(' | ')}</p>}
             {showBusinessEmail && profile?.email && <p>{profile.email}</p>}
             {showBusinessPhone && profile?.phone && <p>Ph: {profile.phone}</p>}
           </div>
@@ -755,6 +760,9 @@ const InvoicePreview = React.forwardRef(({ profile: profileProp, client, details
           )}
           {profile?.gstin && (
             <div style={{ fontSize: '0.9em', fontWeight: strongWeight, marginTop: 2 }}>{cap('GSTIN: ' + profile.gstin)}</div>
+          )}
+          {sellerLicenses.length > 0 && (
+            <div style={{ fontSize: '0.85em', fontWeight: baseWeight, overflowWrap: 'anywhere' }}>{cap(sellerLicenses.join(' | '))}</div>
           )}
           {profile?.phone && <div style={{ fontSize: '0.9em', fontWeight: baseWeight }}>{cap('Ph: ' + profile.phone)}</div>}
         </div>

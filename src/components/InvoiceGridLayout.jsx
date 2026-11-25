@@ -14,7 +14,7 @@
 // Every block and every table row here carries data-pdf-page-boundary, so a
 // page can end between rows or blocks but never cuts through one.
 import React from 'react';
-import { filledOrderDetails, getStateCode, printedSubtotal, roundQty, sectionPrint } from '../utils';
+import { filledOrderDetails, formatSellerLicenses, getStateCode, printedSubtotal, roundQty, sectionPrint } from '../utils';
 import SignatureImages from './SignatureImages';
 import { purposeCodeText } from '../utils/purposeCodes';
 import { sizeLabel, sizePieces, lineSqft, sizeHasDims } from '../utils/glass';
@@ -203,6 +203,7 @@ function UpiQr({ ctx }) {
 
 function SellerBlock({ ctx, tally }) {
   const { profile, t, sellerCC } = ctx;
+  const sellerLicenses = formatSellerLicenses(profile);
   return (
     <div>
       {t.logo && profile?.logo && !tally && (
@@ -212,6 +213,7 @@ function SellerBlock({ ctx, tally }) {
       {t.businessAddress && profile?.address && <div style={{ whiteSpace: 'pre-line' }}>{profile.address}</div>}
       {t.businessAddress && (profile?.city || profile?.pin) && <div>{[profile.city, profile.pin].filter(Boolean).join(' - ')}</div>}
       {t.gstin && profile?.gstin && <div>{sellerCC.taxIdLabel || 'GSTIN'}{tally ? '/UIN' : ''}: <strong>{profile.gstin}</strong></div>}
+      {sellerLicenses.length > 0 && <div style={{ overflowWrap: 'anywhere' }}>{sellerLicenses.join(' | ')}</div>}
       {t.state && profile?.state && <div>State Name : {stateWithCode(profile.state)}</div>}
       {(t.businessPhone && profile?.phone) || (profile?.pan && ctx.isIndia) ? (
         <div>{[t.businessPhone && profile?.phone ? `Mobile: ${profile.phone}` : '', profile?.pan && ctx.isIndia ? `PAN: ${profile.pan}` : ''].filter(Boolean).join(' | ')}</div>
@@ -255,6 +257,8 @@ function TallyLayout({ ctx }) {
   ];
   const extraRef = [
     orderMap.vehicleNo && ['Vehicle No.', orderMap.vehicleNo],
+    orderMap.distanceKm && ['Distance (KM)', orderMap.distanceKm],
+    orderMap.transporterId && ['Transporter ID', orderMap.transporterId],
     orderMap.revisionNo && ['Revision No.', orderMap.revisionNo],
     (orderMap.periodFrom || orderMap.periodTo) && ['Service Period', [orderMap.periodFrom, orderMap.periodTo].filter(Boolean).join(' to ')],
     t.dueDate && details?.dueDate && ['Due Date', ctx.shortDate(details.dueDate)],

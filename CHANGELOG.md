@@ -5,6 +5,23 @@ Bharat GST Free Billing follows a **Daily Continuous Release & Safe Auto-Update*
 
 ---
 
+## [5.5.5] - 2026-11-21
+
+**Complete A-to-Z Statutory GST, NIC e-Way Bill, ITR-3/4, Sec 40A(3)/269ST Cash Shield, MSME Sec 43B(h), CA Double-Entry & Mandi License Print Suite.**
+
+### Added & Hardened
+- **NIC e-Way Bill Transport & Self-GSTIN Portal Guards (`src/utils.js`, `src/utils/gstAudit.js`, `src/utils/gstExport.js`, `GSTReturns.jsx`)**: Populates `vehicleNo` (Indian RTO/BH-series validation), `transDistance` (`distanceKm`), `transporterId`, `transporterName`, `transDocNo`, `transDocDate`, 6-digit PIN & 4/6/8-digit HSN; blocks Self-GSTIN (`RET191106`); adds live HSN vs Outward & GSTR-1 vs GSTR-3B `₹0.00` tie-out strip + GST Sec 51 TDS (`2%`: `1% CGST + 1% SGST` / `2% IGST`) & Sec 52 E-Com TCS report.
+- **ITR-3/4, Cash Compliance (`Sec 40A(3)` & `Sec 269ST`), MSME `Sec 43B(h)` & AIS/GSTR-1 Bridge (`src/utils/itrAndTaxEngine.js`, `IncomeTax.jsx`, `ExpenseTracker.jsx`, `CashBook.jsx`, `ReceiptVoucher.jsx`, `InvoiceGenerator.jsx`, `PurchaseBills.jsx`)**: Enforces `₹3 Cr` (`<= 5%` cash) / `₹2 Cr` Sec 44AD cap (`6%` Digital + `8%` Cash), flags `> ₹10,000` (`₹35,000` GTA) single-day cash expenses as Disallowed (`Sec 40A(3)`), warns on `>= ₹2,00,000` cash receipts (`Sec 269ST`), badges `> 45d` unpaid Udyam bills `Overdue`, and verifies `₹0.00` GSTR-1 vs ITR Gross Receipts variance.
+- **CA Double-Entry Tax Split, GSTR-2B `totalTax` & Statutory Licenses on All Print Designs (`src/utils/doubleEntry.js`, `src/utils/fuzzyGstr2b.js`, `SettingsView.jsx`, `InvoicePreview.jsx`, `InvoiceGridLayout.jsx`, `src/utils/industryFields.js`)**: Extracts canonical `d.totals` CGST/SGST/IGST & purchase line items for exact `Assets = Liabilities + Capital` (`₹0.00` diff), adds `grain_mandi_kirana` preset, and renders Mandi License, FSSAI, Drug License & Udyam across all 7 invoice print layouts.
+
+### How to update
+**Current version:** 5.5.4  →  **New version:** 5.5.5
+
+- **Web & Installable PWA**: Refresh the page or click **Update** in **Settings → About & Updates** (`5.5.4` → `5.5.5`).
+- **Desktop / Portable (`Free-GST-Billing.zip` / `Free-GST-Billing-v5.5.5.zip`)**: Click **Update** in **Settings**, or download `Free-GST-Billing-v5.5.5.zip` and extract over your existing folder (your `data/` folder is never touched).
+
+---
+
 ## [5.5.4] - 2026-11-21
 
 **Universal Auto-Closing Menu Sidebar Across Phone, Tablet & Desktop (`src/App.jsx`, `src/index.css`).**
