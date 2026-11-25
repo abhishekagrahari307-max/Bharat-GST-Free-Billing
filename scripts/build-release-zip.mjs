@@ -29,7 +29,7 @@
 // This script will refuse to proceed if dist/ is missing so users
 // don't get a broken release.
 
-import { readdirSync, statSync, existsSync, mkdirSync, rmSync, copyFileSync, readFileSync, writeFileSync } from 'fs';
+import { readdirSync, statSync, existsSync, mkdirSync, rmSync, copyFileSync, readFileSync, writeFileSync, chmodSync } from 'fs';
 import { join, resolve, basename } from 'path';
 import { execFileSync } from 'child_process';
 import { fileURLToPath } from 'url';
@@ -65,7 +65,11 @@ mkdirSync(SYSTEM, { recursive: true });
 console.log('  → Copying launcher files…');
 for (const f of readdirSync(templates)) {
   const src = join(templates, f);
-  if (statSync(src).isFile()) copyFileSync(src, join(STAGING, f));
+  if (statSync(src).isFile()) {
+    const dst = join(STAGING, f);
+    copyFileSync(src, dst);
+    if (/\.(sh|command)$/i.test(f)) chmodSync(dst, 0o755);
+  }
 }
 
 // --- Copy _system-scripts contents INTO _system/ (flattened, no subfolder) ---
@@ -103,7 +107,9 @@ if (existsSync(scriptsSrc)) {
   const scriptFiles = readdirSync(scriptsSrc);
   assertAsciiOnly(scriptsSrc, scriptFiles);
   for (const f of scriptFiles) {
-    copyFileSync(join(scriptsSrc, f), join(SYSTEM, f));
+    const dst = join(SYSTEM, f);
+    copyFileSync(join(scriptsSrc, f), dst);
+    if (/\.(sh|command)$/i.test(f)) chmodSync(dst, 0o755);
   }
 }
 assertAsciiOnly(REPO_ROOT, readdirSync(REPO_ROOT));

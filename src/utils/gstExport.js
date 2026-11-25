@@ -147,13 +147,14 @@ export function formatGovtPos(posCodeOrState, fallbackName = '') {
   return `${code}-${fallbackName || 'Uttar Pradesh'}`;
 }
 
-// Formats UQC for GST Offline Tool V3.2.4 HSN CSV ("PCS-PIECES", "KGS-KILOGRAMS", "NA", "OTH-OTHERS")
+// Formats UQC for GST Offline Tool V3.2.4 HSN CSV ("PCS-PIECES", "KGS-KILOGRAMS", "NA", "OTH-OTHERS").
+// Note: GST Offline Tool V3.2.4 permits "NA" ONLY for Service SAC codes starting with "99";
+// non-99 Goods HSN codes with blank/NA unit safely map to "OTH-OTHERS".
 export function formatGovtUqc(uqc, hsn = '') {
   const cleanHsn = String(hsn || '').replace(/\D/g, '');
   if (/^99/.test(cleanHsn)) return 'NA';
   const raw = String(uqc || '').trim().toUpperCase();
-  if (!raw) return 'OTH-OTHERS';
-  if (raw === 'NA') return 'NA';
+  if (!raw || raw === 'NA') return 'OTH-OTHERS';
   const code = raw.split('-')[0].trim();
   return GOVT_UQC_MAP[code] || 'OTH-OTHERS';
 }
@@ -287,11 +288,12 @@ export function generateGovtGstr1HsnCsv(hsnRows = []) {
     const hsn = digitsOnly || rawHsn;
     if (!hsn) return;
 
-    const cleanDesc = String(r.desc ?? r.description ?? '')
+    const rawDesc = String(r.desc ?? r.description ?? '')
       .replace(/[,;"'\r\n\t]+/g, ' ')
       .replace(/\s+/g, ' ')
       .trim()
       .slice(0, HSN_DESC_MAX);
+    const cleanDesc = rawDesc || (/^99/.test(hsn) ? 'Services' : 'Goods');
 
     const uqc = formatGovtUqc(r.uqc, hsn);
     const qty = uqc === 'NA' ? '0' : Number(r.qty ?? r.quantity ?? 0).toFixed(2);
