@@ -284,7 +284,15 @@ function extractApiPath(input) {
   }
 }
 
-const BHARAT_CHANGELOG_MD = `## [5.2.0] - 2026-11-21
+const BHARAT_CHANGELOG_MD = `## [5.3.0] - 2026-11-21
+**Enterprise Year-End Closing, CA Practice Hub & Zero-Login Support Edition — Multi-Financial Year Rollover Wizard (31-Mar -> 1-Apr), CA Multi-Client \`.bharatca\` Reviewer Hub, GSTR-2B ITC Action Sheet (Sec 16(2)(aa) & 17(5)), Settings-Scoped Health Scorecard & Zero-Login Direct Support.**
+
+### Added & Hardened
+- **Multi-Financial Year Rollover Wizard (\`src/utils/yearEndRolloverEngine.js\`, \`src/components/YearEndRolloverPanel.jsx\`)**: Computes AS-2/ICDS-II 31-March Closing Stock valuation, party-wise Sundry Debtors/Creditors closing balances (with Sec 43B(h) MSME year-end alerts), posts an idempotent balanced 1-April Opening Balance Journal Voucher (\`Dr === Cr\`), and optionally closes prior-FY books via Period Lock.
+- **CA Multi-Client \`.bharatca\` Reviewer Hub & GSTR-2B ITC Action Sheet (\`src/utils/caReviewerAnd2bActionEngine.js\`, \`src/components/CaMultiClientHubPanel.jsx\`)**: Batch-verifies 20–50+ encrypted/plain \`.bharatca\` client packages (SHA-256 tamper check + TB + 43B(h) + ITR summary) AND turns GSTR-2B reconciliation into a persistent **Accept / Keep Pending / Defer (Sec 16(2)(aa)) / Reject (Sec 17(5))** CA Action Sheet with live GSTR-3B Table 4 calculation.
+- **Zero-Login Direct Feedback/Error Bridge, High-Contrast Modal & Settings-Scoped Health (\`src/utils/zeroLoginFeedback.js\`, \`HelpDeskAndReviewModal.jsx\`, \`SettingsView.jsx\`)**: Eliminates mandatory GitHub login via 1-click Zero-Login Direct Submit (local inbox + Web3Forms/Google Form/Server API), fixes dark-mode contrast in the Help Desk modal, and places System, Backup & Data Hygiene Status exclusively inside Settings -> Data & Backups.
+
+## [5.2.0] - 2026-11-21
 **Full-Stack Website Audit Hardening — Canonical Product/Invoice/FY Adapter (P0-1 & P0-2), Verified-Storage P2P Queue + Persistent Host Dedupe + 6-Digit Rate-Limited PIN (P0-5), High-Fidelity Tally XML / Vyapar Migration + Atomic Rollback (P0-6) & Security/Portal Verification (P1).**
 
 ### Fixed & Hardened

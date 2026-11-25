@@ -34,6 +34,7 @@
   --bg-primary: #f0f2f5;
   --bg-secondary: #f8fafc;       /* card / inset surface — light grey on light, dark slate on dark */
   --bg-tertiary: #f1f5f9;        /* hover / selected inset */
+  --bg-card: #ffffff;
   --card-bg: rgba(255, 255, 255, 0.92);
   --text: #111827;
   --text-primary: #111827;       /* alias used by newer components */
@@ -75,6 +76,7 @@
   --bg-primary: #0f172a;
   --bg-secondary: #1e293b;       /* card / inset surface in dark mode */
   --bg-tertiary: #334155;
+  --bg-card: #1e293b;
   --card-bg: rgba(30, 41, 59, 0.92);
   --text: #f1f5f9;
   --text-primary: #f1f5f9;

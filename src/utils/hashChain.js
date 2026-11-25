@@ -140,6 +140,7 @@ export async function buildCaWorkpaperBundle({
   trialBalance = null,
   balanceSheet = null,
   gstHealth = null,
+  statutorySummary = null,
   vouchers = [],
   auditChain = [],
 } = {}) {
@@ -147,7 +148,7 @@ export async function buildCaWorkpaperBundle({
   return {
     magic: CA_PACKAGE_MAGIC,
     software: 'Bharat GST Free Billing',
-    version: '3.0.0',
+    version: '5.3.0',
     generatedAt: new Date().toISOString(),
     business: {
       name: profile?.businessName || 'My Business',
@@ -173,6 +174,7 @@ export async function buildCaWorkpaperBundle({
           warningCount: gstHealth.warnings?.length || 0,
         }
       : null,
+    statutorySummary: statutorySummary || null,
     voucherCount: Array.isArray(vouchers) ? vouchers.length : 0,
     vouchers: Array.isArray(vouchers) ? vouchers : [],
     auditChain: Array.isArray(auditChain) ? auditChain : [],

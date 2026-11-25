@@ -38,6 +38,7 @@ import IndustrySpecsEditor from './IndustrySpecsEditor';
 import { readIndustryConfig, saveIndustryConfig } from '../utils/industryFields';
 import OfflineAppCenter from './OfflineAppCenter';
 import BackupCenter from './BackupCenter';
+import SystemHealthScorecard from './SystemHealthScorecard';
 
 // v1.10.36 — Section order for the jump-nav pill bar. Keeping this at
 // module scope so the scroll-spy effect below can reference it without
@@ -1940,9 +1941,11 @@ export default function SettingsView({ onSaved }) {
 
       <div id="section-data" className="glass-panel p-6 mb-6" style={{ order: 7 }}>
         <h3 className="section-title">
-          Data Backup, Auto-Backup Schedule &amp; Cloud Sync
+          System Health, Data Hygiene &amp; Backup Center
           <HelpButton title="Data Management: Export and Import Backup" doc="backup#export-import" size={16} style={{ marginLeft: 6 }} />
         </h3>
+
+        <SystemHealthScorecard compactDefault={false} />
 
         <BackupCenter
           profile={profile}

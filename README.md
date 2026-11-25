@@ -1,8 +1,8 @@
-# Bharat GST Free Billing 🇮🇳 (`v5.2.0` · Full-Stack Audit-Hardened Autonomous Bharat Business & Statutory Tax OS)
+# Bharat GST Free Billing 🇮🇳 (`v5.3.0` · Complete Enterprise, Year-End Rollover & CA Practice OS)
 
 [![Live Offline PWA](https://img.shields.io/badge/Live_App_%26_Offline_PWA-Launch_Now-16a34a?style=for-the-badge)](https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/)
 [![35-Page User Guide](https://img.shields.io/badge/35--Page_User_Guide-Read_Docs-2563eb?style=for-the-badge)](https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/user-guide/)
-[![Release v5.2.0](https://img.shields.io/badge/Release-v5.2.0_Full_Audit_Hardened-e11d48?style=for-the-badge)](https://github.com/abhishekagrahari307-max/Bharat-GST-Free-Billing/releases/tag/v5.2.0)
+[![Release v5.3.0](https://img.shields.io/badge/Release-v5.3.0_CA_Hub_%26_FY_Rollover-e11d48?style=for-the-badge)](https://github.com/abhishekagrahari307-max/Bharat-GST-Free-Billing/releases/tag/v5.3.0)
 [![License: MIT](https://img.shields.io/badge/License-MIT_Free_Forever-0f172a?style=for-the-badge)](./LICENSE)
 
 > **Welcome to Bharat GST Free Billing** — India's 100% Free, Offline-First ERP & GST Compliance OS, *created by Abhishek Agrahari*.
@@ -16,9 +16,9 @@ Created & maintained by **Abhishek Agrahari** — built for Indian retail shops,
 📄 **Machine-Readable Architecture Spec (`llms.txt`):** [https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/llms.txt](https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/llms.txt)  
 📦 **Multi-OS Desktop Releases (`.exe`, `.deb`, `.AppImage`, `macOS`, `Portable ZIP`, `Docker`):** [GitHub Releases](https://github.com/abhishekagrahari307-max/Bharat-GST-Free-Billing/releases)
 
-### 🏆 Dominance Matrix: Bharat GST `v5.2.0` vs Tax2Win, CompuTax, Vyapar & TallyPrime
+### 🏆 Dominance Matrix: Bharat GST `v5.3.0` vs Tax2Win, CompuTax, Vyapar & TallyPrime
 
-| Capability | Tax2Win | CompuTax | Vyapar | TallyPrime | **Bharat GST `v5.2.0`** |
+| Capability | Tax2Win | CompuTax | Vyapar | TallyPrime | **Bharat GST `v5.3.0`** |
 |---|---|---|---|---|---|
 | **GST Billing, POS & Weighing Scale** | ❌ | ❌ | ⚠️ Paid | ⚠️ No Scale | ✅ **100% Free + WebSerial** |
 | **GSTR-1/2B/3B/9 + Sec 17(5) / Rule 37 Shield** | ⚠️ Paid | ✅ Paid | ⚠️ Basic | ✅ Paid | ✅ **Free + AI Fuzzy 2B** |

@@ -24,14 +24,14 @@ export default function HelpDictionaryPanel() {
   }, [query, selectedCategory]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', color: '#0f172a' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-        <BookOpen size={20} style={{ color: 'var(--primary, #2563eb)', flexShrink: 0 }} />
+        <BookOpen size={20} style={{ color: '#2563eb', flexShrink: 0 }} />
         <div>
-          <h3 style={{ margin: 0, fontSize: '0.96rem', fontWeight: 700 }}>
+          <h3 style={{ margin: 0, fontSize: '0.96rem', fontWeight: 800, color: '#0f172a' }}>
             व्यापार और GST शब्दकोश (Hinglish Help Dictionary)
           </h3>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary, #64748b)' }}>
+          <span style={{ fontSize: '0.75rem', color: '#475569' }}>
             किसी भी टैक्स, रिटर्न या अकाउंटिंग शब्द का सरल अर्थ और उदाहरण खोजें
           </span>
         </div>
@@ -46,7 +46,7 @@ export default function HelpDictionaryPanel() {
             left: '10px',
             top: '50%',
             transform: 'translateY(-50%)',
-            color: 'var(--text-secondary, #64748b)',
+            color: '#64748b',
             pointerEvents: 'none',
           }}
         />
@@ -54,26 +54,44 @@ export default function HelpDictionaryPanel() {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="शब्द खोजें (जैसे: 43B, ITC, HSN, 44AD, 87A, Credit Note, FEFO)…"
+          placeholder="शब्द खोजें (जैसे: 43B, ITC, HSN, 44AD, 87A, Rollover, 2B, FEFO)…"
           aria-label="Search GST and business dictionary"
-          className="form-input"
-          style={{ width: '100%', paddingLeft: '34px' }}
+          style={{
+            width: '100%',
+            padding: '0.5rem 0.65rem 0.5rem 34px',
+            background: '#ffffff',
+            color: '#0f172a',
+            border: '1px solid #cbd5e1',
+            borderRadius: '8px',
+            fontSize: '0.84rem',
+          }}
         />
       </div>
 
       {/* Category Filter Pills */}
       <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-        {HELP_DICTIONARY_CATEGORIES.map((cat) => (
-          <button
-            key={cat}
-            type="button"
-            onClick={() => setSelectedCategory(cat)}
-            className={`btn btn-sm ${selectedCategory === cat ? 'btn-primary' : 'btn-secondary'}`}
-            style={{ padding: '0.22rem 0.6rem', fontSize: '0.74rem' }}
-          >
-            {cat}
-          </button>
-        ))}
+        {HELP_DICTIONARY_CATEGORIES.map((cat) => {
+          const active = selectedCategory === cat;
+          return (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => setSelectedCategory(cat)}
+              style={{
+                padding: '0.24rem 0.62rem',
+                fontSize: '0.74rem',
+                fontWeight: 700,
+                borderRadius: '999px',
+                cursor: 'pointer',
+                border: active ? '1px solid #1d4ed8' : '1px solid #cbd5e1',
+                background: active ? '#2563eb' : '#f8fafc',
+                color: active ? '#ffffff' : '#1e293b',
+              }}
+            >
+              {cat}
+            </button>
+          );
+        })}
       </div>
 
       {/* Dictionary Cards */}
@@ -93,7 +111,7 @@ export default function HelpDictionaryPanel() {
               padding: '1rem',
               textAlign: 'center',
               fontSize: '0.82rem',
-              color: 'var(--text-secondary, #64748b)',
+              color: '#475569',
             }}
           >
             &ldquo;{query}&rdquo; से मिलता कोई शब्द नहीं मिला।
@@ -105,8 +123,8 @@ export default function HelpDictionaryPanel() {
               style={{
                 padding: '0.75rem',
                 borderRadius: '10px',
-                border: '1px solid var(--border-color, #e2e8f0)',
-                background: 'var(--bg-secondary, #f8fafc)',
+                border: '1px solid #e2e8f0',
+                background: '#f8fafc',
               }}
             >
               <div
@@ -119,7 +137,7 @@ export default function HelpDictionaryPanel() {
                   flexWrap: 'wrap',
                 }}
               >
-                <strong style={{ fontSize: '0.86rem', color: 'var(--text-primary, #0f172a)' }}>
+                <strong style={{ fontSize: '0.87rem', color: '#0f172a' }}>
                   {item.term}
                 </strong>
                 <span
@@ -127,8 +145,8 @@ export default function HelpDictionaryPanel() {
                     fontSize: '0.68rem',
                     padding: '0.1rem 0.5rem',
                     borderRadius: '999px',
-                    background: 'rgba(37, 99, 235, 0.12)',
-                    color: 'var(--primary, #2563eb)',
+                    background: '#dbeafe',
+                    color: '#1e40af',
                     fontWeight: 700,
                   }}
                 >
@@ -139,7 +157,7 @@ export default function HelpDictionaryPanel() {
                 style={{
                   margin: '0 0 0.4rem 0',
                   fontSize: '0.8rem',
-                  color: 'var(--text-primary, #334155)',
+                  color: '#1e293b',
                   lineHeight: 1.45,
                 }}
               >
@@ -148,11 +166,11 @@ export default function HelpDictionaryPanel() {
               <div
                 style={{
                   fontSize: '0.75rem',
-                  color: 'var(--text-secondary, #475569)',
-                  background: 'var(--bg-card, #ffffff)',
+                  color: '#334155',
+                  background: '#ffffff',
                   padding: '0.4rem 0.55rem',
                   borderRadius: '6px',
-                  borderLeft: '3px solid var(--primary, #2563eb)',
+                  borderLeft: '3px solid #2563eb',
                 }}
               >
                 <strong>उदाहरण:</strong> {item.example}
