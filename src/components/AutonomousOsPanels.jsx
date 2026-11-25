@@ -25,6 +25,7 @@ import {
   computeMultiFirmConsolidation,
 } from '../utils/autonomousMunimAnd43B';
 import { toast } from './Toast';
+import { triggerTrackedBrowserDownload } from '../utils/trackedDownload';
 
 export default function AutonomousOsPanels({
   section,
@@ -33,6 +34,8 @@ export default function AutonomousOsPanels({
   expenses = [],
   products = [],
   ownerProfile = null,
+  fy = '2026-27',
+  onFyChange,
   onProductsUpdated,
 }) {
   const [clients, setClients] = useState([]);
@@ -46,6 +49,8 @@ export default function AutonomousOsPanels({
   const [aisSummary, setAisSummary] = useState({ tdsEntries: [], sftTransactions: [], totalTdsCredit: 0, totalTcsCredit: 0 });
   const [digitalPct, setDigitalPct] = useState(95);
   const [otherIncome, setOtherIncome] = useState(0);
+  const [openingStock, setOpeningStock] = useState(0);
+  const [closingStock, setClosingStock] = useState(0);
   const [is44ADA, setIs44ADA] = useState(false);
   const [portalBillId, setPortalBillId] = useState('');
   const [portalVehicle, setPortalVehicle] = useState('');
@@ -58,6 +63,8 @@ export default function AutonomousOsPanels({
   const [newTdsPaid, setNewTdsPaid] = useState('');
   const [newTdsAmt, setNewTdsAmt] = useState('');
 
+  const activeOwnerGstin = String(ownerProfile?.gstin || '').trim().toUpperCase();
+
   const itrResult = useMemo(
     () =>
       computeBusinessITR({
@@ -66,10 +73,14 @@ export default function AutonomousOsPanels({
         expenses,
         digitalReceiptPercent: digitalPct,
         otherIncome,
+        openingStock,
+        closingStock,
         isProfession44ADA: is44ADA,
+        fy,
+        ownerGstin: activeOwnerGstin,
         aisSummary,
       }),
-    [bills, purchases, expenses, digitalPct, otherIncome, is44ADA, aisSummary]
+    [bills, purchases, expenses, digitalPct, otherIncome, openingStock, closingStock, is44ADA, fy, activeOwnerGstin, aisSummary]
   );
 
   const combinedTdsRows = useMemo(
@@ -176,15 +187,14 @@ export default function AutonomousOsPanels({
   };
 
   const handleDownloadText = (filename, content, mime = 'text/plain') => {
-    const blob = new Blob([content], { type: mime });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+    triggerTrackedBrowserDownload({
+      content,
+      mimeType: mime,
+      filename,
+      category: 'report',
+      label: `Working Export (${filename})`,
+      portalAdvisory: 'CA working schedule — validate in official utility before filing',
+    });
   };
 
   const handleAddManualTdsRow = () => {
@@ -263,26 +273,37 @@ export default function AutonomousOsPanels({
   };
 
   const handleRunBom = async () => {
+    const fin = products.find((p) => String(p.id) === String(bomFinishedId)) || products[0];
+    const raw = products.find((p) => String(p.id) === String(bomRawId)) || products[1] || products[0];
+    if (!fin || !raw || fin.id === raw.id) {
+      toast('Select two distinct products (1 Raw Material and 1 Finished Good) in Inventory first.', 'error');
+      return;
+    }
+    const rawSnapshot = { ...raw };
+    const finSnapshot = { ...fin };
+    const savedOriginals = [];
     try {
-      const fin = products.find((p) => String(p.id) === String(bomFinishedId)) || products[0];
-      const raw = products.find((p) => String(p.id) === String(bomRawId)) || products[1] || products[0];
-      if (!fin || !raw || fin.id === raw.id) {
-        toast('Select two distinct products (1 Raw Material and 1 Finished Good) in Inventory first.', 'error');
-        return;
-      }
       const res = computeManufacturingBOM({
         finishedItem: fin,
         producedQty: bomProducedQty,
         rawMaterials: [{ product: raw, qtyPerUnit: bomRawQtyPerUnit, wastagePercent: bomWastagePct }],
         additionalOverheadCost: bomOverhead,
       });
-      for (const rp of res.updatedRawProducts) await saveProduct(rp);
+      for (const rp of res.updatedRawProducts) {
+        await saveProduct(rp);
+        savedOriginals.push(rawSnapshot);
+      }
       await saveProduct(res.updatedFinishedProduct);
+      savedOriginals.push(finSnapshot);
       setLastBomResult(res);
       onProductsUpdated?.();
       toast(`Produced ${res.producedQty} ${fin.name} | Landed Cost: ₹${res.landedCostPerUnit}/unit!`, 'success');
     } catch (err) {
-      toast(err?.message || 'Manufacturing BOM failed', 'error');
+      for (const snap of savedOriginals) {
+        await saveProduct(snap).catch(() => {});
+      }
+      onProductsUpdated?.();
+      toast(err?.message || 'Manufacturing BOM failed — stock rolled back safely', 'error');
     }
   };
 
@@ -322,10 +343,31 @@ export default function AutonomousOsPanels({
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '0.75rem', marginTop: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(165px, 1fr))', gap: '0.75rem', marginTop: '1rem' }}>
+            <div>
+              <label style={{ fontSize: '0.76rem', fontWeight: 600 }}>Financial Year</label>
+              <select
+                className="form-input"
+                value={fy}
+                onChange={(e) => onFyChange?.(e.target.value)}
+              >
+                <option value="2026-27">FY 2026-27</option>
+                <option value="2025-26">FY 2025-26</option>
+                <option value="2024-25">FY 2024-25</option>
+                <option value="ALL">All Dates</option>
+              </select>
+            </div>
             <div>
               <label style={{ fontSize: '0.76rem', fontWeight: 600 }}>Digital Receipts % (Cash: {itrResult.cashReceiptPercent}%)</label>
               <input type="number" className="form-input" min="0" max="100" value={digitalPct} onChange={(e) => setDigitalPct(Number(e.target.value))} />
+            </div>
+            <div>
+              <label style={{ fontSize: '0.76rem', fontWeight: 600 }}>Opening Stock (₹)</label>
+              <input type="number" className="form-input" min="0" value={openingStock} onChange={(e) => setOpeningStock(Number(e.target.value))} />
+            </div>
+            <div>
+              <label style={{ fontSize: '0.76rem', fontWeight: 600 }}>Closing Stock (₹)</label>
+              <input type="number" className="form-input" min="0" value={closingStock} onChange={(e) => setClosingStock(Number(e.target.value))} />
             </div>
             <div>
               <label style={{ fontSize: '0.76rem', fontWeight: 600 }}>Other Income (FD / Interest ₹)</label>
@@ -337,6 +379,11 @@ export default function AutonomousOsPanels({
                 Profession Sec 44ADA (50% profit)
               </label>
             </div>
+          </div>
+
+          <div className="text-muted" style={{ fontSize: '0.76rem', marginTop: '0.65rem' }}>
+            Net Taxable Turnover: <b>{formatCurrency(itrResult.grossTurnover)}</b>
+            {itrResult.creditNotesReduced > 0 ? ` (Credit Notes Subtracted: ${formatCurrency(itrResult.creditNotesReduced)})` : ''} · COGS: <b>{formatCurrency(itrResult.cogs)}</b>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(245px, 1fr))', gap: '0.85rem', marginTop: '1rem' }}>

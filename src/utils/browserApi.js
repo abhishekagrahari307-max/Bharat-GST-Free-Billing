@@ -284,7 +284,15 @@ function extractApiPath(input) {
   }
 }
 
-const BHARAT_CHANGELOG_MD = `## [5.1.0] - 2026-11-21
+const BHARAT_CHANGELOG_MD = `## [5.2.0] - 2026-11-21
+**Full-Stack Website Audit Hardening — Canonical Product/Invoice/FY Adapter (P0-1 & P0-2), Verified-Storage P2P Queue + Persistent Host Dedupe + 6-Digit Rate-Limited PIN (P0-5), High-Fidelity Tally XML / Vyapar Migration + Atomic Rollback (P0-6) & Security/Portal Verification (P1).**
+
+### Fixed & Hardened
+- **Canonical Product & Invoice Schema Adapter (\`src/utils/canonicalAdapter.js\`)**: Reconciles \`taxPercent\` <-> \`gstRate\` across Inventory, Serverless \`#b2b-catalog=z.\`, HTML Catalog, WebRTC P2P, and Tally/Vyapar Importer (fixing P0-1); reads \`data.totals.taxableAmount\` & subtracts hyphenated \`'credit-note'\` across ITR-3/4, GSTR-9, and Group Consolidation with strict Financial Year (\`FY\`), Firm (\`ownerGstin\`), and Opening/Closing Stock COGS support (fixing P0-2).
+- **Verified WebRTC P2P Durability & Pairing Security (\`src/utils/webrtcP2pSync.js\`)**: Verifies \`localStorage\` read-back before reporting \`queued: true\` (triggering an emergency JSON download on \`QuotaExceededError\`), persists host \`queueId\` deduplication across restarts, upgrades to a 6-digit PIN with 5-attempt lockout, and scrubs \`?pin=\` from browser history (fixing P0-5 & P1).
+- **High-Fidelity Tally XML / Vyapar Migration & Atomic Rollback (\`src/utils/legacyImporter.js\`)**: Preserves Tally \`<ALLINVENTORYENTRIES.LIST>\` line items and \`<LEDGERENTRIES.LIST>\` CGST/SGST/IGST breakup, flags ledger-only voucher warnings, and adds atomic batch rollback on migration & BOM saves (fixing P0-6 & P1).
+
+## [5.1.0] - 2026-11-21
 **Audit-Hardened Statutory Tax & POS Polish Release — CBDT Sec 44AD/44ADA 5%-Cash Cap, Sec 87A Marginal Relief, MSMED Sec 15 (15d/45d) 43B(h) Accuracy, fflate-Compressed \`#b2b-catalog=z.\` URLs & Shop POS / CA Pro Mode Toggle.**
 
 ### Added & Hardened

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
-import { Home, FileText, Settings, Plus, Users, Package, BarChart3, Wallet, RefreshCw, Receipt, BookOpen, Moon, Sun, Download, X, ShoppingCart, ChevronDown, Building2, Pencil, HelpCircle, Search, Command, Bell, Calculator, Menu, Heart, Banknote } from 'lucide-react';
+import { Home, FileText, Settings, Plus, Users, Package, BarChart3, Wallet, RefreshCw, Receipt, BookOpen, Moon, Sun, Download, X, ShoppingCart, ChevronDown, Building2, Pencil, HelpCircle, Search, Command, Bell, Calculator, Menu, Heart, Banknote, LifeBuoy, Bug, Star, Wrench } from 'lucide-react';
 import { getAllProfilesWithHidden, saveProfile, getEnabledModules, getMenuOrder, getMenuHidden, getMenuDots, onMenuChanged, getAllBills, getAllProducts, getAllRecurring, getStockAlertSettings, runUpdateNow, getLockStatus, visibleProfiles, hasHiddenProfiles, openHiddenCompanies, hideCompaniesAgain, isOpenedHidden, exportAllData, getBackupsList, DATA_SAVED_EVENT } from './store';
 import { isModuleEnabled, localToday, DOCS_URL } from './utils';
 import { APP_VERSION } from './utils/problemLog';
@@ -54,7 +54,10 @@ import ConfirmModalContainer, { promptAction } from './components/ConfirmModal';
 import WelcomeGuide from './components/WelcomeGuide';
 import ServerlessB2BStorefront from './components/ServerlessB2BStorefront';
 import WorkspaceModeToggle, { getSavedWorkspaceMode, SHOP_POS_ALLOWED_IDS } from './components/WorkspaceModeToggle';
+import OperationProgressBar from './components/OperationProgressBar';
+import HelpDeskAndReviewModal from './components/HelpDeskAndReviewModal';
 import { decodeServerlessCatalogLink } from './utils/autonomousMunimAnd43B';
+import { isStaffModeLocked } from './utils/shopEssentials';
 import { playWelcomeVoice, armSessionWelcomeGreeting } from './utils/welcomeSound';
 import { WhatsNewAfterUpdate, SEEN_KEY as WHATS_NEW_SEEN_KEY } from './components/WhatsNewSlides';
 const InvoiceGenerator = lazy(() => import('./components/InvoiceGenerator'));
@@ -416,6 +419,7 @@ function App() {
     };
 
     const initial = setTimeout(runIfDue, 8000);
+    let mirrorWarnedThisSession = false;
     let mirrorTimer = null;
     const mirrorToHardDriveNow = async () => {
       const settings = readBackupSettings();
@@ -423,9 +427,18 @@ function App() {
       try {
         const payload = await exportAllData();
         if (payload) {
-          await writeBackupToBrowserDirectory('BharatGST-Live-Mirror.json', JSON.stringify(payload, null, 2), { interactive: false });
+          const res = await writeBackupToBrowserDirectory('BharatGST-Live-Mirror.json', JSON.stringify(payload, null, 2), { interactive: false });
+          if (res && res.ok === false && !mirrorWarnedThisSession) {
+            mirrorWarnedThisSession = true;
+            toast('Hard-Drive Live Mirror paused — re-authorize your backup folder in Settings → Data & Backups.', 'warning');
+          }
         }
-      } catch { /* folder handle not granted in this session yet */ }
+      } catch {
+        if (!mirrorWarnedThisSession) {
+          mirrorWarnedThisSession = true;
+          toast('Hard-Drive Live Mirror needs folder permission re-granted in Settings → Data & Backups.', 'warning');
+        }
+      }
     };
 
     const periodic = setInterval(runIfDue, 30 * 60 * 1000);
@@ -848,6 +861,8 @@ function App() {
   // (search icon, then a ⋯ menu, then a second line) only when it must.
   const [barTitleEl, setBarTitleEl] = useState(null);
   const [barActionsEl, setBarActionsEl] = useState(null);
+  const [helpDeskState, setHelpDeskState] = useState({ open: false, tab: 'HELP', job: null });
+  const openHelpDesk = (tab = 'HELP', job = null) => setHelpDeskState({ open: true, tab, job });
   const barSlots = useMemo(() => (barTitleEl && barActionsEl ? { title: barTitleEl, actions: barActionsEl } : null), [barTitleEl, barActionsEl]);
   const barRef = useRef(null);
   useEffect(() => {
@@ -862,6 +877,11 @@ function App() {
     // v1.10.86 - Help (?) is a small menu: the user guide and the keyboard shortcuts.
     guide: (
       <ActionsMenu key={id} label="Help" icon={HelpCircle} iconSize={18} className="topbar-btn" items={[
+        { label: 'In-App Help Desk & FAQ (त्वरित समाधान)', icon: LifeBuoy, onClick: () => openHelpDesk('HELP') },
+        { label: 'Hinglish GST & Tax Dictionary (शब्दकोश)', icon: BookOpen, onClick: () => openHelpDesk('DICTIONARY') },
+        { label: '1-Click Demo Store & Staff PIN', icon: Wrench, onClick: () => openHelpDesk('TOOLS') },
+        { label: 'Report Error (Privacy-Safe)', icon: Bug, onClick: () => openHelpDesk('ERROR') },
+        { label: 'Rate & Review Bharat GST ⭐', icon: Star, onClick: () => openHelpDesk('REVIEW') },
         { label: 'User guide (opens in your browser)', icon: BookOpen, onClick: openDocs },
         { label: 'Keyboard shortcuts (Ctrl+/)', icon: Command, onClick: () => setShowShortcutsHelp(true) },
       ]} />
@@ -1306,6 +1326,16 @@ function App() {
             >
               Created by <strong style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Abhishek Agrahari</strong>
             </div>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '0.45rem', flexWrap: 'wrap', padding: '0.2rem 0.5rem 0.25rem' }}>
+              <button
+                type="button"
+                onClick={() => { setNavOpen(false); openHelpDesk('HELP'); }}
+                className="btn btn-secondary btn-sm"
+                style={{ fontSize: '0.68rem', padding: '0.2rem 0.55rem' }}
+              >
+                <LifeBuoy size={12} /> Help, Dictionary &amp; Review
+              </button>
+            </div>
             <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', paddingBottom: '0.2rem', fontSize: '0.66rem', color: 'var(--text-muted)' }}>
               <a href="./privacy.html" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>Privacy</a>
               <span aria-hidden="true">·</span>
@@ -1334,7 +1364,27 @@ function App() {
         <ErrorBoundary key={currentView} onHome={() => setCurrentView('dashboard')}>
         {currentView !== 'new' && <StarBanner />}
         {currentView === 'dashboard' && (
-          <Dashboard onNew={handleNewInvoice} onEdit={handleEditInvoice} onPrint={handlePrintInvoice} onDuplicate={handleDuplicateInvoice} onConvert={handleConvertToInvoice} onOpenProducts={() => setCurrentView('inventory')} onOpenPurchases={() => setCurrentView('purchases')} onOpenSettings={() => setCurrentView('settings')} onOpenGuide={openDocs} onOpenSupport={() => setCurrentView('support')} activeProfile={profile} />
+          <Dashboard
+            onNew={handleNewInvoice}
+            onEdit={handleEditInvoice}
+            onPrint={handlePrintInvoice}
+            onDuplicate={handleDuplicateInvoice}
+            onConvert={handleConvertToInvoice}
+            onOpenProducts={() => setCurrentView('inventory')}
+            onOpenPurchases={() => setCurrentView('purchases')}
+            onOpenSettings={() => {
+              if (isStaffModeLocked()) {
+                toast('Settings पर Staff Lock लगा है — अनलॉक करने के लिए Admin PIN डालें।', 'warning');
+                openHelpDesk('TOOLS');
+                return;
+              }
+              setCurrentView('settings');
+            }}
+            onOpenGuide={openDocs}
+            onOpenSupport={() => setCurrentView('support')}
+            onOpenHelpDesk={openHelpDesk}
+            activeProfile={profile}
+          />
         )}
         {/* v1.10.4 — All lazy views under one Suspense boundary. Only the
              matched view's chunk actually loads; others stay unfetched. */}
@@ -1564,6 +1614,18 @@ function App() {
         anyDot={anyDot}
       />
 
+      <OperationProgressBar onReportError={(job) => openHelpDesk('ERROR', job)} />
+      {helpDeskState.open && (
+        <HelpDeskAndReviewModal
+          appVersion={`v${APP_VERSION}`}
+          initialTab={helpDeskState.tab}
+          prefilledErrorJob={helpDeskState.job}
+          onDataSeeded={() => {
+            window.dispatchEvent(new Event(DATA_SAVED_EVENT));
+          }}
+          onClose={() => setHelpDeskState({ open: false, tab: 'HELP', job: null })}
+        />
+      )}
       <ToastContainer />
       <ConfirmModalContainer />
       <UpdateOverlay />

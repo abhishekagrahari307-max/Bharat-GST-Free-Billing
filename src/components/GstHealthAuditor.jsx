@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { ShieldCheck, AlertTriangle, AlertCircle, Info, ChevronDown, ChevronUp, Download } from 'lucide-react';
 import { auditInvoicesForGst } from '../utils/gstAudit';
+import { triggerTrackedBrowserDownload } from '../utils/trackedDownload';
 
 export default function GstHealthAuditor({ bills = [], periodLabel = '' }) {
   const [expanded, setExpanded] = useState(false);
@@ -26,13 +27,14 @@ export default function GstHealthAuditor({ bills = [], periodLabel = '' }) {
     const csv = [header, ...rows]
       .map((r) => r.map((cell) => `"${String(cell || '').replace(/"/g, '""')}"`).join(','))
       .join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `BharatGST-CA-Audit-${(periodLabel || 'Report').replace(/\s+/g, '-')}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    triggerTrackedBrowserDownload({
+      content: csv,
+      mimeType: 'text/csv;charset=utf-8;',
+      filename: `BharatGST-CA-Audit-${(periodLabel || 'Report').replace(/\s+/g, '-')}.csv`,
+      category: 'gstr',
+      label: `GST Pre-Check CSV (${rows.length} findings)`,
+      allowEmpty: true,
+    });
   };
 
   return (

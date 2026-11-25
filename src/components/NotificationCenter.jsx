@@ -121,7 +121,7 @@ export default function NotificationCenter({
                   onFeedChanged?.(updatedFeed);
                 }}
               >
-                <Check size={13} /> Mark all read
+                <Check size={13} /> Mark all as read
               </button>
             )}
             <button type="button" className="icon-btn" onClick={onClose} title="Close"><X size={18} /></button>

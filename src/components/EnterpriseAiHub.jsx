@@ -5,8 +5,9 @@ import {
   Upload, Download, CheckCircle2, MessageCircle, Scale, Printer, Smartphone, Send, RefreshCw, Database,
   FileSpreadsheet, Warehouse, Brain,
 } from 'lucide-react';
-import { saveBill, saveClient, saveProduct } from '../store';
+import { saveBill, saveClient, saveProduct, deleteBill, deleteClient, deleteProduct } from '../store';
 import { formatCurrency } from '../utils';
+import { getIndianFinancialYear } from '../utils/canonicalAdapter';
 import { runGstNoticeShield, buildGstr9AndCmp08WorkingPapers } from '../utils/gstNoticeShield';
 import { reconcileGstr2bFuzzy } from '../utils/fuzzyGstr2b';
 import { forecastCashFlowAndInventory } from '../utils/aiForecaster';
@@ -24,6 +25,8 @@ import {
   WebRtcP2pController,
   buildP2pPairingUrl,
   parseP2pParamsFromSearch,
+  scrubPinFromBrowserUrl,
+  mapProductsToP2pCatalog,
   buildP2pInvoicePayload,
   getP2pOfflineQueue,
 } from '../utils/webrtcP2pSync';
@@ -33,6 +36,9 @@ import {
 } from '../utils/legacyImporter';
 import TableExport from './TableExport';
 import AutonomousOsPanels from './AutonomousOsPanels';
+import SystemHealthScorecard from './SystemHealthScorecard';
+import { triggerTrackedBrowserDownload } from '../utils/trackedDownload';
+import { startOperation, updateOperation, finishOperation } from '../utils/operationRegistry';
 import { toast } from './Toast';
 
 export default function EnterpriseAiHub({
@@ -50,6 +56,7 @@ export default function EnterpriseAiHub({
   );
   const [section, setSection] = useState(() => (initialP2p ? 'p2p' : 'notice'));
   const [reconResult, setReconResult] = useState(null);
+  const [fyFilter, setFyFilter] = useState(() => getIndianFinancialYear());
 
   // WebRTC P2P Mobile <-> PC Live Sync state
   const p2pRef = useRef(null);
@@ -74,6 +81,7 @@ export default function EnterpriseAiHub({
   const [importingLegacy, setImportingLegacy] = useState(false);
 
   useEffect(() => {
+    scrubPinFromBrowserUrl();
     p2pRef.current = new WebRtcP2pController();
     return () => {
       p2pRef.current?.disconnectAll();
@@ -97,14 +105,16 @@ export default function EnterpriseAiHub({
   const [capturedWeight, setCapturedWeight] = useState(null);
   const [selectedBillId, setSelectedBillId] = useState('');
 
+  const activeOwnerGstin = String(ownerProfile?.gstin || '').trim().toUpperCase();
+
   const noticeShield = useMemo(
-    () => runGstNoticeShield({ bills, purchases, expenses }),
-    [bills, purchases, expenses]
+    () => runGstNoticeShield({ bills, purchases, expenses, fy: fyFilter, ownerGstin: activeOwnerGstin }),
+    [bills, purchases, expenses, fyFilter, activeOwnerGstin]
   );
 
   const annualPapers = useMemo(
-    () => buildGstr9AndCmp08WorkingPapers({ bills, purchases }),
-    [bills, purchases]
+    () => buildGstr9AndCmp08WorkingPapers({ bills, purchases, fy: fyFilter, ownerGstin: activeOwnerGstin }),
+    [bills, purchases, fyFilter, activeOwnerGstin]
   );
 
   const forecast = useMemo(
@@ -140,15 +150,27 @@ export default function EnterpriseAiHub({
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
+    const opId = startOperation({
+      category: 'gstr2b',
+      label: `GSTR-2B Reconciliation (${file.name})`,
+      phase: 'Reading & validating portal GSTR-2B JSON…',
+      destination: 'Local Workspace',
+    });
     try {
       const json = JSON.parse(await file.text());
+      updateOperation(opId, { phase: `Matching against ${purchases.length} purchase records…` });
       const res = reconcileGstr2bFuzzy(json, purchases);
       setReconResult(res);
+      finishOperation(opId, {
+        status: res.summary.mismatchCount > 0 || res.missingIn2b.length > 0 ? 'partial' : 'success',
+        phase: `Reconciled ${res.summary.autoReconciledCount} bills (${res.summary.fuzzyRecoveredCount} fuzzy recovered, ${res.missingIn2b.length} missing in 2B)`,
+      });
       toast(
         `Reconciled ${res.summary.autoReconciledCount} bills (${res.summary.fuzzyRecoveredCount} AI fuzzy matches recovered)!`,
         'success'
       );
     } catch (err) {
+      finishOperation(opId, { status: 'failed', error: err });
       toast(err?.message || 'Invalid GSTR-2B JSON file', 'error');
     }
   };
@@ -198,16 +220,15 @@ export default function EnterpriseAiHub({
 
   const handleDownloadCatalog = () => {
     const html = buildShareableB2bCatalogHtml(products, ownerProfile || {});
-    const blob = new Blob([html], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${String(ownerProfile?.businessName || 'Bharat-GST').replace(/[^a-zA-Z0-9_-]+/g, '-')}-B2B-Catalog.html`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-    toast('Shareable B2B Digital Catalog HTML downloaded! Share it on WhatsApp or host anywhere.', 'success');
+    const filename = `${String(ownerProfile?.businessName || 'Bharat-GST').replace(/[^a-zA-Z0-9_-]+/g, '-')}-B2B-Catalog.html`;
+    triggerTrackedBrowserDownload({
+      content: html,
+      mimeType: 'text/html',
+      filename,
+      category: 'catalog',
+      label: `B2B Digital Catalog HTML (${products.length} items)`,
+    });
+    toast('Shareable B2B Digital Catalog HTML ready — browser download initiated!', 'success');
   };
 
   const handleReadScale = async () => {
@@ -239,16 +260,7 @@ export default function EnterpriseAiHub({
     try {
       const creds = await p2pRef.current.startHost({
         shopName: ownerProfile?.businessName || 'Counter PC',
-        getCatalog: () =>
-          products.map((p) => ({
-            id: p.id,
-            name: p.name,
-            hsn: p.hsn || '',
-            unit: p.unit || 'PCS',
-            price: Number(p.sellingPrice ?? p.price ?? 0) || 0,
-            gstRate: Number(p.gstRate ?? p.taxRate ?? 0) || 0,
-            stock: Number(p.stock ?? p.currentStock ?? 0) || 0,
-          })),
+        getCatalog: () => mapProductsToP2pCatalog(products),
         onStatus: (st) => {
           pushP2pLog(st.message);
           if (st.state === 'DEVICE_AUTHENTICATED') toast(st.message, 'success');
@@ -264,11 +276,13 @@ export default function EnterpriseAiHub({
       const pairUrl = buildP2pPairingUrl(window.location.href, creds);
       const qr = await QRCode.toDataURL(pairUrl, { width: 200, margin: 1 });
       setHostQrDataUrl(qr);
-      pushP2pLog(`Generating WebRTC session ${creds.roomId} (PIN: ${creds.pin})…`);
+      pushP2pLog(`WebRTC session ${creds.roomId} ready (6-digit PIN active; 5-attempt lockout)…`);
     } catch (err) {
       toast(err?.message || 'Could not start WebRTC Host', 'error');
     }
   };
+
+  const p2pOpsByQueueIdRef = useRef({});
 
   const handleConnectMobileToPc = async () => {
     try {
@@ -291,6 +305,15 @@ export default function EnterpriseAiHub({
         },
         onAckReceived: (ack) => {
           setOfflineQueue(getP2pOfflineQueue());
+          const qOpId = ack?.queueId ? p2pOpsByQueueIdRef.current[ack.queueId] : null;
+          if (qOpId) {
+            finishOperation(qOpId, {
+              status: 'success',
+              outcome: 'HOST_ACK_VERIFIED',
+              phase: `Host ACK verified — Counter PC saved Bill #${ack.invoiceNumber}`,
+            });
+            delete p2pOpsByQueueIdRef.current[ack.queueId];
+          }
           toast(`✓ Counter PC saved Bill #${ack.invoiceNumber}!`, 'success');
           setP2pCart({});
         },
@@ -322,13 +345,45 @@ export default function EnterpriseAiHub({
         sellerState: String(ownerProfile?.gstin || '').slice(0, 2),
         items: chosen,
       });
+      const p2pOpId = startOperation({
+        category: 'p2p',
+        label: `P2P Order #${payload.invoiceNumber}`,
+        phase: 'Queueing & sending to Counter PC…',
+        destination: 'Counter PC (WebRTC)',
+      });
       const delivery = p2pRef.current.pushBillSafe(remoteRoomId, payload);
+      if (delivery.queueId) {
+        p2pOpsByQueueIdRef.current[delivery.queueId] = p2pOpId;
+      }
       setOfflineQueue(getP2pOfflineQueue());
       if (delivery.sentImmediately) {
+        updateOperation(p2pOpId, {
+          status: 'waiting',
+          phase: `Sent #${payload.invoiceNumber} — awaiting Counter PC save ACK…`,
+        });
         pushP2pLog(`Sent ${p2pDocType} #${payload.invoiceNumber} (₹${payload.totalAmount.toFixed(2)}) [${delivery.queueId}]…`);
+      } else if (delivery.storageError) {
+        finishOperation(p2pOpId, {
+          status: 'failed',
+          phase: 'Offline queue storage full/blocked — emergency JSON download initiated',
+          error: delivery.error,
+        });
+        pushP2pLog(`❌ STORAGE FULL/BLOCKED — #${payload.invoiceNumber} could NOT be queued offline! Downloading emergency JSON…`);
+        toast(delivery.error || 'Device storage full/blocked — downloading emergency JSON backup now!', 'error');
+        triggerTrackedBrowserDownload({
+          content: JSON.stringify(payload, null, 2),
+          mimeType: 'application/json',
+          filename: `Emergency-Unsent-P2P-${payload.invoiceNumber}.json`,
+          category: 'p2p',
+          label: `Emergency Unsent P2P Bill (${payload.invoiceNumber})`,
+        });
       } else {
         setP2pCart({});
-        pushP2pLog(`Offline Queue saved #${payload.invoiceNumber} [${delivery.queueId}] — will auto-push as soon as 5G/PC reconnects!`);
+        updateOperation(p2pOpId, {
+          status: 'waiting',
+          phase: `Queued offline (${delivery.pendingCount} pending) — waiting for Counter PC reconnect & ACK`,
+        });
+        pushP2pLog(`Offline Queue verified #${payload.invoiceNumber} [${delivery.queueId}] — will auto-push on reconnect!`);
         toast(`Saved #${payload.invoiceNumber} to Offline Queue (${delivery.pendingCount} pending) — will auto-sync on reconnect!`, 'info');
       }
     } catch (err) {
@@ -359,25 +414,84 @@ export default function EnterpriseAiHub({
   const handleCommitLegacyImport = async () => {
     if (!migrationPreview) return;
     setImportingLegacy(true);
+    const totalEntities =
+      migrationPreview.clients.length +
+      migrationPreview.products.length +
+      migrationPreview.vouchers.length;
+    const opId = startOperation({
+      category: 'import',
+      label: `Import ${migrationPreview.fileName || 'Legacy Data'}`,
+      phase: 'Saving imported parties, stock items & vouchers…',
+      destination: 'Local Workspace',
+      total: Math.max(1, totalEntities),
+      completed: 0,
+    });
+    let doneCount = 0;
+    const createdClientIds = [];
+    const createdProductIds = [];
+    const createdBillIds = [];
     try {
+      const existingBillKeys = new Set(
+        bills.map((b) => `${String(b.invoiceNumber || '').trim().toLowerCase()}|${String(b.invoiceDate || '').slice(0, 10)}`)
+      );
       for (const c of migrationPreview.clients) {
-        await saveClient(c);
+        const savedC = await saveClient(c);
+        if (savedC?.id) createdClientIds.push(savedC.id);
+        doneCount += 1;
+        updateOperation(opId, { completed: doneCount, total: Math.max(1, totalEntities), phase: `Saving party ${createdClientIds.length}/${migrationPreview.clients.length}…` });
       }
       for (const p of migrationPreview.products) {
-        await saveProduct(p);
+        const savedP = await saveProduct(p);
+        if (savedP?.id) createdProductIds.push(savedP.id);
+        doneCount += 1;
+        updateOperation(opId, { completed: doneCount, total: Math.max(1, totalEntities), phase: `Saving item ${createdProductIds.length}/${migrationPreview.products.length}…` });
       }
+      let skippedDuplicates = 0;
       for (const v of migrationPreview.vouchers) {
-        await saveBill(v);
+        const key = `${String(v.invoiceNumber || '').trim().toLowerCase()}|${String(v.invoiceDate || '').slice(0, 10)}`;
+        if (existingBillKeys.has(key)) {
+          skippedDuplicates += 1;
+          doneCount += 1;
+          updateOperation(opId, { completed: doneCount, total: Math.max(1, totalEntities) });
+          continue;
+        }
+        const savedB = await saveBill(v);
+        if (savedB?.id) createdBillIds.push(savedB.id);
+        existingBillKeys.add(key);
+        doneCount += 1;
+        updateOperation(opId, { completed: doneCount, total: Math.max(1, totalEntities), phase: `Saving voucher ${createdBillIds.length}…` });
       }
+      finishOperation(opId, {
+        status: (migrationPreview.warnings?.length || 0) > 0 || skippedDuplicates > 0 ? 'partial' : 'success',
+        completed: Math.max(1, totalEntities),
+        total: Math.max(1, totalEntities),
+        summary: {
+          parties: createdClientIds.length,
+          items: createdProductIds.length,
+          bills: createdBillIds.length,
+          skippedDuplicates,
+          warnings: migrationPreview.warnings?.length || 0,
+        },
+        phase: `Imported ${createdClientIds.length} Parties, ${createdProductIds.length} Items & ${createdBillIds.length} Bills${skippedDuplicates ? ` (${skippedDuplicates} duplicate skipped)` : ''}`,
+      });
       toast(
-        `Imported ${migrationPreview.clients.length} Parties, ${migrationPreview.products.length} Items & ${migrationPreview.vouchers.length} Bills!`,
+        `Imported ${createdClientIds.length} Parties, ${createdProductIds.length} Items & ${createdBillIds.length} Bills${skippedDuplicates ? ` (${skippedDuplicates} duplicate skipped)` : ''}!`,
         'success'
       );
       setMigrationPreview(null);
       if (typeof onBillsUpdated === 'function') onBillsUpdated();
       if (typeof onProductsUpdated === 'function') onProductsUpdated();
     } catch (err) {
-      toast(err?.message || 'Migration import failed', 'error');
+      // Atomic best-effort rollback of partially committed migration entities
+      for (const id of createdBillIds) await deleteBill(id).catch(() => {});
+      for (const id of createdProductIds) await deleteProduct(id).catch(() => {});
+      for (const id of createdClientIds) await deleteClient(id).catch(() => {});
+      finishOperation(opId, {
+        status: 'failed',
+        phase: 'Import failed — rolled back partial writes cleanly',
+        error: err,
+      });
+      toast(`Migration failed & rolled back cleanly: ${err?.message || 'Storage error'}`, 'error');
     } finally {
       setImportingLegacy(false);
     }
@@ -385,6 +499,8 @@ export default function EnterpriseAiHub({
 
   return (
     <div>
+      <SystemHealthScorecard compactDefault={true} />
+
       {/* Sub-navigation pills */}
       <div className="glass-panel" style={{ padding: '1rem', marginBottom: '1.25rem' }}>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -493,8 +609,20 @@ export default function EnterpriseAiHub({
           {/* GSTR-9 Annual Working Papers + CMP-08 */}
           <div className="glass-panel" style={{ padding: '1.25rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '0.85rem' }}>
-              <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
                 <h3 style={{ margin: 0, fontSize: '1.05rem' }}>📑 GSTR-9 Annual Return Working Papers &amp; CMP-08 Summary</h3>
+                <select
+                  className="form-input"
+                  style={{ width: 'auto', padding: '0.25rem 0.55rem', fontSize: '0.78rem' }}
+                  value={fyFilter}
+                  onChange={(e) => setFyFilter(e.target.value)}
+                  aria-label="Financial Year"
+                >
+                  <option value="2026-27">FY 2026-27</option>
+                  <option value="2025-26">FY 2025-26</option>
+                  <option value="2024-25">FY 2024-25</option>
+                  <option value="ALL">All Financial Years</option>
+                </select>
               </div>
               <TableExport
                 title="GSTR-9 Annual Working Papers"
@@ -975,6 +1103,11 @@ export default function EnterpriseAiHub({
                   <div className="text-muted" style={{ fontSize: '0.82rem', marginTop: '0.2rem' }}>
                     Ready to import: <b>{migrationPreview.clients.length}</b> Parties · <b>{migrationPreview.products.length}</b> Stock Items · <b>{migrationPreview.vouchers.length}</b> Sales Vouchers
                   </div>
+                  {Array.isArray(migrationPreview.warnings) && migrationPreview.warnings.length > 0 && (
+                    <div style={{ marginTop: '0.45rem', fontSize: '0.77rem', color: '#d97706', fontWeight: 600 }}>
+                      ⚠️ {migrationPreview.warnings.slice(0, 3).join(' | ')}
+                    </div>
+                  )}
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <button type="button" className="btn btn-secondary" onClick={() => setMigrationPreview(null)}>Cancel</button>
@@ -996,6 +1129,8 @@ export default function EnterpriseAiHub({
           expenses={expenses}
           products={products}
           ownerProfile={ownerProfile}
+          fy={fyFilter}
+          onFyChange={setFyFilter}
           onProductsUpdated={onProductsUpdated}
         />
       )}

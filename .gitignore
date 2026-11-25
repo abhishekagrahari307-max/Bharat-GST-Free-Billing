@@ -18,7 +18,7 @@ release-build
 *.local
 
 # Invoice data (personal/financial - keep local only)
-data/
+/data/
 Saved Invoices/
 Trash/
 
