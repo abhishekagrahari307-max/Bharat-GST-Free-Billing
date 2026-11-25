@@ -1,11 +1,11 @@
-# Bharat GST Free Billing (v5.2.0 — Full-Stack Audit-Hardened Autonomous Bharat Business & Statutory Tax OS)
+# Bharat GST Free Billing (v5.3.0 — Complete Enterprise, Year-End Rollover & CA Practice OS)
 
-> 100% Free, Open-Source (MIT), Serverless Browser-Native Autonomous ERP & Statutory Tax OS: Canonical GST/ITR-3/4/GSTR-9 Engine (5% Cash Rule + Sec 87A Marginal Relief + FY & COGS) + Validated AIS/26AS Parser + Live Form 26Q + Verified Zero-GSP Portal Bridge + Multi-Godown & Atomic BOM + Live FEFO + MSMED Sec 15 (15d/45d) Sec 43B(h) Shield + `fflate`-Compressed `#b2b-catalog=z.` Storefront + Shop POS / CA Pro Toggle + Verified-Storage 6-Digit-PIN 5G WebRTC P2P + High-Fidelity Tally XML & Vyapar Importer + Studio Human Welcome Voice. Created & maintained by Abhishek Agrahari.
+> 100% Free, Open-Source (MIT), Serverless Browser-Native Autonomous ERP & CA Practice OS: Year-End 31-March FY Rollover Wizard + CA Multi-Client `.bharatca` Hub + GSTR-2B ITC Action Sheet (Sec 16(2)(aa) & 17(5)) + Zero-Login Direct Support & Hinglish GST Dictionary + Canonical GST/ITR-3/4/GSTR-9 Engine + Multi-Godown & Atomic BOM + Live FEFO + Sec 43B(h) Shield + Verified-Storage 6-Digit-PIN 5G WebRTC P2P + High-Fidelity Tally XML & Vyapar Importer. Created & maintained by Abhishek Agrahari.
 
 - Live Application (Instant Offline PWA & Web): https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/
 - Complete Self-Hosted Documentation (35 Pages): https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/user-guide/
 - Public Open-Source Repository & Multi-OS Releases (MIT License): https://github.com/abhishekagrahari307-max/Bharat-GST-Free-Billing
-- Latest Release: v5.2.0 (2026-11-21) — Full-Stack Audit-Hardened Release (Canonical Product/Invoice/FY Adapter, Verified P2P Queue, High-Fidelity Tally XML/Vyapar Migration & Statutory Tax Accuracy)
+- Latest Release: v5.3.0 (2026-11-21) — Year-End FY Rollover Wizard, CA Multi-Client .bharatca Hub, GSTR-2B ITC Action Sheet, Zero-Login Support & Settings-Scoped Health Edition
 
 ---
 

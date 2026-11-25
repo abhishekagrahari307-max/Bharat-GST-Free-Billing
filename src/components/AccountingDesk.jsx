@@ -21,6 +21,9 @@ import {
   openCaPackage,
 } from '../utils/hashChain';
 import { auditInvoicesForGst } from '../utils/gstAudit';
+import { checkSection43BCompliance } from '../utils/autonomousMunimAnd43B';
+import { computeBusinessITR } from '../utils/itrAndTaxEngine';
+import { getIndianFinancialYear } from '../utils/canonicalAdapter';
 import TableExport from './TableExport';
 import { toast } from './Toast';
 import { runTrackedExportJob } from '../utils/trackedDownload';
@@ -209,12 +212,34 @@ export default function AccountingDesk({
         buildFn: async ({ setPhase }) => {
           setPhase('Auditing GST books & assembling Trial Balance…');
           const gstHealth = auditInvoicesForGst(bills, { sellerGstin: ownerProfile?.gstin || '', sellerState: ownerProfile?.state || '' });
+          const fy = getIndianFinancialYear();
+          const res43b = checkSection43BCompliance(purchases, []);
+          const itrRes = computeBusinessITR({
+            bills,
+            purchases,
+            expenses,
+            fy,
+            ownerGstin: ownerProfile?.gstin || '',
+          });
+          const tbRows = trialBalance?.rows || [];
+          const outTax = tbRows
+            .filter((r) => /^OUTPUT_(CGST|SGST|IGST|CESS)$/.test(r.code))
+            .reduce((s, r) => s + (Number(r.closingCredit || 0) - Number(r.closingDebit || 0)), 0);
+          const inTax = tbRows
+            .filter((r) => /^INPUT_(CGST|SGST|IGST|CESS)$/.test(r.code))
+            .reduce((s, r) => s + (Number(r.closingDebit || 0) - Number(r.closingCredit || 0)), 0);
           const bundle = await buildCaWorkpaperBundle({
             profile: ownerProfile || {},
             periodLabel,
             trialBalance,
             balanceSheet,
             gstHealth,
+            statutorySummary: {
+              netGstPayable: Math.max(0, Math.round((outTax - inTax) * 100) / 100),
+              sec43bAtRiskAmount: res43b.totalAtRiskAmount || 0,
+              sec43bCriticalCount: res43b.criticalCount || 0,
+              itrTaxableTurnover: itrRes.grossTurnover || 0,
+            },
             vouchers: allVouchers,
             auditChain,
           });

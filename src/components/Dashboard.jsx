@@ -19,7 +19,6 @@ import InvoiceTrash from './InvoiceTrash';
 import SupportNudge from './SupportNudge';
 import WelcomeCard from './WelcomeCard';
 import AutonomousMunimWidget from './AutonomousMunimWidget';
-import SystemHealthScorecard from './SystemHealthScorecard';
 import { startOperation, updateOperation, finishOperation } from '../utils/operationRegistry';
 import { buildWhatsAppPaymentReminder } from '../utils/shopEssentials';
 import { toast } from './Toast';
@@ -1626,7 +1625,6 @@ export default function Dashboard({ onNew, onEdit, onPrint, onDuplicate, onConve
       {/* v1.10.86 - each block in a wrapper whose CSS order follows Customise Dashboard. */}
       {blockOn('welcome') && <div style={blockOrder('welcome')}>
       {onOpenSupport && billsLoaded && <WelcomeCard invoiceCount={bills.length} businessName={profile?.businessName || ''} onOpenSupport={onOpenSupport} />}
-      {billsLoaded && <SystemHealthScorecard compactDefault={true} />}
       {billsLoaded && <AutonomousMunimWidget businessProfile={profile} onBillsUpdated={loadBills} />}
 
       {/* Gentle non-blocking Review Prompt once user completes 5+ real invoices */}

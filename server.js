@@ -2470,6 +2470,43 @@ app.post('/api/client-errors', (req, res) => {
   res.json({ ok: true });
 });
 
+// v5.3.0 — Zero-Login In-App Feedback & Sanitized Error Report Inbox (rate-limited, PII-redacted)
+const feedbackTimes = [];
+const FEEDBACK_INBOX_FILE = path.join(DATA_DIR, 'feedback-inbox.json');
+app.post('/api/feedback', (req, res) => {
+  const now = Date.now();
+  while (feedbackTimes.length && now - feedbackTimes[0] > 60_000) feedbackTimes.shift();
+  if (feedbackTimes.length >= 20) return res.status(429).json({ error: 'Too many submissions', code: 'rate-limited' });
+  const b = req.body;
+  if (!b || typeof b !== 'object' || Array.isArray(b)) return errRes(res, 400, 'bad-request');
+  const cleanField = (v, n) => ((typeof v === 'string' || typeof v === 'number') ? redact(String(v)).trim().slice(0, n) : '');
+  const type = b.type === 'ERROR' ? 'ERROR' : 'REVIEW';
+  const message = cleanField(b.message, 1200);
+  if (!message && type === 'ERROR') return errRes(res, 400, 'bad-request');
+  feedbackTimes.push(now);
+  const item = {
+    id: cleanField(b.id, 40) || `FB-${now}`,
+    type,
+    version: cleanField(b.version, 24),
+    rating: type === 'REVIEW' ? Math.min(5, Math.max(1, Number(b.rating) || 5)) : null,
+    roleOrModule: cleanField(b.roleOrModule, 120),
+    message,
+    steps: cleanField(b.steps, 600),
+    diagnostics: cleanField(b.diagnostics, 2000),
+    receivedAt: new Date(now).toISOString(),
+  };
+  try {
+    let list = [];
+    if (fs.existsSync(FEEDBACK_INBOX_FILE)) {
+      list = JSON.parse(fs.readFileSync(FEEDBACK_INBOX_FILE, 'utf-8') || '[]');
+      if (!Array.isArray(list)) list = [];
+    }
+    list.unshift(item);
+    fs.writeFileSync(FEEDBACK_INBOX_FILE, JSON.stringify(list.slice(0, 200), null, 2), 'utf-8');
+  } catch { /* non-fatal if disk is read-only */ }
+  res.json({ ok: true, id: item.id });
+});
+
 // v1.10.83 - read-only tail of errors.log for the Problem log page: last 100
 // lines, each redacted and cut to 500 characters. Reads only the last 64 KB.
 app.get('/api/errors-log', (req, res) => {

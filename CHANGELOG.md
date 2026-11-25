@@ -5,6 +5,22 @@ Bharat GST Free Billing follows a **Daily Continuous Release & Safe Auto-Update*
 
 ---
 
+## [5.3.0] - 2026-11-21
+
+**Enterprise Year-End Rollover, CA Multi-Client `.bharatca` Hub, GSTR-2B ITC Action Sheet & Zero-Login Support Edition.**
+
+### Added & Improved
+- **Multi-Financial Year Rollover Wizard (`src/utils/yearEndRolloverEngine.js`, `src/components/YearEndRolloverPanel.jsx`)**: Automates 31-March Closing Stock valuation (AS-2 / ICDS-II lower of cost or NRV), party-wise Sundry Debtors & Sundry Creditors closing schedules (with Section 43B(h) MSME year-end alerts), idempotent balanced 1-April Opening Balance Journal Voucher (`Dr === Cr` verified), CGST Rule 46(b) new-FY series guidance, and optional Period Lock up to 31 March.
+- **CA Multi-Client `.bharatca` Reviewer Hub (`src/utils/caReviewerAnd2bActionEngine.js`, `src/components/CaMultiClientHubPanel.jsx`)**: Allows Chartered Accountants to batch-load 20–50+ plain or AES-256-GCM encrypted `.bharatca` client packages, re-verifies each client's SHA-256 Audit Hash Chain & Trial Balance, ranks `CRITICAL` / `REVIEW` / `CLEAN` clients, and exports a consolidated CA Practice Portfolio Matrix.
+- **GSTR-2B vs Purchase Register "Action Taken" ITC Sheet (`src/components/EnterpriseAiHub.jsx`)**: Upgrades AI Fuzzy GSTR-2B reconciliation with stateful per-invoice `Accept ITC (Table 4A)` / `Keep Pending` / `Defer (Missing in 2B - Sec 16(2)(aa))` / `Reject (Sec 17(5) - Table 4D)` decisions, statutory DRC-01C mismatch warnings, live GSTR-3B Table 4 totals, and exportable CA ITC Action Statements.
+- **Zero-Login Direct Feedback & Error Bridge + High-Contrast UI + Settings-Scoped Health (`src/utils/zeroLoginFeedback.js`, `src/components/HelpDeskAndReviewModal.jsx`, `src/components/SettingsView.jsx`)**: Replaces mandatory GitHub login with 1-click Zero-Login Direct Submit (local inbox + Web3Forms / Google Form / `/api/feedback` server inbox), fixes dark-mode text contrast in the Help Desk modal, and relocates System, Backup & Data Hygiene Status exclusively to `Settings -> Data & Backups`.
+
+### How to update
+- **Web & Installable PWA**: Refresh the page or click **Update** in **Settings → About & Updates** (`v5.2.0` → `v5.3.0`).
+- **Desktop / Portable (`Free-GST-Billing.zip`)**: Click **Update** in **Settings**, or download `Free-GST-Billing-v5.3.0.zip` and copy all files except your `data/` folder over your existing installation.
+
+---
+
 ## [5.2.0] - 2026-11-21
 
 **Complete Polish, Honest Global Progress, Scoped System Health, Hinglish GST Dictionary & In-App Help Desk Edition — Full `P0`/`P1` Tax & Schema Hardening + Unified Global Activity Drawer + Privacy-Safe Support & Shopkeeper Essentials.**

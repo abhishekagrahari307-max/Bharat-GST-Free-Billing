@@ -3,7 +3,7 @@ import QRCode from 'qrcode';
 import {
   Sparkles, ShieldAlert, SearchCheck, TrendingUp, Cpu, ShoppingBag,
   Upload, Download, CheckCircle2, MessageCircle, Scale, Printer, Smartphone, Send, RefreshCw, Database,
-  FileSpreadsheet, Warehouse, Brain,
+  FileSpreadsheet, Warehouse, Brain, CalendarCheck2, Briefcase,
 } from 'lucide-react';
 import { saveBill, saveClient, saveProduct, deleteBill, deleteClient, deleteProduct } from '../store';
 import { formatCurrency } from '../utils';
@@ -36,7 +36,17 @@ import {
 } from '../utils/legacyImporter';
 import TableExport from './TableExport';
 import AutonomousOsPanels from './AutonomousOsPanels';
-import SystemHealthScorecard from './SystemHealthScorecard';
+import YearEndRolloverPanel from './YearEndRolloverPanel';
+import CaMultiClientHubPanel from './CaMultiClientHubPanel';
+import {
+  GSTR2B_ACTIONS,
+  GSTR2B_REASON_CODES,
+  loadSaved2bActionMap,
+  save2bActionDecision,
+  buildUnified2bActionRows,
+  computeGstr3bTable4FromActions,
+  build2bActionExportTable,
+} from '../utils/caReviewerAnd2bActionEngine';
 import { triggerTrackedBrowserDownload } from '../utils/trackedDownload';
 import { startOperation, updateOperation, finishOperation } from '../utils/operationRegistry';
 import { toast } from './Toast';
@@ -57,6 +67,87 @@ export default function EnterpriseAiHub({
   const [section, setSection] = useState(() => (initialP2p ? 'p2p' : 'notice'));
   const [reconResult, setReconResult] = useState(null);
   const [fyFilter, setFyFilter] = useState(() => getIndianFinancialYear());
+  const [saved2bDecisions, setSaved2bDecisions] = useState(() =>
+    loadSaved2bActionMap(ownerProfile?.gstin || '')
+  );
+  const [actionFilter, setActionFilter] = useState('ALL');
+
+  useEffect(() => {
+    setSaved2bDecisions(loadSaved2bActionMap(ownerProfile?.gstin || ''));
+  }, [ownerProfile?.gstin]);
+
+  const actionRows2b = useMemo(
+    () => buildUnified2bActionRows(reconResult, saved2bDecisions),
+    [reconResult, saved2bDecisions]
+  );
+
+  const table4Summary2b = useMemo(
+    () => computeGstr3bTable4FromActions(actionRows2b),
+    [actionRows2b]
+  );
+
+  const handleUpdate2bRowDecision = (rowKey, patch) => {
+    const next = save2bActionDecision(ownerProfile?.gstin || '', rowKey, patch);
+    setSaved2bDecisions(next);
+  };
+
+  const handleLoadSample2bDemo = () => {
+    const sample2b = {
+      b2b: [
+        {
+          ctin: purchases[0]?.supplierGstin || '09AAACV5678B1Z2',
+          trdnm: purchases[0]?.supplierName || 'Verma Agro Packaging MSME',
+          inv: [
+            {
+              inum: purchases[0]?.billNumber || 'SUP/26-27/0108',
+              dt: purchases[0]?.billDate || new Date().toISOString().slice(0, 10),
+              val: Number(purchases[0]?.totalAmount || 17010),
+              cgst: 405,
+              sgst: 405,
+              igst: 0,
+            },
+            {
+              inum: 'UNREC-2B-904',
+              dt: new Date().toISOString().slice(0, 10),
+              val: 11800,
+              cgst: 900,
+              sgst: 900,
+              igst: 0,
+            },
+          ],
+        },
+      ],
+    };
+    const samplePurchases =
+      purchases.length > 0
+        ? purchases
+        : [
+            {
+              id: 'DEMO-P-108',
+              supplierGstin: '09AAACV5678B1Z2',
+              supplierName: 'Verma Agro Packaging MSME',
+              billNumber: '108',
+              billDate: new Date().toISOString().slice(0, 10),
+              totalAmount: 17010,
+              cgst: 405,
+              sgst: 405,
+            },
+            {
+              id: 'DEMO-P-MISS',
+              supplierGstin: '09AAACS9999K1Z1',
+              supplierName: 'Gupta Hardware Traders',
+              phone: '9876500199',
+              billNumber: 'GHT-551',
+              billDate: new Date().toISOString().slice(0, 10),
+              totalAmount: 5900,
+              cgst: 450,
+              sgst: 450,
+            },
+          ];
+    const res = reconcileGstr2bFuzzy(sample2b, samplePurchases);
+    setReconResult(res);
+    toast('Loaded interactive GSTR-2B Action Sheet demo!', 'success');
+  };
 
   // WebRTC P2P Mobile <-> PC Live Sync state
   const p2pRef = useRef(null);
@@ -499,8 +590,6 @@ export default function EnterpriseAiHub({
 
   return (
     <div>
-      <SystemHealthScorecard compactDefault={true} />
-
       {/* Sub-navigation pills */}
       <div className="glass-panel" style={{ padding: '1rem', marginBottom: '1.25rem' }}>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -508,7 +597,13 @@ export default function EnterpriseAiHub({
             <ShieldAlert size={15} /> GST Notice Shield &amp; GSTR-9
           </button>
           <button type="button" className={`btn ${section === 'fuzzy2b' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSection('fuzzy2b')}>
-            <SearchCheck size={15} /> AI Fuzzy GSTR-2B Matcher
+            <SearchCheck size={15} /> GSTR-2B Matcher &amp; Action Sheet
+          </button>
+          <button type="button" className={`btn ${section === 'rollover' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSection('rollover')}>
+            <CalendarCheck2 size={15} /> Year-End FY Rollover
+          </button>
+          <button type="button" className={`btn ${section === 'cahub' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSection('cahub')}>
+            <Briefcase size={15} /> CA Multi-Client Hub
           </button>
           <button type="button" className={`btn ${section === 'forecast' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSection('forecast')}>
             <TrendingUp size={15} /> 30-Day Cash &amp; Dead-Stock AI
@@ -672,75 +767,245 @@ export default function EnterpriseAiHub({
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
             <div>
               <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-                <SearchCheck size={18} /> AI Fuzzy GSTR-2B vs Purchase Register Matcher
+                <SearchCheck size={18} /> AI Fuzzy GSTR-2B Matcher &amp; CA ITC "Action Taken" Sheet
               </h3>
               <p className="text-muted" style={{ margin: '0.25rem 0 0', fontSize: '0.83rem' }}>
-                Matches supplier invoice numbers like <code>INV/26-27/0045</code> with <code>45</code> using Levenshtein distance + trailing core digits + ±₹2 rounding tolerance, and generates 1-click WhatsApp ITC notices for missing bills.
+                Matches supplier invoice numbers (<code>INV/26-27/0045</code> ↔ <code>45</code>), lets you &amp; your CA mark every bill as <strong>Accept / Keep Pending / Defer (Sec 16(2)(aa)) / Reject (Sec 17(5))</strong>, computes live <strong>GSTR-3B Table 4</strong>, and exports the signed ITC Reconciliation Statement.
               </p>
             </div>
-            <label className="btn btn-primary" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}>
-              <Upload size={16} /> Upload Portal GSTR-2B (.json)
-              <input type="file" accept=".json" style={{ display: 'none' }} onChange={handleUpload2bJson} />
-            </label>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <label className="btn btn-primary" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}>
+                <Upload size={16} /> Upload Portal GSTR-2B (.json)
+                <input type="file" accept=".json" style={{ display: 'none' }} onChange={handleUpload2bJson} />
+              </label>
+              <button type="button" className="btn btn-secondary" onClick={handleLoadSample2bDemo}>
+                <Sparkles size={15} /> Load Sample 2B Sheet
+              </button>
+            </div>
           </div>
 
-          {reconResult && (
-            <div style={{ marginTop: '1.15rem' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', marginBottom: '1rem' }}>
-                <div style={{ padding: '0.85rem', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
-                  <div className="text-muted" style={{ fontSize: '0.75rem' }}>Auto-Reconciled</div>
-                  <div style={{ fontWeight: 700, fontSize: '1.15rem', color: '#059669' }}>{reconResult.summary.autoReconciledCount}</div>
-                </div>
-                <div style={{ padding: '0.85rem', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
-                  <div className="text-muted" style={{ fontSize: '0.75rem' }}>AI Fuzzy Recovered</div>
-                  <div style={{ fontWeight: 700, fontSize: '1.15rem', color: '#2563eb' }}>{reconResult.summary.fuzzyRecoveredCount}</div>
-                </div>
-                <div style={{ padding: '0.85rem', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
-                  <div className="text-muted" style={{ fontSize: '0.75rem' }}>Value Mismatches</div>
-                  <div style={{ fontWeight: 700, fontSize: '1.15rem', color: '#d97706' }}>{reconResult.summary.mismatchCount}</div>
-                </div>
-                <div style={{ padding: '0.85rem', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
-                  <div className="text-muted" style={{ fontSize: '0.75rem' }}>Missing in 2B (ITC at Risk)</div>
-                  <div style={{ fontWeight: 700, fontSize: '1.15rem', color: '#dc2626' }}>{formatCurrency(reconResult.summary.missingIn2bItcAtRisk)}</div>
-                </div>
-              </div>
-
-              {reconResult.missingIn2b.length > 0 && (
-                <div>
-                  <h4 style={{ margin: '0.75rem 0 0.5rem' }}>📲 Purchases Missing in GSTR-2B — Send 1-Click Supplier Notice</h4>
-                  <div style={{ overflowX: 'auto' }}>
-                    <table className="data-table" style={{ marginBottom: 0 }}>
-                      <thead>
-                        <tr>
-                          <th>Supplier</th>
-                          <th>Bill No</th>
-                          <th>Date</th>
-                          <th style={{ textAlign: 'right' }}>ITC at Risk</th>
-                          <th>Follow-Up</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {reconResult.missingIn2b.map((m) => (
-                          <tr key={m.id}>
-                            <td className="font-medium">{m.supplierName}</td>
-                            <td>{m.invoiceNo}</td>
-                            <td>{m.date}</td>
-                            <td style={{ textAlign: 'right', fontWeight: 600 }}>{formatCurrency(m.taxAmount)}</td>
-                            <td>
-                              <a href={m.whatsappFollowUpUrl} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ padding: '0.3rem 0.65rem', fontSize: '0.78rem' }}>
-                                <MessageCircle size={13} /> WhatsApp Notice
-                              </a>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+          {reconResult && (() => {
+            const filteredActionRows = actionRows2b.filter(
+              (r) => actionFilter === 'ALL' || r.action === actionFilter
+            );
+            const export2b = build2bActionExportTable(filteredActionRows);
+            return (
+              <div style={{ marginTop: '1.15rem' }}>
+                {/* Live GSTR-3B Table 4 Working Summary */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(185px, 1fr))', gap: '0.75rem', marginBottom: '1rem' }}>
+                  <div style={{ padding: '0.85rem', borderRadius: '10px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)' }}>
+                    <div className="text-muted" style={{ fontSize: '0.74rem' }}>Table 4(A)(5) Accepted ITC</div>
+                    <div style={{ fontWeight: 700, fontSize: '1.15rem', color: '#15803d' }}>
+                      {formatCurrency(table4Summary2b.table4A5EligibleItc)}
+                    </div>
+                    <div className="text-muted" style={{ fontSize: '0.72rem' }}>
+                      {table4Summary2b.acceptedCount} bill(s) marked Accept
+                    </div>
+                  </div>
+                  <div style={{ padding: '0.85rem', borderRadius: '10px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)' }}>
+                    <div className="text-muted" style={{ fontSize: '0.74rem' }}>Held Pending / Under Query</div>
+                    <div style={{ fontWeight: 700, fontSize: '1.15rem', color: '#d97706' }}>
+                      {formatCurrency(table4Summary2b.heldPendingItc)}
+                    </div>
+                    <div className="text-muted" style={{ fontSize: '0.72rem' }}>
+                      {table4Summary2b.pendingCount} bill(s) held pending
+                    </div>
+                  </div>
+                  <div style={{ padding: '0.85rem', borderRadius: '10px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)' }}>
+                    <div className="text-muted" style={{ fontSize: '0.74rem' }}>Deferred (Missing in 2B)</div>
+                    <div style={{ fontWeight: 700, fontSize: '1.15rem', color: '#2563eb' }}>
+                      {formatCurrency(table4Summary2b.deferredMissing2bItc)}
+                    </div>
+                    <div className="text-muted" style={{ fontSize: '0.72rem' }}>
+                      {table4Summary2b.deferredCount} bill(s) · Sec 16(2)(aa)
+                    </div>
+                  </div>
+                  <div style={{ padding: '0.85rem', borderRadius: '10px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)' }}>
+                    <div className="text-muted" style={{ fontSize: '0.74rem' }}>Table 4(D)(2) Rejected / 17(5)</div>
+                    <div style={{ fontWeight: 700, fontSize: '1.15rem', color: '#dc2626' }}>
+                      {formatCurrency(table4Summary2b.table4D2IneligibleRejectedItc)}
+                    </div>
+                    <div className="text-muted" style={{ fontSize: '0.72rem' }}>
+                      {table4Summary2b.rejectedCount} bill(s) rejected
+                    </div>
                   </div>
                 </div>
-              )}
-            </div>
-          )}
+
+                {table4Summary2b.sec16WarningCount > 0 && (
+                  <div
+                    style={{
+                      padding: '0.6rem 0.85rem',
+                      borderRadius: '8px',
+                      marginBottom: '0.9rem',
+                      background: 'rgba(220, 38, 38, 0.12)',
+                      color: '#b91c1c',
+                      fontSize: '0.79rem',
+                      fontWeight: 600,
+                    }}
+                  >
+                    ⚠️ Section 16(2)(aa) Statutory Alert: {table4Summary2b.sec16WarningCount} invoice(s) missing from portal GSTR-2B are marked &ldquo;Accept ITC&rdquo;. Claiming ITC absent from GSTR-2B may trigger automated Form GST DRC-01C notice.
+                  </div>
+                )}
+
+                {/* Filter & Export Controls */}
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '0.6rem',
+                    flexWrap: 'wrap',
+                    marginBottom: '0.8rem',
+                  }}
+                >
+                  <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => setActionFilter('ALL')}
+                      className={`btn btn-sm ${actionFilter === 'ALL' ? 'btn-primary' : 'btn-secondary'}`}
+                    >
+                      All ({actionRows2b.length})
+                    </button>
+                    {GSTR2B_ACTIONS.map((act) => (
+                      <button
+                        key={act.code}
+                        type="button"
+                        onClick={() => setActionFilter(act.code)}
+                        className={`btn btn-sm ${actionFilter === act.code ? 'btn-primary' : 'btn-secondary'}`}
+                      >
+                        {act.shortLabel}
+                      </button>
+                    ))}
+                  </div>
+
+                  <TableExport
+                    title="GSTR-2B vs Purchase Register — CA ITC Action Statement"
+                    subtitle={`${ownerProfile?.businessName || 'Firm'} · Table 4(A)(5) Eligible ITC: ₹${table4Summary2b.table4A5EligibleItc.toLocaleString('en-IN')}`}
+                    headers={export2b.headers}
+                    rows={export2b.rows}
+                    filename="GSTR2B-ITC-Action-Reconciliation-Statement"
+                    landscape={true}
+                  />
+                </div>
+
+                {/* Interactive Action Sheet Table */}
+                <div style={{ overflowX: 'auto' }}>
+                  <table className="data-table" style={{ marginBottom: 0, fontSize: '0.79rem' }}>
+                    <thead>
+                      <tr>
+                        <th>Bucket</th>
+                        <th>Supplier &amp; GSTIN</th>
+                        <th>2B Inv / Books Inv</th>
+                        <th style={{ textAlign: 'right' }}>2B ITC / Books ITC</th>
+                        <th>Action Taken</th>
+                        <th>Reason &amp; CA Remark</th>
+                        <th>Follow-Up</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredActionRows.map((row) => (
+                        <tr key={row.rowKey}>
+                          <td>
+                            <span style={{ fontWeight: 700, fontSize: '0.73rem' }}>{row.bucketLabel}</span>
+                            <div className="text-muted" style={{ fontSize: '0.69rem' }}>{row.date}</div>
+                          </td>
+                          <td>
+                            <div className="font-medium">{row.supplierName}</div>
+                            <code style={{ fontSize: '0.7rem' }}>{row.supplierGstin}</code>
+                          </td>
+                          <td>
+                            <div>2B: <b>{row.portalInvoiceNo}</b></div>
+                            <div className="text-muted">Books: {row.bookInvoiceNo}</div>
+                          </td>
+                          <td style={{ textAlign: 'right' }}>
+                            <div>2B: <b>{formatCurrency(row.portalTax)}</b></div>
+                            <div className="text-muted">Books: {formatCurrency(row.bookTax)}</div>
+                          </td>
+                          <td>
+                            <select
+                              value={row.action}
+                              onChange={(e) => handleUpdate2bRowDecision(row.rowKey, { action: e.target.value })}
+                              className="form-input"
+                              style={{ minWidth: '165px', fontSize: '0.75rem', padding: '0.28rem 0.45rem' }}
+                            >
+                              {GSTR2B_ACTIONS.map((a) => (
+                                <option key={a.code} value={a.code}>
+                                  {a.label}
+                                </option>
+                              ))}
+                            </select>
+                            {row.statutoryWarning && (
+                              <div style={{ color: '#dc2626', fontSize: '0.68rem', fontWeight: 700, marginTop: '0.2rem' }}>
+                                ⚠ Sec 16(2)(aa) Risk
+                              </div>
+                            )}
+                          </td>
+                          <td>
+                            <select
+                              value={row.reasonCode}
+                              onChange={(e) => handleUpdate2bRowDecision(row.rowKey, { reasonCode: e.target.value })}
+                              className="form-input"
+                              style={{ minWidth: '185px', fontSize: '0.73rem', padding: '0.24rem 0.4rem', marginBottom: '0.25rem' }}
+                            >
+                              {GSTR2B_REASON_CODES.map((rc) => (
+                                <option key={rc.code} value={rc.code}>
+                                  {rc.label}
+                                </option>
+                              ))}
+                            </select>
+                            <input
+                              type="text"
+                              value={row.remark}
+                              onChange={(e) => handleUpdate2bRowDecision(row.rowKey, { remark: e.target.value })}
+                              placeholder={row.matchNote || 'CA audit remark…'}
+                              className="form-input"
+                              style={{ width: '100%', fontSize: '0.73rem', padding: '0.22rem 0.4rem' }}
+                            />
+                          </td>
+                          <td>
+                            {row.whatsappFollowUpUrl ? (
+                              <a
+                                href={row.whatsappFollowUpUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="btn btn-secondary btn-sm"
+                                style={{ fontSize: '0.72rem', whiteSpace: 'nowrap' }}
+                              >
+                                <MessageCircle size={12} /> WhatsApp
+                              </a>
+                            ) : (
+                              <span className="text-muted" style={{ fontSize: '0.72rem' }}>—</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })()}
         </div>
+      )}
+
+      {section === 'rollover' && (
+        <YearEndRolloverPanel
+          bills={bills}
+          purchases={purchases}
+          expenses={expenses}
+          products={products}
+          ownerProfile={ownerProfile}
+          onRolloverCompleted={onBillsUpdated}
+        />
+      )}
+
+      {section === 'cahub' && (
+        <CaMultiClientHubPanel
+          bills={bills}
+          purchases={purchases}
+          expenses={expenses}
+          ownerProfile={ownerProfile}
+        />
       )}
 
       {section === 'forecast' && (
