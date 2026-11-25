@@ -284,7 +284,14 @@ function extractApiPath(input) {
   }
 }
 
-const BHARAT_CHANGELOG_MD = `## [5.5.0] - 2026-11-21
+const BHARAT_CHANGELOG_MD = `## [5.5.1] - 2026-11-21
+**Complete A-to-Z UI/UX & Full-Screen Layout Polish — Natural Full-Page Scrolling, Universal \`☰\` Collapsible Sidebar, Non-Overlapping Single-Row Header & Non-Clipping MSME/Sidebar Cards.**
+
+### Fixed & Refined
+- **Natural Full-Page Scrolling & Universal \`☰\` Collapsible Sidebar (\`src/App.jsx\`, \`src/index.css\`)**: Unstuck the top header, sidebar, and settings bar so pages scroll naturally, added a universal \`☰\` toggle for **100% full-screen desktop view**, and auto-closes the mobile drawer immediately when any sidebar link is clicked.
+- **Zero Header Overlap, Consolidated SOS & Non-Clipping Cards (\`PageHeader.jsx\`, \`AutonomousMunimWidget.jsx\`, \`SidebarMenu.jsx\`)**: Eliminated title-vs-search overlap, duplicate \`+ + New Bill\` and redundant SOS buttons, uncovered the \`Install Bharat GST App\` banner, and fixed \`5d Overdue\` MSME badge & \`268px\` sidebar label fit.
+
+## [5.5.0] - 2026-11-21
 **Express POS Counter, Live UPI QR & Cash Tender Calculator + Khata & Stock Executive Command Strips + Unified Command Palette.**
 
 ### Added & Fixed

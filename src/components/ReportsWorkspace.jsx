@@ -84,25 +84,16 @@ export default function ReportsWorkspace({
         gap: '12px',
       }}
     >
-      {/* Top Row: Title + 4 Segmented Pillars */}
+      {/* Top Row: 4 Segmented Pillars + Contextual Subtitle */}
       <div
         style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
-          gap: '12px',
+          gap: '10px',
         }}
       >
-        <div>
-          <div style={{ fontWeight: 700, fontSize: '0.96rem', color: 'var(--text-primary)' }}>
-            Reports, Accounting &amp; CA Desk
-          </div>
-          <div style={{ fontSize: '0.77rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-            Financial statements, party aging, ITR-3/4, GSTR-2B Action Sheet &amp; tamper-proof CA audit tools
-          </div>
-        </div>
-
         <div className="segmented-tabs" role="tablist" aria-label="Report categories">
           {REPORT_PILLARS.map((pillar) => {
             const PillarIcon = pillar.Icon;
@@ -121,6 +112,10 @@ export default function ReportsWorkspace({
             );
           })}
         </div>
+
+        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+          Select a category &amp; report below
+        </span>
       </div>
 
       {/* Second Row: Clean Contextual Sub-Tabs for the Selected Pillar */}

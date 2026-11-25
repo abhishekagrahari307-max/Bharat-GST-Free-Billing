@@ -5,6 +5,24 @@ Bharat GST Free Billing follows a **Daily Continuous Release & Safe Auto-Update*
 
 ---
 
+## [5.5.1] - 2026-11-21
+
+**Complete A-to-Z UI/UX & Full-Screen Layout Polish — Natural Full-Page Scrolling, Universal Desktop/Mobile `☰` Collapsible Sidebar, Single-Row Non-Overlapping Header, Consolidated SOS & CTA Controls, and Non-Clipping MSME 43B(h) & Sidebar Cards.**
+
+### Fixed & Refined
+- **Natural Full-Page Scrolling (`src/index.css`, `src/components/SettingsView.jsx`)**: Unstuck `.app-topbar`, `.sidebar`, and `.settings-bar` and removed `.app-layout` / `.main-content` `100vh` scroll traps so every page scrolls naturally without consuming 40% of laptop screens.
+- **Universal `☰` Collapsible Sidebar & Auto-Close Mobile Drawer (`src/App.jsx`, `src/index.css`, `src/components/pageBarSlots.js`)**: Added a universal `☰` toggle in the top header that collapses the `268px` sidebar into a **100% full-screen workspace** on desktop/laptops (`> 860px`) and opens/auto-closes (`setMobileSidebarOpen(false)`) immediately upon clicking any link on mobile (`<= 860px`).
+- **Single-Row Non-Overlapping Header & De-Duplicated Buttons (`src/App.jsx`, `src/components/PageHeader.jsx`, `src/components/ReportsWorkspace.jsx`, `src/components/Dashboard.jsx`, `src/components/SosHelpReviewButton.jsx`, `src/components/HelpDeskAndReviewModal.jsx`)**: Separated `.header-left-cluster` and `.header-right-cluster` with `.page-title-text` ellipsis protection so long titles never collide with `🔍`, eliminated duplicate `+ + New Bill` and triple SOS buttons, integrated `📖 User Guide` & `⌨️ Shortcuts` into the SOS modal, and hid the closed floating SOS pill so `Install Bharat GST App` is never covered.
+- **Non-Clipping MSME 43B(h) Overdue Badges & Sidebar Labels (`src/components/AutonomousMunimWidget.jsx`, `src/components/SidebarMenu.jsx`, `src/index.css`)**: Added `.msme-alert-row`, `.msme-alert-party`, and `.msme-overdue-tag` (`flex-shrink: 0; white-space: nowrap`) so `5d Overdue` never clips, and widened the desktop sidebar to `268px` with concise `Mobile ↔ PC Sync` (`5G`) & `All New Functions` (`14`) labels.
+
+### How to update
+**Current version:** v5.5.0  →  **New version:** v5.5.1
+
+- **Web & Installable PWA**: Refresh the page or click **Update** in **Settings → About & Updates** (`v5.5.0` → `v5.5.1`).
+- **Desktop / Portable (`Free-GST-Billing-v5.5.1.zip`)**: Click **Update** in **Settings**, or download `Free-GST-Billing-v5.5.1.zip` and extract over your existing folder (your `data/` folder is never touched).
+
+---
+
 ## [5.5.0] - 2026-11-21
 
 **Express POS Counter, Live Dynamic UPI QR & Cash Tender Calculator, Party Khata & Stock Valuation Command Strips & Unified `Ctrl+K` Command Palette.**

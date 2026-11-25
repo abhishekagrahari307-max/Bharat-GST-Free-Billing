@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
-import { Home, FileText, Settings, Plus, Users, Package, BarChart3, Wallet, RefreshCw, Receipt, BookOpen, Moon, Sun, Download, X, ShoppingCart, ChevronDown, Building2, Pencil, HelpCircle, Search, Command, Bell, Calculator, Menu, Heart, Banknote, LifeBuoy, Bug, Star, Wrench } from 'lucide-react';
+import { Home, FileText, Settings, Plus, Users, Package, BarChart3, Wallet, RefreshCw, Receipt, BookOpen, Moon, Sun, Download, X, ShoppingCart, ChevronDown, Building2, Pencil, HelpCircle, Search, Bell, Calculator, Menu, Heart, Banknote, LifeBuoy } from 'lucide-react';
 import { getAllProfilesWithHidden, saveProfile, getEnabledModules, getMenuOrder, getMenuHidden, getMenuDots, onMenuChanged, getAllBills, getAllProducts, getAllRecurring, getStockAlertSettings, runUpdateNow, getLockStatus, visibleProfiles, hasHiddenProfiles, openHiddenCompanies, hideCompaniesAgain, isOpenedHidden, exportAllData, getBackupsList, DATA_SAVED_EVENT } from './store';
 import { isModuleEnabled, localToday, DOCS_URL } from './utils';
 import { APP_VERSION } from './utils/problemLog';
@@ -87,7 +87,6 @@ import PhonePairButton from './components/PhonePairButton';
 import { isOfflineMode } from './utils/offlineMode';
 import { startView } from './utils/listPrefs';
 import HelpButton from './components/HelpButton';
-import ActionsMenu from './components/ActionsMenu';
 import { lockNow } from './utils/appLock';
 import { PageBarSlots, fitPageBar } from './components/pageBarSlots';
 
@@ -682,28 +681,36 @@ function App() {
   // no GSTIN yet.
   const businessKey = String(profile?.gstin || profile?.businessName || '').trim().toUpperCase();
 
-  // v1.10.66 (#59) — on a phone the sidebar is a slide-in menu. It closes as
-  // soon as something in it is chosen, so picking a page never leaves the menu
-  // covering the page that was just asked for. Opening the business list is
-  // the one exception: that choice is not finished yet.
+  // v1.10.66 (#59) — on a phone (<= 860px) the sidebar is a slide-in drawer.
+  // Clicking ANY navigation item immediately closes it via setMobileSidebarOpen(false).
   const [navOpen, setNavOpen] = useState(false);
+  const mobileSidebarOpen = navOpen;
+  const setMobileSidebarOpen = setNavOpen;
   const closeNavAfterPick = (e) => {
-    const picked = e.target.closest('button');
-    // v1.10.86 - nor opening / closing a menu group or arranging the menu.
-    if (picked && !picked.classList.contains('profile-switcher-btn') && !picked.hasAttribute('data-keep-open')) setNavOpen(false);
+    const picked = e.target.closest('button, a');
+    // Keep open ONLY when toggling the business dropdown or expanding a group header.
+    if (picked && !picked.classList.contains('profile-switcher-btn') && !picked.hasAttribute('data-keep-open')) {
+      setMobileSidebarOpen(false);
+    }
   };
 
   // v1.10.76 - a fresh editor for every invoice opened, so nothing (such as
   // the stock record of the last invoice) carries over to the next one.
   const [editorKey, setEditorKey] = useState(0);
-  // v1.10.77 (#84) - sidebar auto-hide (desktop): a slim strip of icons that
-  // opens over the page when pointed at, for more room on small screens.
-  const [sidebarAutoHide, setSidebarAutoHide] = useState(() => {
-    try { return localStorage.getItem('freegstbill_sidebarAutoHide') === '1'; } catch { return false; }
+  // v5.5.1 — Universal Desktop + Mobile Collapsible Sidebar (100% full-screen mode on laptop)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try { return localStorage.getItem('bharatgst_sidebar_collapsed') === '1'; } catch { return false; }
   });
-  const toggleSidebarAutoHide = (on) => {
-    setSidebarAutoHide(on);
-    try { localStorage.setItem('freegstbill_sidebarAutoHide', on ? '1' : '0'); } catch { /* private mode */ }
+  const handleToggleSidebar = () => {
+    if (typeof window !== 'undefined' && window.innerWidth <= 860) {
+      setMobileSidebarOpen((prev) => !prev);
+    } else {
+      setSidebarCollapsed((prev) => {
+        const next = !prev;
+        try { localStorage.setItem('bharatgst_sidebar_collapsed', next ? '1' : '0'); } catch { /* private mode */ }
+        return next;
+      });
+    }
   };
   const handleNewInvoice = () => {
     setEditorKey((k) => k + 1);
@@ -893,43 +900,33 @@ function App() {
     for (const el of bar.children) ro.observe(el); // the title and buttons change with the screen
     return () => ro.disconnect();
   }, [barTitleEl, barActionsEl]);
-  const topActions = topIds.map(id => ({
-    // v1.10.86 - Help (?) is a small menu: the user guide and the keyboard shortcuts.
-    guide: (
-      <ActionsMenu key={id} label="Help" icon={HelpCircle} iconSize={18} className="topbar-btn" items={[
-        { label: 'In-App Help Desk & FAQ (त्वरित समाधान)', icon: LifeBuoy, onClick: () => openHelpDesk('HELP') },
-        { label: 'Hinglish GST & Tax Dictionary (शब्दकोश)', icon: BookOpen, onClick: () => openHelpDesk('DICTIONARY') },
-        { label: '1-Click Demo Store & Staff PIN', icon: Wrench, onClick: () => openHelpDesk('TOOLS') },
-        { label: 'Report Error (Privacy-Safe)', icon: Bug, onClick: () => openHelpDesk('ERROR') },
-        { label: 'Rate & Review Bharat GST ⭐', icon: Star, onClick: () => openHelpDesk('REVIEW') },
-        { label: 'User guide (opens in your browser)', icon: BookOpen, onClick: openDocs },
-        { label: 'Keyboard shortcuts (Ctrl+/)', icon: Command, onClick: () => setShowShortcutsHelp(true) },
-      ]} />
-    ),
+  const topActions = topIds
+    .filter((id) => id !== 'guide') // Unified into the single SOS Help button in the top bar
+    .map(id => ({
     /* Opens the list of overdue / due-soon invoices, GST filing deadlines and
        low-stock items, each a click away from the page that fixes it. */
     notifications: (
-      <button key={id} type="button" className="topbar-btn" onClick={() => setShowNotifs(s => !s)}
+      <button key={id} type="button" className="topbar-btn header-icon-btn" onClick={() => setShowNotifs(s => !s)}
         title="Notifications" aria-label={notifTotal > 0 ? `Notifications: ${notifTotal}` : 'Notifications'}>
-        <Bell size={18} />
+        <Bell size={17} />
         {notifTotal > 0 && <span className="topbar-badge">{notifTotal > 99 ? '99+' : notifTotal}</span>}
       </button>
     ),
     /* v1.10.86 - the pairing QR code, or why it cannot be shown yet. */
-    phone: <PhonePairButton key={id} className="topbar-btn topbar-phone" onOpenSettings={() => {
+    phone: <PhonePairButton key={id} className="topbar-btn header-icon-btn topbar-phone" onOpenSettings={() => {
       try { sessionStorage.setItem('gst_settingsTab', 'section-phone'); } catch { /* storage blocked */ }
       setCurrentView('settings');
       setTimeout(() => window.dispatchEvent(new CustomEvent('fgsb:settings-open', { detail: 'section-phone' })), 80);
     }} />,
     /* v1.10.83 - Offline mode on / off, and what it changes. */
-    offline: <OfflineModeButton key={id} className="topbar-btn" onOpenSettings={() => {
+    offline: <OfflineModeButton key={id} className="topbar-btn header-icon-btn" onOpenSettings={() => {
       try { sessionStorage.setItem('gst_settingsTab', 'section-privacy'); } catch { /* storage blocked */ }
       setCurrentView('settings');
     }} />,
     darkMode: (
-      <button key={id} type="button" className="topbar-btn" onClick={() => setDarkMode(d => !d)}
+      <button key={id} type="button" className="topbar-btn header-icon-btn" onClick={() => setDarkMode(d => !d)}
         title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'} aria-label={darkMode ? 'Light mode' : 'Dark mode'}>
-        {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+        {darkMode ? <Sun size={17} /> : <Moon size={17} />}
       </button>
     ),
   })[id]);
@@ -1122,19 +1119,17 @@ function App() {
   }
 
   return (
-    <div className={`app-layout${sidebarAutoHide ? ' sidebar-autohide' : ''}`}>
+    <div className={`app-layout${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
       <a href="#main-content" className="skip-link">Skip to main content</a>
       {/* v1.10.86 - "What's new" slides, once after an update (never during the
           first-run welcome, which renders above instead of this layout). */}
       <WhatsNewAfterUpdate blocked={showWelcome} />
       {welcomeTapBanner}
-      {/* v1.10.66 (#59) — phone-only top bar with the menu button. CSS hides it
-          on wider screens, where the sidebar is always shown. */}
+      {/* Mobile / tablet top bar (<= 860px) */}
       <div className="mobile-topbar">
-        <button type="button" className="mobile-topbar-btn" onClick={() => setNavOpen(true)}
-          aria-label={anyDot ? `Open menu: ${anyDot.text}` : 'Open menu'} title={anyDot?.text} aria-expanded={navOpen}>
+        <button type="button" className="mobile-topbar-btn" onClick={() => setMobileSidebarOpen((v) => !v)}
+          aria-label={anyDot ? `Open menu: ${anyDot.text}` : 'Open menu'} title={anyDot?.text} aria-expanded={mobileSidebarOpen}>
           <Menu size={22} />
-          {/* v1.10.86 - a dot when something inside the menu has one. */}
           <NavDot dot={anyDot} />
         </button>
         <span className="mobile-topbar-title">Bharat GST</span>
@@ -1142,17 +1137,17 @@ function App() {
         {searchBox}
         <button
           type="button"
-          onClick={() => openHelpDesk('REVIEW')}
+          onClick={() => openHelpDesk('HELP')}
           className="sos-topbar-btn"
-          title="SOS Help & Review"
+          title="SOS Help, Dictionary & Review"
           aria-label="SOS Help and Review"
         >
           <span>🆘 SOS</span>
         </button>
         {topActions}
       </div>
-      {navOpen && <div className="sidebar-backdrop" onClick={() => setNavOpen(false)} aria-hidden="true" />}
-      <div className={`sidebar${navOpen ? ' sidebar-open' : ''}`} onClick={closeNavAfterPick}>
+      {mobileSidebarOpen && <div className="sidebar-backdrop" onClick={() => setMobileSidebarOpen(false)} aria-hidden="true" />}
+      <aside className={`sidebar app-sidebar${sidebarCollapsed ? ' is-collapsed' : ''}${mobileSidebarOpen ? ' sidebar-open mobile-open' : ''}`} onClick={closeNavAfterPick}>
         <div className="sidebar-brand">
           <div className={`sidebar-logo${ownBrand && brand.logo ? ' sidebar-logo-own' : ''}`}>
             {ownBrand && brand.logo ? <img src={brand.logo} alt="" />
@@ -1163,12 +1158,12 @@ function App() {
             <h2 className={`sidebar-title${ownBrand ? ' sidebar-title-own' : ''}`} title={ownBrand ? `${brand.businessName} - Bharat GST Free Billing` : 'Bharat GST Free Billing'}>{ownBrand ? brand.businessName : 'Bharat GST'}</h2>
             <p className="sidebar-subtitle">{ownBrand ? 'Bharat GST Billing' : 'Free Billing'}</p>
           </div>
-          {/* Auto-hide as a ☰ button (was a text checkbox): pressed = the menu
-              shrinks to icons and opens when pointed at. */}
-          <button type="button" className={`sidebar-autohide-toggle${sidebarAutoHide ? ' on' : ''}`}
-            aria-pressed={sidebarAutoHide} aria-label="Auto-hide menu"
-            title={sidebarAutoHide ? 'Keep this menu open' : 'Auto-hide this menu: icons only, it opens when you point at it'}
-            onClick={(e) => { e.stopPropagation(); toggleSidebarAutoHide(!sidebarAutoHide); }}>
+          {/* Universal ☰ button: hides sidebar cleanly on desktop (100% full-screen) or closes drawer on mobile */}
+          <button type="button" className={`sidebar-autohide-toggle${sidebarCollapsed ? ' on' : ''}`}
+            data-keep-open
+            aria-pressed={sidebarCollapsed} aria-label="Collapse sidebar"
+            title="Collapse sidebar for 100% full-screen view"
+            onClick={(e) => { e.stopPropagation(); handleToggleSidebar(); }}>
             <Menu size={18} />
           </button>
         </div>
@@ -1178,7 +1173,7 @@ function App() {
           <span className="topbar-free" title="Free forever: no paid version, no locked features, no ads, no tracking. Works on this device, even offline.">Free forever</span>
           <button
             type="button"
-            onClick={() => { setCurrentView('settings'); setTimeout(() => document.getElementById('section-updates')?.scrollIntoView({ behavior: 'smooth' }), 120); }}
+            onClick={() => { setMobileSidebarOpen(false); setCurrentView('settings'); setTimeout(() => document.getElementById('section-updates')?.scrollIntoView({ behavior: 'smooth' }), 120); }}
             title="Daily Continuous Auto-Update Active — click to open App & Updates"
             style={{
               fontSize: '0.64rem', fontWeight: 700, padding: '0.18rem 0.5rem', borderRadius: 999,
@@ -1186,7 +1181,7 @@ function App() {
               color: '#93c5fd', cursor: 'pointer', whiteSpace: 'nowrap',
             }}
           >
-            v{APP_VERSION} · Daily Auto-Update
+            v{APP_VERSION} · Auto-Update
           </button>
         </div>
 
@@ -1226,18 +1221,18 @@ function App() {
               ))}
               <button
                 className="profile-switcher-item profile-switcher-details"
-                onClick={() => { setShowProfileMenu(false); openSettingsSection('section-company'); }}
+                onClick={() => { setShowProfileMenu(false); setMobileSidebarOpen(false); openSettingsSection('section-company'); }}
               >
                 <Pencil size={13} /> Edit business details
               </button>
               {anyHidden && (
-                <button className="profile-switcher-item profile-switcher-manage" onClick={openHidden}>
+                <button className="profile-switcher-item profile-switcher-manage" onClick={() => { setMobileSidebarOpen(false); openHidden(); }}>
                   Open a hidden company...
                 </button>
               )}
               <button
                 className="profile-switcher-item profile-switcher-manage"
-                onClick={() => { setShowProfileMenu(false); setCurrentView('settings'); }}
+                onClick={() => { setShowProfileMenu(false); setMobileSidebarOpen(false); setCurrentView('settings'); }}
               >
                 Manage profiles...
               </button>
@@ -1261,7 +1256,11 @@ function App() {
             items={navItems.filter(i => !menuHidden.includes(i.id) && (workspaceMode !== 'SHOP' || SHOP_POS_ALLOWED_IDS.includes(i.id)))}
             currentView={currentView}
             dots={dots}
-            onPick={(item) => (item.onClick ? item.onClick() : setCurrentView(item.id))}
+            onPick={(item) => {
+              setMobileSidebarOpen(false);
+              if (item.onClick) item.onClick();
+              else setCurrentView(item.id);
+            }}
           />
           <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
             {/* Update-available banner — only shows when GitHub has a newer version
@@ -1295,7 +1294,7 @@ function App() {
               <button
                 type="button"
                 className="nav-btn"
-                onClick={() => openSettingsSection('section-offline-app')}
+                onClick={() => { setMobileSidebarOpen(false); openSettingsSection('section-offline-app'); }}
                 title="Install 100% Offline App on Computer, Laptop or Mobile"
               >
                 <Download size={18} /> Install Offline App
@@ -1307,7 +1306,7 @@ function App() {
               support: (
                 <button key={id}
                   className={`nav-btn nav-btn-support${currentView === 'support' ? ' nav-btn-support-active' : ''}`}
-                  onClick={() => setCurrentView('support')}
+                  onClick={() => { setMobileSidebarOpen(false); setCurrentView('support'); }}
                   title="Who makes this app, and how to help"
                 >
                   <Heart size={18} /> Support &amp; About
@@ -1316,7 +1315,7 @@ function App() {
               settings: (
                 <button key={id}
                   className={`nav-btn ${currentView === 'settings' ? 'nav-btn-active' : ''}`}
-                  onClick={() => setCurrentView('settings')}
+                  onClick={() => { setMobileSidebarOpen(false); setCurrentView('settings'); }}
                   title={dots.settings?.text}
                 >
                   <Settings size={18} /> Settings
@@ -1347,7 +1346,7 @@ function App() {
 
             <div
               className="sidebar-creator-credit"
-              onClick={() => setCurrentView('support')}
+              onClick={() => { setMobileSidebarOpen(false); setCurrentView('support'); }}
               title="About Bharat GST Free Billing — Created by Abhishek Agrahari"
               style={{
                 padding: '0.45rem 0.65rem 0.1rem',
@@ -1360,24 +1359,6 @@ function App() {
             >
               Created by <strong style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Abhishek Agrahari</strong>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '0.45rem', flexWrap: 'wrap', padding: '0.2rem 0.5rem 0.25rem' }}>
-              <button
-                type="button"
-                onClick={() => { setNavOpen(false); openHelpDesk('HELP'); }}
-                className="btn btn-secondary btn-sm"
-                style={{
-                  width: '100%',
-                  justifyContent: 'center',
-                  fontSize: '0.75rem',
-                  padding: '0.42rem 0.65rem',
-                  background: 'rgba(255,255,255,0.06)',
-                  borderColor: 'rgba(255,255,255,0.14)',
-                  color: '#f8fafc',
-                }}
-              >
-                <LifeBuoy size={14} color="#38bdf8" /> SOS · Help, Dictionary &amp; Review
-              </button>
-            </div>
             <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', paddingBottom: '0.2rem', fontSize: '0.66rem', color: 'var(--text-muted)' }}>
               <a href="./privacy.html" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>Privacy</a>
               <span aria-hidden="true">·</span>
@@ -1385,7 +1366,7 @@ function App() {
             </div>
           </div>
         </nav>
-      </div>
+      </aside>
 
       {/* v1.10.86 - outside the sidebar, so on a phone it is not inside the slide-in menu. */}
       {showMenuEditor && (
@@ -1393,43 +1374,60 @@ function App() {
           onOpenFeatures={() => { setShowMenuEditor(false); openSettingsSection('section-modules'); }} />
       )}
       <main id="main-content" className="main-content">
-        <div className="app-topbar" ref={barRef}>
-          <div className="page-bar-title" ref={setBarTitleEl} />
-          <span
-            className={`exec-status-pill exec-hide-mobile ${browserOnline && !isOfflineMode() ? 'exec-status-online' : 'exec-status-offline'}`}
-            title={browserOnline && !isOfflineMode() ? 'Online & Offline PWA Ready' : 'Working 100% Offline on this device'}
-          >
-            {browserOnline && !isOfflineMode() ? '● Online & PWA Ready' : '● Offline Mode'}
-          </span>
-          {isP2pSynced && (
-            <span className="exec-status-pill exec-status-p2p exec-hide-mobile">
-              📱 Mobile Synced
-            </span>
-          )}
-          {searchBox}
-          <div className="page-bar-actions" ref={setBarActionsEl} />
-          {currentView !== 'new' && (
+        <header className="app-topbar" ref={barRef}>
+          <div className="header-left-cluster">
             <button
               type="button"
-              onClick={handleNewInvoice}
-              className="btn-gradient exec-hide-mobile"
-              title="Create New Invoice / POS Bill (F2 or Ctrl+N)"
+              onClick={handleToggleSidebar}
+              className="topbar-btn header-icon-btn exec-hide-mobile"
+              title={sidebarCollapsed ? 'Sidebar खोलें (Show Sidebar)' : 'Sidebar बंद करें (Full-Screen View)'}
+              aria-label="Toggle Sidebar"
+              aria-expanded={!sidebarCollapsed}
             >
-              <Plus size={15} /> + New Bill
+              <Menu size={18} />
             </button>
-          )}
-          <button
-            type="button"
-            onClick={() => openHelpDesk('REVIEW')}
-            className="sos-topbar-btn"
-            title="SOS Help, Zero-Login Error Support & Review (Alt+S)"
-            aria-label="SOS Help and Review"
-          >
-            <span>🆘 SOS</span>
-            <span className="sos-topbar-label-extra">Help &amp; Review</span>
-          </button>
-          <div className="topbar-global">{topActions}</div>
-        </div>
+            <div className="page-bar-title" ref={setBarTitleEl} />
+            <span
+              className={`exec-status-pill exec-hide-mobile ${browserOnline && !isOfflineMode() ? 'exec-status-online' : 'exec-status-offline'}`}
+              title={browserOnline && !isOfflineMode() ? 'Online & Offline PWA Ready' : 'Working 100% Offline on this device'}
+            >
+              {browserOnline && !isOfflineMode() ? '● Online' : '● Offline'}
+            </span>
+            {isP2pSynced && (
+              <span className="exec-status-pill exec-status-p2p exec-hide-mobile">
+                📱 Synced
+              </span>
+            )}
+          </div>
+
+          <div className="header-right-cluster">
+            {searchBox}
+            <div className="page-bar-actions" ref={setBarActionsEl} />
+            {/* Single "+ New Bill" CTA — shown only on screens that do NOT already render their own primary CTA in PageHeader */}
+            {['reports', 'filing', 'incometax', 'settings', 'support', 'cashbook'].includes(currentView) && (
+              <button
+                type="button"
+                onClick={handleNewInvoice}
+                className="btn btn-primary btn-sm exec-hide-mobile"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap', fontWeight: 700 }}
+                title="Create New Invoice / POS Bill (F2 or Ctrl+N)"
+              >
+                <Plus size={15} /> New Bill
+              </button>
+            )}
+            <div className="topbar-global">{topActions}</div>
+            <button
+              type="button"
+              onClick={() => openHelpDesk('HELP')}
+              className="sos-topbar-btn exec-hide-mobile"
+              title="SOS Help, Zero-Login Error Support, GST Dictionary & Review (Alt+S)"
+              aria-label="SOS Help and Review"
+            >
+              <LifeBuoy size={14} />
+              <span>SOS Help</span>
+            </button>
+          </div>
+        </header>
         <PageBarSlots.Provider value={barSlots}>
         {/* v1.10.83 - a screen that throws shows "ran into a problem" here
             instead of blanking the app; keyed by screen so the sidebar works
@@ -1717,6 +1715,11 @@ function App() {
           appVersion={`v${APP_VERSION}`}
           initialTab={helpDeskState.tab}
           prefilledErrorJob={helpDeskState.job}
+          onOpenGuide={openDocs}
+          onOpenShortcuts={() => {
+            setHelpDeskState({ open: false, tab: 'HELP', job: null });
+            setShowShortcutsHelp(true);
+          }}
           onDataSeeded={() => {
             window.dispatchEvent(new Event(DATA_SAVED_EVENT));
           }}

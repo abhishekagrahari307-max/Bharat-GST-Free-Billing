@@ -217,12 +217,24 @@ export default function AutonomousMunimWidget({ businessProfile, onBillsUpdated 
                 At-Risk: <strong>₹{msmeReport.totalAtRiskAmount.toLocaleString('en-IN')}</strong> · Est. Tax Hit:{' '}
                 <span style={{ color: '#fb7185', fontWeight: 800 }}>₹{msmeReport.estimatedTaxImpact30Pct.toLocaleString('en-IN')}</span>
               </div>
-              <div style={{ maxHeight: 105, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+              <div style={{ maxHeight: 112, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
                 {msmeReport.bills.map((b, i) => (
-                  <div key={i} style={{ fontSize: '0.75rem', background: 'rgba(15, 23, 42, 0.85)', padding: '0.4rem 0.6rem', borderRadius: 6, border: '1px solid rgba(244, 63, 94, 0.3)', display: 'flex', justifyContent: 'space-between' }}>
-                    <span><strong>{b.supplierName}</strong> (#{b.billNumber})</span>
-                    <span style={{ color: '#fb7185', fontWeight: 700 }}>
-                      {b.daysRemaining < 0 ? `${Math.abs(b.daysRemaining)}d Overdue!` : `${b.daysRemaining}d Left`}
+                  <div
+                    key={i}
+                    className="msme-alert-row"
+                    style={{
+                      fontSize: '0.75rem',
+                      background: 'rgba(15, 23, 42, 0.85)',
+                      padding: '0.42rem 0.65rem',
+                      borderRadius: 6,
+                      border: '1px solid rgba(244, 63, 94, 0.3)',
+                    }}
+                  >
+                    <span className="msme-alert-party" title={`${b.supplierName} (#${b.billNumber})`}>
+                      <strong>{b.supplierName}</strong> (#{b.billNumber})
+                    </span>
+                    <span className="msme-overdue-tag">
+                      {b.daysRemaining < 0 ? `${Math.abs(b.daysRemaining)}d Overdue` : `${b.daysRemaining}d Left`}
                     </span>
                   </div>
                 ))}
@@ -248,17 +260,17 @@ export default function AutonomousMunimWidget({ businessProfile, onBillsUpdated 
           ) : (
             <div style={{ maxHeight: 115, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
               {lowMarginItems.map((it) => (
-                <div key={it.id} style={{ fontSize: '0.75rem', background: 'rgba(15, 23, 42, 0.85)', padding: '0.4rem 0.6rem', borderRadius: 6, border: '1px solid rgba(245, 158, 11, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
-                  <div>
-                    <div style={{ fontWeight: 700, color: '#ffffff' }}>{it.name}</div>
-                    <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
+                <div key={it.id} style={{ fontSize: '0.75rem', background: 'rgba(15, 23, 42, 0.85)', padding: '0.4rem 0.6rem', borderRadius: 6, border: '1px solid rgba(245, 158, 11, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', minWidth: 0 }}>
+                  <div style={{ minWidth: 0, flex: '1 1 auto' }}>
+                    <div style={{ fontWeight: 700, color: '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={it.name}>{it.name}</div>
+                    <div style={{ fontSize: '0.7rem', color: '#94a3b8', whiteSpace: 'nowrap' }}>
                       Cost: ₹{it.cost} | Sale: ₹{it.sell} ({it.marginPct}%)
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={() => handleAutoReprice(it)}
-                    style={{ padding: '0.28rem 0.55rem', background: '#f59e0b', color: '#0f172a', border: 'none', borderRadius: 6, fontSize: '0.7rem', fontWeight: 800, cursor: 'pointer', flexShrink: 0 }}
+                    style={{ padding: '0.28rem 0.55rem', background: '#f59e0b', color: '#0f172a', border: 'none', borderRadius: 6, fontSize: '0.7rem', fontWeight: 800, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}
                   >
                     Set ₹{it.suggestedRate}
                   </button>
