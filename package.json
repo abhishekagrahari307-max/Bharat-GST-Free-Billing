@@ -1,7 +1,7 @@
 {
   "name": "bharat-gst-free-billing",
-  "version": "5.0.0",
-  "description": "Bharat GST Free Billing v5.0.0 — Autonomous Bharat Business & Tax OS: ITR-3/4 (Sec 44AD/44ADA) + AIS Parser + TDS 26Q + Zero-GSP Chrome Portal Bridge + Multi-Godown, FEFO Batch & Manufacturing BOM + Sec 43B(h) MSME Shield + Autonomous AI Munim + Serverless #b2b-catalog Storefront + Resilient 5G WebRTC P2P + Tally/Vyapar Importer + Studio Human Voice.",
+  "version": "5.1.0",
+  "description": "Bharat GST Free Billing v5.1.0 — Audit-Hardened Autonomous Bharat Business & Tax OS: Statutory ITR-3/4 (5% Cash Rule + Sec 87A Marginal Relief) + Validated AIS Parser + Live Form 26Q + MSMED Sec 15 (15d/45d) 43B(h) Shield + fflate-Compressed #b2b-catalog=z. Storefront + Shop POS / CA Pro Toggle + Multi-Godown BOM + 5G WebRTC P2P.",
   "author": "Abhishek Agrahari",
   "license": "MIT",
   "repository": {

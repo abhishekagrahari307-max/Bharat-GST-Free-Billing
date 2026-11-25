@@ -5,6 +5,17 @@ Bharat GST Free Billing follows a **Daily Continuous Release & Safe Auto-Update*
 
 ---
 
+## [5.1.0] - 2026-11-21
+
+**Audit-Hardened Statutory Tax & POS Polish Edition — CBDT Sec 44AD/44ADA 5%-Cash Cap, Sec 87A Marginal Relief, MSMED Sec 15 (15d vs 45d) 43B(h) Accuracy, `fflate`-Compressed `#b2b-catalog=z.` URLs, Shop POS / CA Pro Mode Toggle & Rich OpenGraph Banner.**
+
+### Added & Hardened
+- **Statutory ITR-3/4 & Sec 87A Marginal Relief (`src/utils/itrAndTaxEngine.js`)**: Enforces statutory ≤5% cash-receipt condition for enhanced ₹3 Cr (44AD) / ₹75L (44ADA) limits, implements Section 87A Proviso Marginal Relief above ₹12,00,000 + Surcharge, validates AIS/TIS JSON schemas strictly, and extracts live TDS deductions from books for Form 26Q (Q1–Q4).
+- **MSMED Act Sec 15 (15d vs 45d) & Live Product FEFO (`src/utils/autonomousMunimAnd43B.js` + `AutonomousOsPanels.jsx`)**: Enforces 15-day statutory deadline when no written agreement exists (max 45 days with agreement), defaults to verified MSME suppliers only (`isMsme`/`udyamNo`), and runs FEFO expiry allocation directly on live inventory batches.
+- **`fflate`-Compressed `#b2b-catalog=z.` Storefront, Progressive Disclosure Toggle & Social Preview**: Shrinks WhatsApp catalog links by ~65% via `fflate` deflate compression (up to 150 items + legacy uncompressed backward compatibility + snapshot timestamp), adds **🏪 Shop POS vs 📊 CA & Pro ERP** sidebar toggle (`WorkspaceModeToggle.jsx`), and ships `public/og-banner.png` OpenGraph & Twitter preview cards.
+
+---
+
 ## [5.0.0] - 2026-11-21
 
 **Autonomous Bharat Business & Tax OS — Unifying Tax2Win/CompuTax (ITR-3/4 + AIS/26AS + Form 26Q + Zero-GSP Portal Bridge), TallyPrime (Multi-Godown + FEFO + Manufacturing BOM), and Next-Gen AI (Sec 43B(h) MSME 45-Day Shield + Margin Arbitrage Munim + Serverless `#b2b-catalog=` Storefront).**

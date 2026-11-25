@@ -117,7 +117,11 @@ export default function ServerlessB2BStorefront({ catalogData, onExitStorefront 
               Direct B2B Wholesale Catalog
             </span>
             <h1 style={{ fontSize: '1.25rem', fontWeight: 800, margin: '0.3rem 0 0' }}>{business.n}</h1>
-            {business.p && <p style={{ fontSize: '0.76rem', color: '#d1fae5', margin: '0.15rem 0 0' }}>Order Desk: {business.p}</p>}
+            <p style={{ fontSize: '0.75rem', color: '#d1fae5', margin: '0.15rem 0 0' }}>
+              {business.p ? `Order Desk: ${business.p} · ` : ''}
+              {catalogData?.ts ? `Rate Snapshot: ${catalogData.ts}` : 'Wholesale Rate Snapshot'}
+              {catalogData?.totalEligible > 150 ? ` (Top 150 of ${catalogData.totalEligible} items)` : ''}
+            </p>
           </div>
           {onExitStorefront && (
             <button
