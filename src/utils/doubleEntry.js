@@ -101,21 +101,22 @@ function balanceVoucherLines(rawLines) {
 
 function extractBillPaidAmount(bill) {
   const d = bill?.data || bill || {};
-  const total = r2(Math.abs(Number(bill?.totalAmount ?? d.grandTotal ?? d.totalAmount ?? 0)));
-  const status = String(bill?.status || d.status || '').toLowerCase();
-  if (status === 'paid') return { paid: total, mode: d.paymentMethod || d.paymentMode || 'Cash' };
+  const total = r2(Math.abs(Number(bill?.totalAmount ?? bill?.total ?? d.grandTotal ?? d.totals?.total ?? d.totalAmount ?? 0)));
+  const status = String(bill?.paymentStatus || bill?.status || d.paymentStatus || d.status || '').toLowerCase();
+  const modeDefault = bill?.paymentMode || d.paymentMethod || d.paymentMode || d?.details?.paymentMode || 'Cash';
+  if (status === 'paid') return { paid: total, mode: modeDefault };
   const payments = Array.isArray(bill?.payments) ? bill.payments : (Array.isArray(d.payments) ? d.payments : []);
   if (payments.length > 0) {
     const sum = r2(payments.reduce((s, p) => s + (Number(p?.amount) || 0), 0));
-    const lastMode = payments[payments.length - 1]?.method || payments[payments.length - 1]?.mode || d.paymentMethod || 'Cash';
+    const lastMode = payments[payments.length - 1]?.method || payments[payments.length - 1]?.mode || modeDefault;
     return { paid: Math.min(total, Math.max(0, sum)), mode: lastMode };
   }
-  const directPaid = r2(Number(bill?.amountPaid ?? d.amountPaid ?? 0));
-  return { paid: Math.min(total, Math.max(0, directPaid)), mode: d.paymentMethod || d.paymentMode || 'Cash' };
+  const directPaid = r2(Number(bill?.amountPaid ?? bill?.amountReceived ?? d.amountPaid ?? d.amountReceived ?? 0));
+  return { paid: Math.min(total, Math.max(0, directPaid)), mode: modeDefault };
 }
 
 function isNonPostingDocType(type) {
-  const t = String(type || '').toLowerCase();
+  const t = String(type || '').toLowerCase().replace(/-/g, ' ');
   return (
     t.includes('quotation') ||
     t.includes('estimate') ||
@@ -124,6 +125,33 @@ function isNonPostingDocType(type) {
     t.includes('sales order') ||
     t.includes('purchase order')
   );
+}
+
+function summarizePurchaseItems(pur) {
+  const items = Array.isArray(pur?.items) ? pur.items : [];
+  if (!items.length) return null;
+  let taxable = 0;
+  let tax = 0;
+  for (const it of items) {
+    const gross = (Number(it?.quantity) || 0) * (Number(it?.rate) || 0);
+    const disc = it?.discountType === 'fixed'
+      ? (Number(it?.discount) || 0)
+      : (gross * (Number(it?.discountPercent ?? it?.discount) || 0)) / 100;
+    const lineTaxable = Math.max(0, gross - disc);
+    const rate = (Number(it?.taxPercent) || 0) + (Number(it?.cessPercent) || 0);
+    taxable += lineTaxable;
+    tax += (lineTaxable * rate) / 100;
+  }
+  taxable = r2(taxable);
+  tax = r2(tax);
+  const rawTotal = r2(taxable + tax);
+  const total = pur?.applyRoundOff ? Math.round(rawTotal) : rawTotal;
+  if (pur?.interstate) {
+    return { taxable, cgst: 0, sgst: 0, igst: tax, total };
+  }
+  const cgst = r2(tax / 2);
+  const sgst = r2(tax - cgst);
+  return { taxable, cgst, sgst, igst: 0, total };
 }
 
 /**
@@ -153,21 +181,21 @@ export function deriveAutoJournalEntries({
     const d = bill.data || {};
     const docType = d.invoiceType || bill.invoiceType || 'Tax Invoice';
     if (isNonPostingDocType(docType)) continue;
-    const date = String(bill.invoiceDate || d.invoiceDate || bill.createdAt || '').slice(0, 10);
+    const date = String(bill.invoiceDate || d.invoiceDate || d?.details?.invoiceDate || bill.createdAt || '').slice(0, 10);
     if (!inRange(date)) continue;
 
-    const total = r2(Math.abs(Number(bill.totalAmount ?? d.grandTotal ?? 0)));
+    const total = r2(Math.abs(Number(bill.totalAmount ?? bill.total ?? d.grandTotal ?? d.totals?.total ?? 0)));
     if (total <= 0) continue;
-    const cgst = r2(Math.abs(Number(d.totalCgst ?? d.cgstAmount ?? 0)));
-    const sgst = r2(Math.abs(Number(d.totalSgst ?? d.sgstAmount ?? 0)));
-    const igst = r2(Math.abs(Number(d.totalIgst ?? d.igstAmount ?? 0)));
-    const cess = r2(Math.abs(Number(d.totalCess ?? d.cessAmount ?? 0)));
+    const cgst = r2(Math.abs(Number(d.totalCgst ?? d.cgstAmount ?? d.totals?.cgst ?? 0)));
+    const sgst = r2(Math.abs(Number(d.totalSgst ?? d.sgstAmount ?? ((Number(d.totals?.sgst) || 0) + (Number(d.totals?.utgst) || 0)))));
+    const igst = r2(Math.abs(Number(d.totalIgst ?? d.igstAmount ?? d.totals?.igst ?? 0)));
+    const cess = r2(Math.abs(Number(d.totalCess ?? d.cessAmount ?? d.totals?.cess ?? 0)));
     const totalTax = r2(cgst + sgst + igst + cess);
     const taxable = r2(Math.max(0, total - totalTax));
     const { paid, mode } = extractBillPaidAmount(bill);
     const due = r2(Math.max(0, total - paid));
     const party = bill.clientName || d.client?.name || 'Walk-in Customer';
-    const isCreditNote = String(docType).toLowerCase().includes('credit note');
+    const isCreditNote = String(docType).toLowerCase().replace(/-/g, ' ').includes('credit note');
 
     const raw = [];
     if (!isCreditNote) {
@@ -204,31 +232,39 @@ export function deriveAutoJournalEntries({
 
   // 2. Purchase Bills
   for (const pur of Array.isArray(purchases) ? purchases : []) {
-    if (!pur || pur.cancelled) continue;
+    if (!pur || pur.cancelled || pur.kind === 'po') continue;
     const date = String(pur.billDate || pur.date || pur.createdAt || '').slice(0, 10);
     if (!inRange(date)) continue;
-    const total = r2(Math.abs(Number(pur.totalAmount ?? pur.grandTotal ?? pur.amount ?? 0)));
+    const itemSum = summarizePurchaseItems(pur);
+    const total = r2(Math.abs(Number(pur.totalAmount ?? pur.grandTotal ?? pur.amount ?? pur.total ?? itemSum?.total ?? 0)));
     if (total <= 0) continue;
-    const cgst = r2(Math.abs(Number(pur.cgst ?? pur.totalCgst ?? 0)));
-    const sgst = r2(Math.abs(Number(pur.sgst ?? pur.totalSgst ?? 0)));
-    const igst = r2(Math.abs(Number(pur.igst ?? pur.totalIgst ?? 0)));
-    const taxFallback = cgst + sgst + igst === 0 ? r2(Math.abs(Number(pur.gstAmount ?? pur.taxAmount ?? 0))) : 0;
-    const effCgst = taxFallback > 0 ? r2(taxFallback / 2) : cgst;
-    const effSgst = taxFallback > 0 ? r2(taxFallback - effCgst) : sgst;
-    const totalTax = r2(effCgst + effSgst + igst);
+    const cgst = r2(Math.abs(Number(pur.cgst ?? pur.totalCgst ?? itemSum?.cgst ?? 0)));
+    const sgst = r2(Math.abs(Number(pur.sgst ?? pur.totalSgst ?? itemSum?.sgst ?? 0)));
+    const igst = r2(Math.abs(Number(pur.igst ?? pur.totalIgst ?? itemSum?.igst ?? 0)));
+    const taxFallback = cgst + sgst + igst === 0 ? r2(Math.abs(Number(pur.gstAmount ?? pur.taxAmount ?? pur.totalTax ?? 0))) : 0;
+    const effCgst = taxFallback > 0 ? (pur.interstate ? 0 : r2(taxFallback / 2)) : cgst;
+    const effSgst = taxFallback > 0 ? (pur.interstate ? 0 : r2(taxFallback - effCgst)) : sgst;
+    const effIgst = taxFallback > 0 && pur.interstate ? taxFallback : igst;
+    const totalTax = r2(effCgst + effSgst + effIgst);
     const taxable = r2(Math.max(0, total - totalTax));
-    const status = String(pur.status || '').toLowerCase();
+    const status = String(pur.paymentStatus || pur.status || '').toLowerCase();
+    const paymentsSum = Array.isArray(pur.payments)
+      ? r2(pur.payments.reduce((s, p) => s + (Number(p?.amount) || 0), 0))
+      : 0;
     const paid = status === 'paid'
       ? total
-      : Math.min(total, Math.max(0, r2(Number(pur.amountPaid || 0))));
+      : Math.min(total, Math.max(0, paymentsSum > 0 ? paymentsSum : r2(Number(pur.amountPaid || pur.paidAmount || 0))));
     const due = r2(Math.max(0, total - paid));
-    const mode = pur.paymentMethod || pur.paymentMode || 'Bank';
+    const lastPayMode = Array.isArray(pur.payments) && pur.payments.length > 0
+      ? (pur.payments[pur.payments.length - 1]?.mode || pur.payments[pur.payments.length - 1]?.method)
+      : '';
+    const mode = lastPayMode || pur.paymentMethod || pur.paymentMode || 'Bank';
 
     const raw = [];
     if (taxable > 0) raw.push({ account: 'PURCHASE_ACCOUNT', debit: taxable, credit: 0 });
     if (effCgst > 0) raw.push({ account: 'INPUT_CGST', debit: effCgst, credit: 0 });
     if (effSgst > 0) raw.push({ account: 'INPUT_SGST', debit: effSgst, credit: 0 });
-    if (igst > 0) raw.push({ account: 'INPUT_IGST', debit: igst, credit: 0 });
+    if (effIgst > 0) raw.push({ account: 'INPUT_IGST', debit: effIgst, credit: 0 });
     if (paid > 0) raw.push({ account: cashOrBankAccount(mode), debit: 0, credit: paid });
     if (due > 0) raw.push({ account: 'SUNDRY_CREDITORS', debit: 0, credit: due });
 
@@ -528,3 +564,64 @@ export function computeInventoryValuation(products = []) {
   }
   return r2(total);
 }
+
+/**
+ * Computes Trading Account (Gross Profit & COGS) + Profit & Loss Account (Net Profit)
+ * directly from Trial Balance + Stock Valuation, guaranteeing ₹0.00 tie-out with
+ * `computeBalanceSheet` Surplus/Deficit and ITR-3 Book Profit.
+ */
+export function computeTradingAndProfitLoss(trialBalance, { openingStockValue = 0, closingStockValue = 0 } = {}) {
+  const rows = Array.isArray(trialBalance?.rows) ? trialBalance.rows : [];
+  const openStk = r2(Math.max(0, Number(openingStockValue) || 0));
+  const closeStk = r2(Math.max(0, Number(closingStockValue) || 0));
+
+  let grossSales = 0;
+  let salesReturns = 0;
+  let otherIncome = 0;
+  let grossPurchases = 0;
+  let purchaseReturns = 0;
+  let directExpenses = 0;
+  let indirectExpenses = 0;
+
+  for (const r of rows) {
+    if (r.code === 'SALES_ACCOUNT') {
+      grossSales = r2(grossSales + (r.closingCredit - r.closingDebit));
+    } else if (r.code === 'SALES_RETURNS') {
+      salesReturns = r2(salesReturns + (r.closingDebit - r.closingCredit));
+    } else if (r.nature === 'income') {
+      otherIncome = r2(otherIncome + (r.closingCredit - r.closingDebit));
+    } else if (r.code === 'PURCHASE_ACCOUNT') {
+      grossPurchases = r2(grossPurchases + (r.closingDebit - r.closingCredit));
+    } else if (r.code === 'PURCHASE_RETURNS') {
+      purchaseReturns = r2(purchaseReturns + (r.closingCredit - r.closingDebit));
+    } else if (r.code === 'DIRECT_EXPENSES') {
+      directExpenses = r2(directExpenses + (r.closingDebit - r.closingCredit));
+    } else if (r.nature === 'expense') {
+      indirectExpenses = r2(indirectExpenses + (r.closingDebit - r.closingCredit));
+    }
+  }
+
+  const netSales = r2(grossSales - salesReturns);
+  const netPurchases = r2(grossPurchases - purchaseReturns);
+  const cogs = r2(openStk + netPurchases + directExpenses - closeStk);
+  const grossProfit = r2(netSales - cogs);
+  const netProfit = r2(grossProfit + otherIncome - indirectExpenses);
+
+  return {
+    grossSales,
+    salesReturns,
+    netSales,
+    openingStockValue: openStk,
+    grossPurchases,
+    purchaseReturns,
+    netPurchases,
+    directExpenses,
+    closingStockValue: closeStk,
+    cogs,
+    grossProfit,
+    otherIncome,
+    indirectExpenses,
+    netProfit,
+  };
+}
+

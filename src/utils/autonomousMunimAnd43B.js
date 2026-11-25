@@ -37,11 +37,32 @@ export function checkSection43BCompliance({
 
   const atRiskBills = [];
   let totalAtRiskAmount = 0;
+  let overdueDisallowedAmount = 0;
+  let overdueCount = 0;
 
   for (const p of Array.isArray(purchases) ? purchases : []) {
-    if (!p || p.cancelled || String(p.status || '').toLowerCase() === 'cancelled') continue;
-    const total = r2(p.totalAmount ?? p.grandTotal ?? p.amount ?? 0);
-    const paid = r2(p.paidAmount ?? p.amountPaid ?? (p.paymentStatus === 'PAID' || String(p.status || '').toLowerCase() === 'paid' ? total : 0));
+    if (!p || p.cancelled || p.kind === 'po' || String(p.status || '').toLowerCase() === 'cancelled') continue;
+    let fallbackItemTotal = 0;
+    if (Array.isArray(p.items) && p.items.length > 0) {
+      for (const it of p.items) {
+        const gross = (Number(it?.quantity) || 0) * (Number(it?.rate) || 0);
+        const disc = it?.discountType === 'fixed'
+          ? (Number(it?.discount) || 0)
+          : (gross * (Number(it?.discountPercent ?? it?.discount) || 0)) / 100;
+        const tx = Math.max(0, gross - disc);
+        const rate = (Number(it?.taxPercent) || 0) + (Number(it?.cessPercent) || 0);
+        fallbackItemTotal += tx + (tx * rate) / 100;
+      }
+      fallbackItemTotal = p.applyRoundOff ? Math.round(fallbackItemTotal) : r2(fallbackItemTotal);
+    }
+    const total = r2(p.totalAmount ?? p.grandTotal ?? p.amount ?? p.total ?? fallbackItemTotal);
+    const isPaidStatus = String(p.paymentStatus || p.status || '').toLowerCase() === 'paid';
+    const paymentsArrSum = Array.isArray(p.payments)
+      ? r2(p.payments.reduce((s, pay) => s + (Number(pay?.amount) || 0), 0))
+      : 0;
+    const paid = isPaidStatus
+      ? total
+      : r2(paymentsArrSum > 0 ? paymentsArrSum : (p.paidAmount ?? p.amountPaid ?? 0));
     const pending = r2(total - paid);
     if (pending <= 0) continue;
 
@@ -52,12 +73,15 @@ export function checkSection43BCompliance({
       clientByName.get(supName.toLowerCase()) ||
       null;
 
+    const msmeTypeVal = String(p.msmeType || matchedClient?.msmeType || '').toLowerCase();
+    if (msmeTypeVal === 'medium') continue; // Sec 43B(h) applies strictly to Micro & Small enterprises
+
+    const udyamVal = p.supplierUdyamNo || p.udyamNo || matchedClient?.udyamNo || '';
     const explicitlyMsme = Boolean(
       p.isMsme ||
-      p.udyamNo ||
+      udyamVal ||
       matchedClient?.isMsme ||
-      matchedClient?.udyamNo ||
-      matchedClient?.msmeType
+      (msmeTypeVal && (msmeTypeVal.includes('micro') || msmeTypeVal.includes('small')))
     );
 
     if (!explicitlyMsme && !treatAllUnpaidSuppliersAsMsmeIfUnmarked) continue;
@@ -85,11 +109,17 @@ export function checkSection43BCompliance({
 
     const warningTriggerDays = statutoryLimitDays <= 15 ? 5 : 30;
     if (daysElapsed >= warningTriggerDays) {
+      const severity = daysRemaining < 0 ? 'DISALLOWED_OVERDUE' : daysRemaining <= 7 ? 'CRITICAL_7_DAYS' : 'WARNING_DUE_SOON';
       totalAtRiskAmount = r2(totalAtRiskAmount + pending);
+      if (severity === 'DISALLOWED_OVERDUE') {
+        overdueDisallowedAmount = r2(overdueDisallowedAmount + pending);
+        overdueCount += 1;
+      }
       atRiskBills.push({
+        id: p.id,
         billNumber: String(p.invoiceNumber || p.billNumber || p.id || ''),
         supplierName: supName,
-        udyamNo: p.udyamNo || matchedClient?.udyamNo || (explicitlyMsme ? 'MSME Verified' : 'Unverified (Preview)'),
+        udyamNo: udyamVal || (explicitlyMsme ? 'MSME Verified' : 'Unverified (Preview)'),
         explicitlyVerifiedMsme: explicitlyMsme,
         hasWrittenAgreement: hasAgreement,
         statutoryLimitDays,
@@ -97,7 +127,8 @@ export function checkSection43BCompliance({
         pendingAmount: pending,
         daysElapsed,
         daysRemaining,
-        severity: daysRemaining < 0 ? 'DISALLOWED_OVERDUE' : daysRemaining <= 7 ? 'CRITICAL_7_DAYS' : 'WARNING_DUE_SOON',
+        severity,
+        badgeLabel: severity === 'DISALLOWED_OVERDUE' ? 'Overdue' : severity === 'CRITICAL_7_DAYS' ? 'Due <=7d' : 'Due Soon',
         estimatedTaxHit30Pct: r2(pending * 0.312),
       });
     }
@@ -107,7 +138,9 @@ export function checkSection43BCompliance({
 
   return {
     criticalCount: atRiskBills.length,
+    overdueCount,
     totalAtRiskAmount,
+    overdueDisallowedAmount,
     estimatedTaxImpact30Pct: r2(totalAtRiskAmount * 0.312),
     bills: atRiskBills,
     advisoryNote:

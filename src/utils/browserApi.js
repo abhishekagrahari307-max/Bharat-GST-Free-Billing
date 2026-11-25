@@ -284,7 +284,15 @@ function extractApiPath(input) {
   }
 }
 
-const BHARAT_CHANGELOG_MD = `## [5.5.4] - 2026-11-21
+const BHARAT_CHANGELOG_MD = `## [5.5.5] - 2026-11-21
+**Complete A-to-Z Statutory GST, NIC e-Way Bill, ITR-3/4, Sec 40A(3)/269ST Cash Shield, MSME Sec 43B(h), CA Double-Entry & Mandi License Print Suite.**
+
+### Added & Hardened
+- **NIC e-Way Bill Transport & Self-GSTIN Portal Guards (\`src/utils.js\`, \`src/utils/gstAudit.js\`, \`src/utils/gstExport.js\`, \`GSTReturns.jsx\`)**: Maps \`vehicleNo\` (RTO/BH validation), \`distanceKm\`, \`transporterId\`, \`transporterName\`, 6-digit PIN & 4/6/8-digit HSN into NIC v1.0.1221 JSON; blocks Self-GSTIN (\`RET191106\`); adds live HSN vs Outward & GSTR-1 vs GSTR-3B \`₹0.00\` tie-out + GST Sec 51 TDS (\`2%\`: \`1% CGST + 1% SGST\` / \`2% IGST\`) & Sec 52 TCS.
+- **ITR-3/4, Cash Compliance (\`Sec 40A(3)\` & \`Sec 269ST\`), MSME \`Sec 43B(h)\` & AIS/GSTR-1 Bridge (\`src/utils/itrAndTaxEngine.js\`, \`IncomeTax.jsx\`, \`ExpenseTracker.jsx\`, \`CashBook.jsx\`, \`ReceiptVoucher.jsx\`, \`PurchaseBills.jsx\`)**: Flags \`> ₹10,000\` daily cash expenses as Disallowed (\`Sec 40A(3)\`), alerts \`≥ ₹2,00,000\` cash receipts (\`Sec 269ST\`), marks \`> 45d\` unpaid Udyam bills \`Overdue\`, and reconciles GSTR-1 vs ITR Gross Receipts (\`₹0.00\` diff).
+- **Double-Entry Tax Split & Statutory License Print (\`src/utils/doubleEntry.js\`, \`SettingsView.jsx\`, \`InvoicePreview.jsx\`, \`InvoiceGridLayout.jsx\`)**: Posts canonical \`d.totals\` CGST/SGST/IGST & purchase items with \`₹0.00\` Balance Sheet diff, and prints Mandi License, FSSAI, Drug License & Udyam across all 7 invoice templates.
+
+## [5.5.4] - 2026-11-21
 **Universal Auto-Closing Menu Sidebar Across Phone, Tablet & Desktop (\`src/App.jsx\`, \`src/index.css\`).**
 
 ### Fixed & Hardened

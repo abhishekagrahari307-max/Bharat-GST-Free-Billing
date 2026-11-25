@@ -14,6 +14,7 @@ import TableExport from './TableExport';
 import BankMatching from './BankMatching';
 import ComboInput from './ComboInput';
 import EditDialog from './EditDialog';
+import { checkSingleCashExpense40A3, checkSingleCashReceipt269ST } from '../utils/itrAndTaxEngine';
 
 const PERIODS = [['month', 'This month'], ['lastMonth', 'Last month'], ['fy', 'This financial year'], ['all', 'All dates'], ['custom', 'Choose dates']];
 const SOURCE_SCREEN = { receipts: 'Receipts', dashboard: 'the Dashboard', expenses: 'Expenses', purchases: 'Purchases' };
@@ -64,6 +65,28 @@ function EntryFields({ form, update, names, idPrefix, amountRef, inWindow }) {
         <input id={id('note')} type="text" className="form-input" maxLength={500} placeholder="Optional"
           value={form.note} onChange={(e) => update('note', e.target.value)} />
       </div>
+      {(() => {
+        if (form.type === 'in') {
+          const c269 = checkSingleCashReceipt269ST({ amount: form.amount, mode: 'cash' });
+          if (c269.violated) {
+            return (
+              <div className="ed-wide" style={{ flex: '1 1 100%', padding: '0.45rem 0.7rem', borderRadius: 8, background: 'rgba(220,38,38,0.1)', color: '#dc2626', fontSize: '0.76rem', fontWeight: 600 }}>
+                ⚠ {c269.message}
+              </div>
+            );
+          }
+        } else {
+          const c40a3 = checkSingleCashExpense40A3({ amount: form.amount, paymentMode: 'cash', category: form.category, description: `${form.name} ${form.note}` });
+          if (c40a3.disallowed) {
+            return (
+              <div className="ed-wide" style={{ flex: '1 1 100%', padding: '0.45rem 0.7rem', borderRadius: 8, background: 'rgba(217,119,6,0.12)', color: '#b45309', fontSize: '0.76rem', fontWeight: 600 }}>
+                ⚠ {c40a3.message}
+              </div>
+            );
+          }
+        }
+        return null;
+      })()}
     </>
   );
 }
@@ -331,6 +354,16 @@ function CashBookMain({ tabs, onOpenView }) {
                     </td>
                     <td>
                       {l.category && <span className="type-badge">{l.category}</span>}
+                      {l.type === 'in' && checkSingleCashReceipt269ST({ amount: l.amount, mode: 'cash' }).violated && (
+                        <span style={{ display: 'inline-block', marginLeft: 4, padding: '1px 6px', borderRadius: 999, background: 'rgba(220,38,38,0.14)', color: '#dc2626', fontSize: '0.68rem', fontWeight: 700 }} title="Section 269ST: Cash receipt ≥ ₹2,00,000 attracts 100% penalty u/s 271DA">
+                          Sec 269ST Alert
+                        </span>
+                      )}
+                      {l.type === 'out' && checkSingleCashExpense40A3({ amount: l.amount, paymentMode: 'cash', category: l.category, description: `${l.name || ''} ${l.note || ''}` }).disallowed && (
+                        <span style={{ display: 'inline-block', marginLeft: 4, padding: '1px 6px', borderRadius: 999, background: 'rgba(217,119,6,0.15)', color: '#b45309', fontSize: '0.68rem', fontWeight: 700 }} title="Section 40A(3): Daily cash expense > ₹10,000 disallowed in ITR">
+                          Sec 40A(3) Disallowed
+                        </span>
+                      )}
                       {l.source !== 'own' && (
                         <button type="button" className="type-badge" onClick={() => onOpenView?.(l.view)}
                           title={`Made on ${SOURCE_SCREEN[l.view]}: change it there`}

@@ -28,7 +28,7 @@ import { withReturns, returnableLines, debitNoteTotals, editProblem, notesToRest
 import { Barcode } from 'lucide-react';
 import BarcodeLabels from './BarcodeLabels';
 import { findByBarcode } from '../utils/barcode';
-import { detectMarginErosion } from '../utils/autonomousMunimAnd43B';
+import { detectMarginErosion, checkSection43BCompliance } from '../utils/autonomousMunimAnd43B';
 // v1.10.85 (#148) - alternate units on a purchase line, and the low-stock PO
 // handed over from Products or the Dashboard.
 import { lineFactor, altLineFields } from '../utils';
@@ -106,6 +106,7 @@ const emptyForm = {
   // pre-v1.10.29 records fall through gracefully.
   supplierAddress: '',
   supplierGstin: '',
+  supplierUdyamNo: '',
   invoiceNumber: '',
   items: [{ ...emptyItem }],
   paymentStatus: 'Unpaid',
@@ -377,6 +378,7 @@ export default function PurchaseBills({ onOpenGstReturns } = {}) {
       supplierName: purchase.supplierName || '',
       supplierAddress: purchase.supplierAddress || '',
       supplierGstin: purchase.supplierGstin || '',
+      supplierUdyamNo: purchase.supplierUdyamNo || purchase.udyamNo || '',
       invoiceNumber: purchase.invoiceNumber || '',
       items: purchase.items && purchase.items.length > 0 ? purchase.items.map(i => ({ ...i })) : [{ ...emptyItem }],
       paymentStatus: purchase.paymentStatus || 'Unpaid',
@@ -791,6 +793,7 @@ export default function PurchaseBills({ onOpenGstReturns } = {}) {
         supplierName: form.supplierName.trim(),
         supplierAddress: (form.supplierAddress || '').trim(),
         supplierGstin: form.supplierGstin.trim(),
+        ...(form.supplierUdyamNo?.trim() ? { supplierUdyamNo: form.supplierUdyamNo.trim().toUpperCase(), udyamNo: form.supplierUdyamNo.trim().toUpperCase(), isMsme: true } : {}),
         invoiceNumber: form.invoiceNumber.trim(),
         // Which of YOUR businesses bought this. Distinct from supplierGstin
         // directly above, which is who sold it.
@@ -1536,6 +1539,12 @@ export default function PurchaseBills({ onOpenGstReturns } = {}) {
                 <input type="text" className="form-input" value={form.supplierGstin}
                   onChange={e => updateSupplierGstin(e.target.value)} placeholder="15-digit GSTIN" maxLength={15} />
               </div>
+              <div className="form-group">
+                <label className="form-label">MSME Udyam No. (Sec 43B(h) 45-Day Tracker)</label>
+                <input type="text" className="form-input" value={form.supplierUdyamNo || ''}
+                  onChange={e => updateField('supplierUdyamNo', e.target.value.toUpperCase())}
+                  placeholder="e.g. UDYAM-UP-09-0012345 (Micro/Small)" maxLength={30} />
+              </div>
               {/* v1.10.29 — Supplier address for the PDF. Optional; full width row. */}
               <div className="form-group" style={{ gridColumn: 'span 2' }}>
                 <label className="form-label">Supplier Address (optional)</label>
@@ -1953,6 +1962,30 @@ export default function PurchaseBills({ onOpenGstReturns } = {}) {
                           onChange={e => changePaymentStatus(p, e.target.value)}>
                           {PAYMENT_STATUSES.map(s => <option key={s} value={s}>{PURCHASE_STATUS_LABEL[s]}</option>)}
                         </select>
+                        {(() => {
+                          if (bal <= 0.005) return null;
+                          const msmeCheck = checkSection43BCompliance({ purchases: [{ ...p, totalAmount: t.finalTotal, paidAmount: Math.max(0, t.finalTotal - bal) }] });
+                          const hit = msmeCheck.bills[0];
+                          if (!hit) return null;
+                          const isOverdue = hit.severity === 'DISALLOWED_OVERDUE';
+                          return (
+                            <span
+                              style={{
+                                display: 'inline-block',
+                                marginTop: 4,
+                                padding: '2px 7px',
+                                borderRadius: 999,
+                                fontSize: '0.68rem',
+                                fontWeight: 700,
+                                background: isOverdue ? 'rgba(220,38,38,0.14)' : 'rgba(245,158,11,0.15)',
+                                color: isOverdue ? '#dc2626' : '#d97706',
+                              }}
+                              title={`Sec 43B(h) MSME (${hit.udyamNo}): ${hit.daysElapsed} days elapsed vs ${hit.statutoryLimitDays}-day statutory limit`}
+                            >
+                              {isOverdue ? `Overdue · Sec 43B(h) (${hit.daysElapsed}d)` : `MSME Due (${hit.daysRemaining}d left)`}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td className="col-sticky-actions">
                         <div className="table-actions">

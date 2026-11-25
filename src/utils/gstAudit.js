@@ -24,16 +24,31 @@ export function auditInvoicesForGst(bills = [], options = {}) {
   const issues = [];
   const prefixNumbers = new Map(); // prefix -> sorted numeric suffixes
 
+  const sellerGstinOpt = String(options.sellerGstin || '').trim().toUpperCase();
+
   for (const bill of outward) {
     const data = bill.data || {};
     const invNo = String(bill.invoiceNumber || data?.details?.invoiceNumber || '').trim() || '(Unnumbered)';
     const client = data.client || {};
     const gstin = String(client.gstin || bill.clientGstin || '').trim().toUpperCase();
+    const billSellerGstin = sellerGstinOpt || String(data?.profile?.gstin || bill.ownerGstin || '').trim().toUpperCase();
     const items = Array.isArray(data.items) ? data.items : [];
     const total = Number(bill.total ?? data?.totals?.total ?? 0);
     const clientState = String(client.state || '').trim();
     const ewayNo = String(data?.details?.ewayBillNo || data?.ewayBillNo || '').trim();
     const invoiceMode = data?.invoiceOptions?.invoiceMode || 'goods';
+
+    // 0. Self-GSTIN guard (RET191106: Buyer GSTIN == Supplier GSTIN)
+    if (gstin && billSellerGstin && gstin === billSellerGstin) {
+      issues.push({
+        severity: 'error',
+        code: 'SELF_GSTIN',
+        invoiceNumber: invNo,
+        title: `Self-GSTIN Error: Buyer GSTIN (${gstin}) matches Supplier GSTIN`,
+        detail: 'GST Portal rejects B2B/CDNR invoices where Recipient GSTIN equals Supplier GSTIN (Error RET191106).',
+        fix: 'Enter the buyer’s own 15-character GSTIN, clear GSTIN for a B2C sale, or use a Delivery Challan for same-GSTIN stock transfer.',
+      });
+    }
 
     // 1. Validate B2B Client GSTIN format + Mod-36 checksum + State match
     if (gstin) {

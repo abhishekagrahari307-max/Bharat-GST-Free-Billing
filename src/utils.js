@@ -641,7 +641,8 @@ export const INVOICE_TYPES = {
 export const ORDER_DETAIL_FIELDS = [
   { key: 'workDetails', label: 'Work details', wide: true, placeholder: 'e.g. Supply and installation of high mast lights, scope as per annexure' },
   { key: 'revisionNo', label: 'Revision No', placeholder: 'e.g. Rev-1' },
-  { key: 'vehicleNo', label: 'Vehicle No', placeholder: 'e.g. TS09AB1234' },
+  { key: 'vehicleNo', label: 'Vehicle No', placeholder: 'e.g. UP58AB1234' },
+  { key: 'distanceKm', label: 'Distance (KM)', placeholder: 'e.g. 85 (for E-Way Bill)' },
   { key: 'periodFrom', label: 'Service period from', type: 'date' },
   { key: 'periodTo', label: 'Service period to', type: 'date' },
   { key: 'buyerOrderNo', label: "Buyer's Order No", placeholder: 'PO / work order number' },
@@ -652,6 +653,7 @@ export const ORDER_DETAIL_FIELDS = [
   { key: 'deliveryNoteDate', label: 'Delivery note date', type: 'date' },
   { key: 'dispatchDocNo', label: 'Dispatch Doc No' },
   { key: 'dispatchedThrough', label: 'Dispatched through', placeholder: 'e.g. VRL Logistics, by road' },
+  { key: 'transporterId', label: 'Transporter ID / GSTIN', placeholder: '15-char GSTIN / TRANS ID' },
   { key: 'destination', label: 'Destination' },
   { key: 'paymentTerms', label: 'Mode / Terms of payment', placeholder: 'e.g. 30 days, NEFT' },
   { key: 'deliveryTerms', label: 'Terms of delivery', wide: true },
@@ -706,6 +708,20 @@ export const billMatchesSearch = (bill, query) => {
 };
 export const customFieldsOf = (details = {}) => (Array.isArray(details?.customFields) ? details.customFields : [])
   .map((f) => ({ label: String(f?.label || '').trim(), value: String(f?.value || '').trim() }));
+
+export const formatSellerLicenses = (profile = {}) => {
+  if (!profile || typeof profile !== 'object') return [];
+  const out = [];
+  const mandi = String(profile.mandiLicense || '').trim();
+  const fssai = String(profile.fssaiNo || '').trim();
+  const dl = String(profile.drugLicenseNo || '').trim();
+  const udyam = String(profile.udyamNo || '').trim();
+  if (mandi) out.push(`Mandi Lic: ${mandi}`);
+  if (fssai) out.push(`FSSAI: ${fssai}`);
+  if (dl) out.push(`DL No: ${dl}`);
+  if (udyam) out.push(`Udyam: ${udyam}`);
+  return out;
+};
 
 // v1.10.70 - where a PDF page is allowed to end.
 //
@@ -1246,9 +1262,28 @@ export const formatDateGST = (dateStr) => {
 // Prior code hard-coded `taxable = qty*rate - discount` which reported
 // the MRP (post-tax) value as taxable → the portal's own tax-consistency
 // check (`taxableValue + tax ≈ totInvValue`) failed → E-Way Bill rejected.
+export const normalizeIndianVehicleNo = (raw) =>
+  String(raw || '').toUpperCase().replace(/[\s.\-/]+/g, '');
+
+export const validateIndianVehicleNo = (raw) => {
+  const clean = normalizeIndianVehicleNo(raw);
+  if (!clean) return { valid: true, normalized: '', message: '' };
+  // Standard Indian RTO (e.g. UP58AB1234, UP58T4521, DL1CAA1234), BH-series (24BH1234AA), or temporary/defence
+  const ok = /^([A-Z]{2}\d{1,2}[A-Z]{0,3}\d{1,4}|\d{2}BH\d{4}[A-Z]{1,2}|TR[A-Z0-9]{4,12})$/.test(clean)
+    && clean.length >= 6 && clean.length <= 15;
+  return ok
+    ? { valid: true, normalized: clean, message: '' }
+    : { valid: false, normalized: clean, message: `Invalid Indian Vehicle Number "${raw}". Expected RTO format like UP58AB1234 or 24BH1234AA.` };
+};
+
 export const generateEWayBillJSON = (profile, client, details, items, totals, invoiceType, opts = {}) => {
   if (profile?.country && profile.country !== 'India') {
     throw new Error('E-Way Bill is an Indian GST portal feature. Set business country to "India" in Settings to enable it.');
+  }
+  const sellerGstin = String(profile?.gstin || '').trim().toUpperCase();
+  const buyerGstin = String(client?.gstin || '').trim().toUpperCase();
+  if (sellerGstin && buyerGstin && sellerGstin === buyerGstin && invoiceType !== 'delivery-challan') {
+    throw new Error(`Buyer GSTIN (${buyerGstin}) cannot be identical to Supplier GSTIN on a Tax Invoice. Use a Delivery Challan for same-GSTIN branch transfers.`);
   }
   // Under a LUT (totals.lutZeroRated) no tax is charged: rates 0, and the
   // prices had no tax in them to back out.
@@ -1264,24 +1299,49 @@ export const generateEWayBillJSON = (profile, client, details, items, totals, in
     ? totals.isInterstate
     : !!(fromStateCode && toStateCode && fromStateCode !== toStateCode);
 
-  // Pincodes are mandatory (the portal rejects 0). Try profile.pin / client.pin first,
-  // then fall back to extracting digits from address. If still missing, throw — the user
-  // must fill the field rather than submit a guaranteed-rejected payload.
+  // Pincodes are mandatory (NIC portal requires 6-digit Indian PIN 100000..999999).
   const extractPin = (obj) => {
     const direct = String(obj?.pin || obj?.pincode || '').replace(/\D/g, '');
-    if (direct.length === 6) return Number(direct);
-    const fromAddr = String(obj?.address || '').match(/\b(\d{6})\b/);
+    if (/^[1-9]\d{5}$/.test(direct)) return Number(direct);
+    const fromAddr = String(obj?.address || '').match(/\b([1-9]\d{5})\b/);
     return fromAddr ? Number(fromAddr[1]) : 0;
   };
   const fromPincode = extractPin(profile);
   const toPincode = extractPin(client);
-  if (!fromPincode) throw new Error('Your business PIN code is missing. Add it in Settings → Company → Company Details (PIN Code), then click E-Way Bill again.');
-  if (!toPincode) throw new Error("The client's PIN code is missing. Fill PIN Code under Billed To on this invoice (or on the client in Clients), then click E-Way Bill again.");
+  if (!fromPincode) throw new Error('Your business 6-digit PIN code is missing or invalid. Add it in Settings → Company → Company Details (PIN Code, e.g. 272162), then click E-Way Bill again.');
+  if (!toPincode) throw new Error("The client's 6-digit PIN code is missing or invalid. Fill PIN Code under Billed To on this invoice (or on the client in Clients), then click E-Way Bill again.");
+
+  // Vehicle & Transport validation (NIC E-Way Bill Schema v1.0.1221)
+  const vehCheck = validateIndianVehicleNo(details?.vehicleNo || opts?.vehicleNo || '');
+  if (!vehCheck.valid) {
+    throw new Error(vehCheck.message);
+  }
+  const transporterIdClean = String(details?.transporterId || opts?.transporterId || '').trim().toUpperCase();
+  if (transporterIdClean && !/^\d{2}[A-Z0-9]{13}$/.test(transporterIdClean)) {
+    throw new Error(`Invalid Transporter ID / GSTIN "${transporterIdClean}". Must be 15 characters (e.g. 09AAACT1234E1Z5).`);
+  }
+  const rawDist = opts.distance ?? details?.distanceKm ?? details?.distance;
+  const parsedDist = rawDist !== undefined && rawDist !== null && String(rawDist).trim() !== ''
+    ? Math.round(Number(rawDist))
+    : 1;
+  if (!Number.isFinite(parsedDist) || parsedDist < 1 || parsedDist > 4000) {
+    throw new Error('Transport Distance (KM) for E-Way Bill must be between 1 and 4000 KM.');
+  }
+  const transporterNameClean = String(details?.transporterName || details?.dispatchedThrough || opts?.transporterName || '').trim().slice(0, 100);
+  const transDocNoClean = String(details?.transDocNo || details?.dispatchDocNo || opts?.transDocNo || '').trim().slice(0, 15);
+  const transDocDateClean = details?.transDocDate
+    ? formatDateGST(details.transDocDate)
+    : (details?.deliveryNoteDate ? formatDateGST(details.deliveryNoteDate) : '');
 
   const itemList = items.map((item, idx) => {
     // v1.10.1 — back-calculate taxable when the invoice is MRP-inclusive.
     // v1.10.22 — honour discountType (percent | fixed).
     // v1.10.31 — GST-C5: cess rate now populated per item (was 0).
+    const rawHsn = String(item.hsn ?? '').trim();
+    const cleanHsn = rawHsn.replace(/\D/g, '');
+    if (rawHsn && !/^\d{4}(\d{2})?(\d{2})?$/.test(cleanHsn)) {
+      throw new Error(`Item #${idx + 1} (${item.name || 'Item'}): HSN/SAC "${rawHsn}" must be 4, 6, or 8 digits for NIC E-Way Bill.`);
+    }
     const gross = (Number(item.quantity) || 0) * (Number(item.rate) || 0) - resolveLineDiscount(item, taxInclusive);
     const taxRate = zeroRated ? 0 : Number(item.taxPercent) || 0;
     const cessRate = zeroRated ? 0 : Number(item.cessPercent) || 0;
@@ -1292,7 +1352,7 @@ export const generateEWayBillJSON = (profile, client, details, items, totals, in
       itemNo: idx + 1,
       productName: item.name || '',
       productDesc: item.name || '',
-      hsnCode: Number(item.hsn) || 0,
+      hsnCode: Number(cleanHsn) || 0,
       quantity: item.quantity || 0,
       qtyUnit: getUnitUQC(item.unit) === 'NA' ? 'OTH' : getUnitUQC(item.unit), // NA is not an e-way bill unit
       taxableAmount: Math.round(taxable * 100) / 100,
@@ -1306,46 +1366,36 @@ export const generateEWayBillJSON = (profile, client, details, items, totals, in
   return {
     version: '1.0.1221',
     billLists: [{
-      userGstin: profile.gstin || '',
+      userGstin: sellerGstin,
       supplyType: 'O', // Outward — seller-issued. Always O regardless of intra/inter-state.
       subSupplyType: 1, // 1=Supply
       docType: invoiceType === 'delivery-challan' ? 'CHL' : 'INV',
       docNo: details.invoiceNumber || '',
       docDate: formatDateGST(details.invoiceDate),
-      fromGstin: profile.gstin || '',
+      fromGstin: sellerGstin,
       fromAddr1: (profile.address || '').substring(0, 120),
       fromPlace: profile.city || profile.state || '',
       fromPincode: fromPincode,
       fromStateCode: Number(fromStateCode) || 0,
-      toGstin: client.gstin || 'URP',
+      toGstin: buyerGstin || 'URP',
       toAddr1: (client.address || '').substring(0, 120),
       toPlace: client.city || client.state || '',
       toPincode: toPincode,
       toStateCode: Number(toStateCode) || 0,
-      // v1.10.1 — When tax-inclusive, subtotal is MRP-inclusive; the
-      // pre-tax totalValue must back out the embedded tax. Prefer
-      // totals.taxableAmount which computeInvoiceTotals fills correctly
-      // for both modes; fall back to the old calc for legacy callers.
       totalValue: Math.round(((totals.taxableAmount != null ? totals.taxableAmount : (totals.subtotal - totals.totalDiscount))) * 100) / 100,
       cgstValue: Math.round((totals.cgst || 0) * 100) / 100,
-      // v1.10.31 — GST-H7: UTGST folded into sgstValue bucket (NIC portal
-      // has no separate UTGST field; sum must reconcile with totInvValue).
       sgstValue: Math.round(((totals.sgst || 0) + (totals.utgst || 0)) * 100) / 100,
       igstValue: Math.round((totals.igst || 0) * 100) / 100,
-      // v1.10.31 — GST-C5: cess populated (was hardcoded 0 → NIC portal
-      // rejected any invoice with cess for total-consistency mismatch).
       cessValue: Math.round((totals.cess || 0) * 100) / 100,
       totInvValue: Math.round(totals.total * 100) / 100,
-      transMode: 1, // 1=Road
-      // v1.10.31 — GST-C5: distance must be >= 1 (portal rejects 0). Caller
-      // can pass `opts.distance`. If unset we default to 1 (minimum valid).
-      transDistance: Math.max(1, Number(opts.distance) || 1),
-      transporterName: '',
-      transporterId: '',
-      transDocNo: '',
-      transDocDate: '',
-      vehicleNo: '',
-      vehicleType: 'R', // R=Regular
+      transMode: Number(opts.transMode || details?.transMode) || 1, // 1=Road
+      transDistance: parsedDist,
+      transporterName: transporterNameClean,
+      transporterId: transporterIdClean,
+      transDocNo: transDocNoClean,
+      transDocDate: transDocDateClean,
+      vehicleNo: vehCheck.normalized,
+      vehicleType: details?.vehicleType || opts?.vehicleType || 'R', // R=Regular
       itemList: itemList,
     }]
   };
@@ -1920,9 +1970,38 @@ export const removeCustomUnit = (label) => {
 
 export const getAllUnits = () => [...BUILTIN_UNITS, ...getCustomUnits()];
 
+const UQC_SYNONYMS = {
+  kg: 'KGS', kgs: 'KGS', kilogram: 'KGS', kilograms: 'KGS',
+  gm: 'GMS', gms: 'GMS', gram: 'GMS', grams: 'GMS',
+  qtl: 'QTL', quintal: 'QTL', quintals: 'QTL',
+  ton: 'TON', tons: 'TON', tonne: 'TON', tonnes: 'TON', mts: 'MTS',
+  bag: 'BAG', bags: 'BAG', bora: 'BAG',
+  pc: 'PCS', pcs: 'PCS', piece: 'PCS', pieces: 'PCS',
+  no: 'NOS', nos: 'NOS', number: 'NOS', numbers: 'NOS',
+  box: 'BOX', boxes: 'BOX',
+  pkt: 'PAC', pac: 'PAC', pack: 'PAC', packs: 'PAC', packet: 'PAC', packets: 'PAC',
+  ltr: 'LTR', ltrs: 'LTR', litre: 'LTR', litres: 'LTR', liter: 'LTR', liters: 'LTR',
+  ml: 'MLT', mlt: 'MLT',
+  mtr: 'MTR', mtrs: 'MTR', meter: 'MTR', meters: 'MTR', metre: 'MTR', metres: 'MTR',
+  sqft: 'SQF', sqf: 'SQF', sqm: 'SQM',
+  doz: 'DOZ', dozen: 'DOZ', set: 'SET', sets: 'SET',
+  btl: 'BTL', bottle: 'BTL', bottles: 'BTL',
+  ctn: 'CTN', carton: 'CTN', cartons: 'CTN',
+  rol: 'ROL', roll: 'ROL', rolls: 'ROL',
+  prs: 'PRS', pair: 'PRS', pairs: 'PRS',
+  na: 'NA',
+};
+
 export const getUnitUQC = (label) => {
-  const u = getAllUnits().find(x => x.label === label);
-  return u?.uqc || 'OTH';
+  const raw = String(label || '').trim();
+  if (!raw) return 'OTH';
+  const all = getAllUnits();
+  const exact = all.find(x => x.label === raw);
+  if (exact?.uqc) return exact.uqc;
+  const lower = raw.toLowerCase();
+  const ci = all.find(x => x.label.toLowerCase() === lower || String(x.uqc || '').toLowerCase() === lower);
+  if (ci?.uqc) return ci.uqc;
+  return UQC_SYNONYMS[lower] || 'OTH';
 };
 // v1.10.77 - GSTR-1 HSN summary: a service (SAC 99xxxx) has no unit; the
 // portal expects UQC "NA" and quantity 0 for it (delivery charges, setup fees).

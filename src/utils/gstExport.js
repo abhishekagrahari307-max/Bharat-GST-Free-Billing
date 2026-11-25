@@ -344,11 +344,16 @@ export const GOVT_B2B_HEADERS = [
 
 export function generateGovtGstr1B2bCsv(b2bBills = [], fallbackProfile = {}) {
   const rows = [toGovtCsvRow(GOVT_B2B_HEADERS)];
+  const supplierGstin = cleanGstin(fallbackProfile?.gstin || '');
 
   (b2bBills || []).forEach((bill) => {
     const client = bill?.data?.client || {};
     const totals = bill?.data?.totals || {};
     const gstin = cleanGstin(client.gstin || '');
+    const billSupplierGstin = supplierGstin || cleanGstin(bill?.data?.profile?.gstin || bill?.ownerGstin || '');
+    if (gstin && billSupplierGstin && gstin === billSupplierGstin) {
+      throw new Error(`Self-GSTIN Error (RET191106): Invoice ${bill?.invoiceNumber || ''} has Recipient GSTIN (${gstin}) identical to Supplier GSTIN (${billSupplierGstin}).`);
+    }
     const receiverName = client.name || bill?.clientName || '';
     const isInter = billIsInterstate(bill);
     const isIntraUT = !!totals.isIntraUT;
@@ -723,3 +728,195 @@ export function generateGovtGstr1ExempCsv(nilRows = []) {
 
   return rows.join('\r\n');
 }
+
+// ============================================================================
+// 10. GST Section 51 TDS (2%: 1% CGST + 1% SGST or 2% IGST) & Section 52 TCS
+// ============================================================================
+export function computeGstSec51TdsBreakdown(taxableValue, isInterstate = false, ratePercent = 2) {
+  const tx = round2(Math.max(0, Number(taxableValue) || 0));
+  const rate = Number(ratePercent) > 0 ? Number(ratePercent) : 2;
+  if (isInterstate) {
+    const igst = round2((tx * rate) / 100);
+    return {
+      taxableValue: tx,
+      ratePercent: rate,
+      cgstRate: 0,
+      sgstRate: 0,
+      igstRate: rate,
+      cgst: 0,
+      sgst: 0,
+      igst,
+      total: igst,
+    };
+  }
+  const halfRate = rate / 2;
+  const cgst = round2((tx * halfRate) / 100);
+  const sgst = round2((tx * halfRate) / 100);
+  return {
+    taxableValue: tx,
+    ratePercent: rate,
+    cgstRate: halfRate,
+    sgstRate: halfRate,
+    igstRate: 0,
+    cgst,
+    sgst,
+    igst: 0,
+    total: round2(cgst + sgst),
+  };
+}
+
+export function computeGstTdsTcsSummary(bills = [], fallbackProfile = {}) {
+  const gstTdsRows = [];
+  const gstTcsRows = [];
+
+  for (const bill of bills || []) {
+    if (!bill || bill.status === 'cancelled' || bill.status === 'trashed' || bill.deletedAt) continue;
+    const invType = bill?.invoiceType || bill?.data?.invoiceType || 'tax-invoice';
+    if (['quotation', 'proforma', 'delivery-challan', 'purchase-order', 'sales-order'].includes(invType)) continue;
+
+    const sign = invType === 'credit-note' ? -1 : 1;
+    const client = bill?.data?.client || {};
+    const details = bill?.data?.details || {};
+    const totals = bill?.data?.totals || {};
+    const isInter = billIsInterstate(bill);
+    const partyGstin = cleanGstin(client.gstin || bill?.clientGstin || '');
+    const ecoGstin = cleanGstin(details.ecoGstin || '');
+    const taxable = round2(
+      totals.taxableAmount !== undefined
+        ? Number(totals.taxableAmount) || 0
+        : Math.max(0, (Number(totals.subtotal) || 0) - (Number(totals.totalDiscount) || 0))
+    );
+    if (taxable <= 0) continue;
+
+    // GST Section 51 TDS: applies when flagged on invoice/client (`gstTdsApplicable`,
+    // `details.gstTds`, `tdsSection === 'GST-51'`, or Govt/PSU TAN-style GSTIN Deductor)
+    const isGstTds = !!(
+      details.gstTdsApplicable ||
+      details.gstTds ||
+      client.isGovtTdsDeductor ||
+      bill?.data?.tdsSection === 'GST-51'
+    );
+    if (isGstTds) {
+      const rate = Number(details.gstTdsRate || bill?.data?.gstTdsRate || 2) || 2;
+      const brk = computeGstSec51TdsBreakdown(taxable, isInter, rate);
+      gstTdsRows.push({
+        invoiceNumber: bill.invoiceNumber || details.invoiceNumber || '',
+        invoiceDate: bill.invoiceDate || details.invoiceDate || '',
+        partyName: client.name || bill.clientName || 'Govt / PSU Deductor',
+        partyGstin: partyGstin || cleanGstin(details.gstTdsDeductorGstin || ''),
+        section: 'GST Sec 51 (TDS)',
+        isInterstate: isInter,
+        ratePercent: brk.ratePercent,
+        taxableValue: round2(sign * brk.taxableValue),
+        cgst: round2(sign * brk.cgst),
+        sgst: round2(sign * brk.sgst),
+        igst: round2(sign * brk.igst),
+        total: round2(sign * brk.total),
+      });
+    }
+
+    // GST Section 52 TCS: E-Commerce Operator supplies (`ecoGstin` present or `gstTcsApplicable`)
+    const isGstTcs = !!(ecoGstin.length === 15 || details.gstTcsApplicable);
+    if (isGstTcs) {
+      const rate = Number(details.gstTcsRate || fallbackProfile?.gstTcsRate || 0.5) || 0.5;
+      const brk = computeGstSec51TdsBreakdown(taxable, isInter, rate);
+      gstTcsRows.push({
+        invoiceNumber: bill.invoiceNumber || details.invoiceNumber || '',
+        invoiceDate: bill.invoiceDate || details.invoiceDate || '',
+        partyName: details.ecoName || client.name || bill.clientName || 'E-Commerce Operator',
+        partyGstin: ecoGstin || partyGstin,
+        section: 'GST Sec 52 (E-Com TCS)',
+        isInterstate: isInter,
+        ratePercent: brk.ratePercent,
+        taxableValue: round2(sign * brk.taxableValue),
+        cgst: round2(sign * brk.cgst),
+        sgst: round2(sign * brk.sgst),
+        igst: round2(sign * brk.igst),
+        total: round2(sign * brk.total),
+      });
+    }
+  }
+
+  const sumCols = (arr) => arr.reduce((acc, r) => ({
+    taxableValue: round2(acc.taxableValue + r.taxableValue),
+    cgst: round2(acc.cgst + r.cgst),
+    sgst: round2(acc.sgst + r.sgst),
+    igst: round2(acc.igst + r.igst),
+    total: round2(acc.total + r.total),
+  }), { taxableValue: 0, cgst: 0, sgst: 0, igst: 0, total: 0 });
+
+  return {
+    gstTdsRows,
+    gstTcsRows,
+    tdsTotals: sumCols(gstTdsRows),
+    tcsTotals: sumCols(gstTcsRows),
+  };
+}
+
+// ============================================================================
+// 11. GSTR-1 vs HSN (Table 12) vs GSTR-3B (Table 3.1) Zero-Difference Verifier
+// ============================================================================
+export function reconcileGstr1And3bSummary({
+  outwardTaxable = 0,
+  outwardCgst = 0,
+  outwardSgst = 0,
+  outwardIgst = 0,
+  outwardCess = 0,
+  nilExemptTotal = 0,
+  hsnRows = [],
+  gstr3bOutward = null, // { taxable, cgst, sgst, igst, cess }
+} = {}) {
+  const g1Taxable = round2(Number(outwardTaxable) + Number(nilExemptTotal));
+  const g1Cgst = round2(Number(outwardCgst));
+  const g1Sgst = round2(Number(outwardSgst));
+  const g1Igst = round2(Number(outwardIgst));
+  const g1Cess = round2(Number(outwardCess));
+
+  const hsnTotals = (hsnRows || []).reduce((acc, r) => ({
+    taxable: round2(acc.taxable + Number(r.txval ?? r.taxableValue ?? 0)),
+    cgst: round2(acc.cgst + Number(r.camt ?? r.cgst ?? 0)),
+    sgst: round2(acc.sgst + Number(r.samt ?? r.sgst ?? 0)),
+    igst: round2(acc.igst + Number(r.iamt ?? r.igst ?? 0)),
+    cess: round2(acc.cess + Number(r.csamt ?? r.cess ?? 0)),
+  }), { taxable: 0, cgst: 0, sgst: 0, igst: 0, cess: 0 });
+
+  const hsnDiff = {
+    taxable: round2(g1Taxable - hsnTotals.taxable),
+    cgst: round2(g1Cgst - hsnTotals.cgst),
+    sgst: round2(g1Sgst - hsnTotals.sgst),
+    igst: round2(g1Igst - hsnTotals.igst),
+    cess: round2(g1Cess - hsnTotals.cess),
+  };
+  const hsnMatched = Math.abs(hsnDiff.taxable) <= 0.05
+    && Math.abs(hsnDiff.cgst) <= 0.05
+    && Math.abs(hsnDiff.sgst) <= 0.05
+    && Math.abs(hsnDiff.igst) <= 0.05
+    && Math.abs(hsnDiff.cess) <= 0.05;
+
+  let gstr3bDiff = { taxable: 0, cgst: 0, sgst: 0, igst: 0, cess: 0 };
+  let gstr3bMatched = true;
+  if (gstr3bOutward) {
+    gstr3bDiff = {
+      taxable: round2(Number(outwardTaxable) - Number(gstr3bOutward.taxable || 0)),
+      cgst: round2(g1Cgst - Number(gstr3bOutward.cgst || 0)),
+      sgst: round2(g1Sgst - Number(gstr3bOutward.sgst || 0)),
+      igst: round2(g1Igst - Number(gstr3bOutward.igst || 0)),
+      cess: round2(g1Cess - Number(gstr3bOutward.cess || 0)),
+    };
+    gstr3bMatched = Math.abs(gstr3bDiff.taxable) <= 0.05
+      && Math.abs(gstr3bDiff.cgst) <= 0.05
+      && Math.abs(gstr3bDiff.sgst) <= 0.05
+      && Math.abs(gstr3bDiff.igst) <= 0.05
+      && Math.abs(gstr3bDiff.cess) <= 0.05;
+  }
+
+  return {
+    gstr1: { taxableWithNil: g1Taxable, taxableOnly: round2(outwardTaxable), cgst: g1Cgst, sgst: g1Sgst, igst: g1Igst, cess: g1Cess },
+    hsnTotals,
+    hsnDiff,
+    hsnMatched,
+    gstr3bDiff,
+    gstr3bMatched,
+  };
+}
+

@@ -1,8 +1,16 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Calculator, Landmark, FileText, TrendingUp, Upload, Info, Check, X, ChevronRight, Briefcase, Clock, Download } from 'lucide-react';
-import { getAllBills, getAllExpenses, getAllPurchases, getProfile, getAllDebitNotes } from '../store';
+import { Calculator, Landmark, FileText, TrendingUp, Upload, Info, Check, X, ChevronRight, Briefcase, Clock, Download, ShieldCheck } from 'lucide-react';
+import { getAllBills, getAllExpenses, getAllPurchases, getProfile, getAllDebitNotes, getAllProducts, getAllClients, getAllCashEntries, getAllReceipts } from '../store';
 import { debitNoteTotals } from '../utils/debitNotes';
 import { formatCurrency } from '../utils';
+import {
+  computeBusinessITR,
+  computeDigitalVsCashTurnover,
+  auditSection269STViolations,
+  parseAISJson,
+  reconcileGstr1VsItrAndAis,
+} from '../utils/itrAndTaxEngine';
+import { computeInventoryValuation } from '../utils/doubleEntry';
 import { getPrintSettings } from '../utils/printSettings';
 import HelpButton from './HelpButton';
 import PageHeader from './PageHeader';
@@ -71,6 +79,7 @@ const TABS = [
   { key: 'presumptive', label: 'Presumptive (§44AD/ADA)', icon: Briefcase, help: 'Skip full books — declare 6/8% (business) or 50% (professional) of turnover', doc: 'income-tax#presumptive' },
   { key: 'advance',    label: 'Advance Tax',       icon: Clock,    help: 'Four installment schedule with §234B/C interest calculation', doc: 'income-tax#advance-tax' },
   { key: 'bank',       label: 'Bank Statement Import', icon: Upload, help: 'Upload SBI / HDFC / ICICI / Axis / Kotak / PNB / Yes Bank CSV — auto-categorises', doc: 'income-tax#bank-import' },
+  { key: 'caaudit',    label: 'ITR-3/4 · Cash & AIS Audit', icon: ShieldCheck, help: 'ITR-3 P&L tie-out, Sec 40A(3), Sec 269ST, MSME 43B(h) & AIS/GSTR-1 reconciliation', doc: 'income-tax#itr-summary' },
   { key: 'summary',    label: 'ITR Summary',    icon: FileText, help: 'Consolidated view + ITR-4 Filing Summary PDF', doc: 'income-tax#itr-summary' },
 ];
 
@@ -108,6 +117,10 @@ export default function IncomeTax() {
   const [bills, setBills] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [purchases, setPurchases] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [cashEntries, setCashEntries] = useState([]);
+  const [receipts, setReceipts] = useState([]);
   const [profile, setProfile] = useState({});
 
   // Regime-calculator inputs — persist to localStorage so a returning user
@@ -154,7 +167,11 @@ export default function IncomeTax() {
       getAllPurchases().catch(() => []),
       getProfile().catch(() => ({})),
       getAllDebitNotes().catch(() => []),
-    ]).then(([b, e, p, prof, dns]) => {
+      getAllProducts().catch(() => []),
+      getAllClients().catch(() => []),
+      getAllCashEntries().catch(() => []),
+      getAllReceipts().catch(() => []),
+    ]).then(([b, e, p, prof, dns, prods, cls, cash, recs]) => {
       // v1.10.64 (#55) — income tax is filed per business, so only the active
       // business's invoices may contribute to its figures.
       // v1.10.67 (#66 item 12) — cancelled invoices are not income.
@@ -168,6 +185,10 @@ export default function IncomeTax() {
       const returns = (dns || []).filter(r => belongsToProfile(r, prof) && !r.cancelled)
         .map(r => ({ id: r.id, date: r.date, taxableAmount: -debitNoteTotals(r).taxable }));
       setPurchases([...(p || []).filter(r => belongsToProfile(r, prof)), ...returns]);
+      setProducts(prods || []);
+      setClients(cls || []);
+      setCashEntries((cash || []).filter(r => belongsToProfile(r, prof)));
+      setReceipts((recs || []).filter(r => belongsToProfile(r, prof)));
       setProfile(prof);
     });
   }, []);
@@ -323,6 +344,9 @@ export default function IncomeTax() {
           presumptiveInputs={presumptiveInputs}
           setPresumptiveInputs={setPresumptiveInputs}
           presumptive={presumptive}
+          bills={bills}
+          fy={fy}
+          ownerGstin={profile?.gstin || ''}
           onPushToCalculator={() => {
             if (!presumptive) return;
             setInputs(prev => ({ ...prev, businessIncome: presumptive.presumptiveIncome }));
@@ -383,6 +407,23 @@ export default function IncomeTax() {
         />
       )}
 
+      {tab === 'caaudit' && (
+        <CaAuditAndTieOutTab
+          bills={bills}
+          expenses={expenses}
+          purchases={purchases}
+          products={products}
+          clients={clients}
+          cashEntries={cashEntries}
+          receipts={receipts}
+          profile={profile}
+          inputs={inputs}
+          setInputs={setInputs}
+          fy={fy}
+          ay={ay}
+        />
+      )}
+
       {tab === 'summary' && (
         <SummaryTab
           bills={bills}
@@ -404,13 +445,29 @@ export default function IncomeTax() {
 // ============================================================================
 // Presumptive Income sub-tab (§44AD / §44ADA / §44AE)
 // ============================================================================
-function PresumptiveTab({ presumptiveInputs, setPresumptiveInputs, presumptive, onPushToCalculator }) {
+function PresumptiveTab({ presumptiveInputs, setPresumptiveInputs, presumptive, bills = [], fy = 'ALL', ownerGstin = '', onPushToCalculator }) {
   const set = (patch) => setPresumptiveInputs(prev => ({ ...prev, ...patch }));
+  const autoSplit = useMemo(() => computeDigitalVsCashTurnover(bills, { fy, ownerGstin }), [bills, fy, ownerGstin]);
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: '1rem' }}>
       <div className="glass-panel p-4">
-        <h3 className="section-title" style={{ marginTop: 0 }}>Section<HelpButton title="Section: 44AD, 44ADA or 44AE" doc="income-tax#presumptive-sections" size={16} /></h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
+          <h3 className="section-title" style={{ margin: 0 }}>Section<HelpButton title="Section: 44AD, 44ADA or 44AE" doc="income-tax#presumptive-sections" size={16} /></h3>
+          {autoSplit.totalTurnover > 0 && presumptiveInputs.section !== '44AE' && (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              style={{ fontSize: '0.75rem', padding: '0.25rem 0.6rem' }}
+              onClick={() => {
+                set({ digitalReceipts: autoSplit.digitalTurnover, cashReceipts: autoSplit.cashTurnover });
+                toast(`Synced FY ${fy} sales: Digital ${formatCurrency(autoSplit.digitalTurnover)} (6%) + Cash ${formatCurrency(autoSplit.cashTurnover)} (8%)`, 'success');
+              }}
+            >
+              Sync Digital/Cash from FY Bills
+            </button>
+          )}
+        </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginBottom: '1rem' }}>
           {[
             { key: '44AD',  label: '§44AD',  hint: 'Trading / Retail / Manufacturing' },
@@ -1044,8 +1101,10 @@ function SummaryTab({ bills, expenses, purchases, profile, comparison, inputs, p
   const assets = fyExpenses.filter(e => e.category === 'Asset Purchase').reduce((s, e) => s + (Number(e.amount) || 0), 0);
   const netBusiness = Math.max(0, sales - trading - businessExpenses);
 
-  // Presumptive threshold check (Section 44AD — up to ₹2Cr turnover)
-  const under44ADEligible = sales < 20_000_000 && (profile?.businessType || '').toLowerCase() !== 'professional';
+  // Presumptive threshold check (Section 44AD — up to ₹3Cr when cash receipts ≤ 5%, otherwise ₹2Cr)
+  const fyTurnoverSplit = computeDigitalVsCashTurnover(fyBills, { fy: 'ALL' });
+  const max44ADCap = fyTurnoverSplit.qualifiesFor3CrLimit ? 30_000_000 : 20_000_000;
+  const under44ADEligible = sales <= max44ADCap && (profile?.businessType || '').toLowerCase() !== 'professional';
 
   return (
     <>
@@ -1205,3 +1264,249 @@ const CATEGORY_COLORS = {
   transfer: '#e2e8f0',
   personal: '#fce7f3',
 };
+
+// ============================================================================
+// CA Statutory Audit, ITR-3 vs ITR-4 Bridge, Cash Limits & AIS/GSTR-1 Tie-Out
+// ============================================================================
+function CaAuditAndTieOutTab({
+  bills = [],
+  expenses = [],
+  purchases = [],
+  products = [],
+  clients = [],
+  cashEntries = [],
+  receipts = [],
+  profile = {},
+  inputs = {},
+  setInputs,
+  fy = '2026-27',
+  ay = '2027-28',
+}) {
+  const [openingStock, setOpeningStock] = useState(0);
+  const [aisSummary, setAisSummary] = useState(null);
+  const [aisError, setAisError] = useState('');
+
+  const closingStock = useMemo(() => computeInventoryValuation(products), [products]);
+  const ownerGstin = profile?.gstin || '';
+  const split = useMemo(() => computeDigitalVsCashTurnover(bills, { fy, ownerGstin }), [bills, fy, ownerGstin]);
+
+  const itrSummary = useMemo(
+    () =>
+      computeBusinessITR({
+        bills,
+        purchases,
+        expenses,
+        clients,
+        cashEntries,
+        digitalReceiptPercent: split.digitalPercent,
+        otherIncome: Number(inputs.otherSources) || 0,
+        openingStock,
+        closingStock,
+        isProfession44ADA: (profile?.businessType || '').toLowerCase() === 'professional',
+        fy,
+        ownerGstin,
+        aisSummary,
+        includeStatutoryDisallowance: true,
+      }),
+    [bills, purchases, expenses, clients, cashEntries, split.digitalPercent, inputs.otherSources, openingStock, closingStock, profile?.businessType, fy, ownerGstin, aisSummary]
+  );
+
+  const sec269st = useMemo(
+    () => auditSection269STViolations({ bills, receipts, cashEntries, fy, ownerGstin }),
+    [bills, receipts, cashEntries, fy, ownerGstin]
+  );
+
+  const booksTds = useMemo(
+    () =>
+      bills.reduce((s, b) => {
+        const dt = b?.invoiceDate || b?.data?.details?.invoiceDate;
+        if (!dt || getFinancialYearLabel(parseLocalDate(dt)) !== fy) return s;
+        return s + (Number(b?.data?.totals?.tdsAmount ?? b?.tdsAmount ?? 0) || 0);
+      }, 0),
+    [bills, fy]
+  );
+
+  const recon = useMemo(
+    () =>
+      reconcileGstr1VsItrAndAis({
+        bills,
+        itrGrossReceipts: itrSummary.grossTurnover,
+        aisSummary,
+        booksTdsReceivable: booksTds,
+        booksBankInterest: Number(inputs.otherSources) || 0,
+        fy,
+        ownerGstin,
+      }),
+    [bills, itrSummary.grossTurnover, aisSummary, booksTds, inputs.otherSources, fy, ownerGstin]
+  );
+
+  const handleAisUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = parseAISJson(String(reader.result || ''));
+        setAisSummary(parsed);
+        setAisError('');
+        toast('AIS / TIS / Form 26AS JSON verified & reconciled', 'success');
+      } catch (err) {
+        setAisError(err.message || 'Invalid AIS/26AS JSON');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const lineRow = (label, val, opts = {}) => (
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        padding: '0.35rem 0',
+        borderBottom: '1px solid var(--border)',
+        fontWeight: opts.bold ? 700 : 400,
+        color: opts.danger ? '#dc2626' : opts.success ? '#059669' : 'var(--text-primary)',
+        fontSize: '0.83rem',
+      }}
+    >
+      <span>{label}</span>
+      <span>{formatCurrency(val)}</span>
+    </div>
+  );
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      {/* 1. ITR-3 Normal Books vs ITR-4 (§44AD / §44ADA) Side-by-Side */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(340px, 100%), 1fr))', gap: '1rem' }}>
+        <div className="glass-panel p-4">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', marginBottom: '0.6rem' }}>
+            <h3 className="section-title" style={{ margin: 0 }}>ITR-3 (Normal Books &amp; P&amp;L Bridge — AY {ay})</h3>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              style={{ fontSize: '0.74rem', padding: '0.25rem 0.55rem' }}
+              onClick={() => {
+                setInputs((prev) => ({ ...prev, businessIncome: Math.round(itrSummary.itr3AdjustedIncome) }));
+                toast(`ITR-3 Taxable Business Income (${formatCurrency(itrSummary.itr3AdjustedIncome)}) pushed to Regime Calculator`, 'success');
+              }}
+            >
+              Push to Calculator
+            </button>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.6rem', fontSize: '0.78rem' }}>
+            <label htmlFor="itr3-open-stock" className="text-muted">Opening Stock (₹):</label>
+            <input
+              id="itr3-open-stock"
+              type="number"
+              min="0"
+              className="form-input"
+              style={{ width: 130, padding: '0.25rem 0.5rem' }}
+              value={openingStock}
+              onChange={(e) => setOpeningStock(Math.max(0, Number(e.target.value) || 0))}
+            />
+            <span className="text-muted">Auto Closing Stock: <strong>{formatCurrency(closingStock)}</strong></span>
+          </div>
+          {lineRow('Gross Receipts / Turnover (excl. GST)', itrSummary.grossTurnover)}
+          {lineRow('Less: COGS (Opening + Net Purchases − Closing Stock)', -itrSummary.cogs)}
+          {lineRow('= Gross Profit', itrSummary.grossProfit, { bold: true })}
+          {lineRow('Less: Indirect Business Expenses', -itrSummary.indirectExpenses)}
+          {lineRow('= Net Profit per Books (matches Reports P&L)', itrSummary.netProfitPerBooks, { bold: true })}
+          {lineRow('+ Sec 40A(3) Disallowed Cash Expenses (>₹10k/day)', itrSummary.sec40A3Disallowed, { danger: itrSummary.sec40A3Disallowed > 0 })}
+          {lineRow('+ Sec 43B(h) Overdue MSME Udyam Payables (>45d)', itrSummary.sec43BhDisallowed, { danger: itrSummary.sec43BhDisallowed > 0 })}
+          {lineRow('= Taxable Business Income (ITR-3)', itrSummary.itr3AdjustedIncome, { bold: true, success: true })}
+        </div>
+
+        <div className="glass-panel p-4">
+          <h3 className="section-title" style={{ marginTop: 0 }}>ITR-4 Sugam (§44AD / §44ADA Presumptive — AY {ay})</h3>
+          {lineRow(`Digital / Bank Receipts (${split.digitalPercent}% @ 6%)`, split.digitalTurnover)}
+          {lineRow(`Cash Receipts (${split.cashPercent}% @ 8%)`, split.cashTurnover)}
+          {lineRow('Applicable §44AD Turnover Limit', itrSummary.itr4.applicableLimit)}
+          {lineRow('Minimum Presumptive Profit (6% Digital + 8% Cash)', itrSummary.itr4.presumptiveProfit, { bold: true, success: itrSummary.itr4.eligible })}
+          <div style={{ marginTop: '0.75rem', padding: '0.6rem 0.75rem', borderRadius: 8, background: itrSummary.itr4.eligible ? 'rgba(16,185,129,0.1)' : 'rgba(220,38,38,0.1)', fontSize: '0.8rem' }}>
+            <strong>Recommended Filing Form:</strong> {itrSummary.recommendedForm}
+            {!itrSummary.itr4.eligible && <div style={{ color: '#dc2626', marginTop: 4 }}>{itrSummary.itr4.ineligibilityReason}</div>}
+          </div>
+        </div>
+      </div>
+
+      {/* 2. Cash Compliance Engine (Sec 40A(3) & Sec 269ST) + MSME Sec 43B(h) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '1rem' }}>
+        <div className="glass-panel p-4" style={{ borderLeft: `4px solid ${itrSummary.sec40A3Disallowed > 0 ? '#dc2626' : '#059669'}` }}>
+          <h4 style={{ margin: '0 0 0.35rem', fontSize: '0.92rem' }}>Sec 40A(3) Cash Expense Limit (&gt;₹10,000 / day)</h4>
+          <p className="text-muted" style={{ fontSize: '0.76rem', margin: '0 0 0.5rem' }}>
+            Single-day cash payments &gt;₹10,000 (&gt;₹35,000 for GTA) to a single person are marked Disallowed by default.
+          </p>
+          <strong style={{ color: itrSummary.sec40A3Disallowed > 0 ? '#dc2626' : '#059669', fontSize: '1.05rem' }}>
+            {itrSummary.sec40A3Disallowed > 0
+              ? `${itrSummary.sec40A3Audit.disallowedCount} Disallowed · ${formatCurrency(itrSummary.sec40A3Disallowed)}`
+              : '✓ 0 Disallowed Cash Expenses'}
+          </strong>
+        </div>
+
+        <div className="glass-panel p-4" style={{ borderLeft: `4px solid ${sec269st.violationCount > 0 ? '#dc2626' : '#059669'}` }}>
+          <h4 style={{ margin: '0 0 0.35rem', fontSize: '0.92rem' }}>Sec 269ST Cash Receipt Alert (≥₹2,00,000)</h4>
+          <p className="text-muted" style={{ fontSize: '0.76rem', margin: '0 0 0.5rem' }}>
+            Cash receipts ≥₹2,00,000 (single bill, single day, or single event) attract 100% penalty u/s 271DA.
+          </p>
+          <strong style={{ color: sec269st.violationCount > 0 ? '#dc2626' : '#059669', fontSize: '1.05rem' }}>
+            {sec269st.violationCount > 0
+              ? `⚠ ${sec269st.violationCount} Violation(s) · Penalty Risk ${formatCurrency(sec269st.totalPenaltyExposure271DA)}`
+              : '✓ 0 Sec 269ST Cash Violations'}
+          </strong>
+        </div>
+
+        <div className="glass-panel p-4" style={{ borderLeft: `4px solid ${itrSummary.sec43BhDisallowed > 0 ? '#dc2626' : '#059669'}` }}>
+          <h4 style={{ margin: '0 0 0.35rem', fontSize: '0.92rem' }}>MSME Sec 43B(h) 45-Day Tracker</h4>
+          <p className="text-muted" style={{ fontSize: '0.76rem', margin: '0 0 0.5rem' }}>
+            Unpaid Micro/Small (Udyam) supplier bills &gt;45 days (15d without agreement) added back to taxable income.
+          </p>
+          <strong style={{ color: itrSummary.sec43BhDisallowed > 0 ? '#dc2626' : '#059669', fontSize: '1.05rem' }}>
+            {itrSummary.sec43BhDisallowed > 0
+              ? `⚠ ${itrSummary.sec43BhAudit.overdueCount} Overdue · Add-Back ${formatCurrency(itrSummary.sec43BhDisallowed)}`
+              : '✓ 0 Overdue MSME Payables'}
+          </strong>
+        </div>
+      </div>
+
+      {/* 3. GSTR-1 vs ITR Gross Receipts + AIS / TIS / Form 26AS Zero-Difference Reconciliation */}
+      <div className="glass-panel p-4">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '0.75rem' }}>
+          <div>
+            <h3 className="section-title" style={{ margin: 0 }}>GSTR-1 vs ITR Gross Receipts &amp; AIS / Form 26AS Reconciliation</h3>
+            <p className="text-muted" style={{ margin: '0.2rem 0 0', fontSize: '0.78rem' }}>
+              Verifies zero-difference between GST Outward Supplies and Income Tax Gross Receipts, plus 194Q / 194C / 194H TDS &amp; Bank Interest.
+            </p>
+          </div>
+          <label className="btn btn-secondary" style={{ cursor: 'pointer', fontSize: '0.78rem', margin: 0 }}>
+            <Upload size={14} /> Upload AIS / 26AS JSON
+            <input type="file" accept=".json,application/json" style={{ display: 'none' }} onChange={handleAisUpload} />
+          </label>
+        </div>
+        {aisError && <div style={{ color: '#dc2626', fontSize: '0.78rem', marginBottom: '0.5rem' }}>⚠ {aisError}</div>}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '0.75rem' }}>
+          <div style={{ padding: '0.65rem 0.85rem', borderRadius: 8, background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
+            <div className="text-muted" style={{ fontSize: '0.72rem' }}>GSTR-1 Net Outward Turnover</div>
+            <strong style={{ fontSize: '1rem' }}>{formatCurrency(recon.gstr1NetOutwardTurnover)}</strong>
+          </div>
+          <div style={{ padding: '0.65rem 0.85rem', borderRadius: 8, background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
+            <div className="text-muted" style={{ fontSize: '0.72rem' }}>ITR Gross Business Receipts</div>
+            <strong style={{ fontSize: '1rem' }}>{formatCurrency(recon.itrGrossReceipts)}</strong>
+          </div>
+          <div style={{ padding: '0.65rem 0.85rem', borderRadius: 8, background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
+            <div className="text-muted" style={{ fontSize: '0.72rem' }}>GSTR-1 vs ITR Difference</div>
+            <strong style={{ fontSize: '1rem', color: recon.isZeroTurnoverDiff ? '#059669' : '#dc2626' }}>
+              {recon.isZeroTurnoverDiff ? `✓ ${formatCurrency(0)}` : formatCurrency(recon.gstr1VsItrDiff)}
+            </strong>
+          </div>
+          <div style={{ padding: '0.65rem 0.85rem', borderRadius: 8, background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
+            <div className="text-muted" style={{ fontSize: '0.72rem' }}>TDS Receivable (Books / 26AS)</div>
+            <strong style={{ fontSize: '1rem', color: '#0f766e' }}>
+              {formatCurrency(recon.booksTdsReceivable)}{aisSummary ? ` / AIS ${formatCurrency(recon.aisTdsTotal)}` : ''}
+            </strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+

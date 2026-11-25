@@ -16,6 +16,8 @@ import {
   generateGovtGstr1DocsCsv,
   generateGovtGstr1ExempCsv,
   resolveBillPosCode,
+  computeGstTdsTcsSummary,
+  reconcileGstr1And3bSummary,
 } from '../utils/gstExport';
 import { formatCurrency, INVOICE_TYPES, getStateCode, formatDateGST, getFilingPeriod, getFYOptions, belongsToProfile, toCsvLine, isCancelledBill, b2clThreshold, GST_PORTAL_RATES, setOffITC, placeOfSupplyLabel, countsAsSales, parseLocalDate, isModuleEnabled, gstinChecksumOk } from '../utils';
 import { toast } from './Toast';
@@ -991,6 +993,8 @@ export default function GSTReturns({ onOpenPurchases } = {}) {
     // Official GSTIN format (gstinFormatOk); the GSTIN was cleaned on load (#141).
     if (client?.gstin && !gstinFormatOk(client.gstin)) {
       warnings.push({ type: 'error', msg: `Invoice ${bill.invoiceNumber}: Invalid client GSTIN format — ${client.gstin}` });
+    } else if (client?.gstin && profile.gstin && cleanGstin(client.gstin) === cleanGstin(profile.gstin)) {
+      warnings.push({ type: 'error', msg: `Invoice ${bill.invoiceNumber}: Buyer GSTIN (${client.gstin}) cannot be identical to Supplier GSTIN (Portal Error RET191106).` });
     }
     (items || []).forEach(item => {
       if (!item.hsn || item.hsn === 'N/A') {
@@ -1081,8 +1085,12 @@ export default function GSTReturns({ onOpenPurchases } = {}) {
   // ========== CSV Exports (100% Government GST Offline Tool V3.2.4 Templates) ==========
   const exportB2B = () => {
     if (b2bRegular.length === 0) { toast('No B2B data to export', 'warning'); return; }
-    downloadGovtCsv('GSTR1_B2B_Invoices.csv', generateGovtGstr1B2bCsv(b2bRegular, profile));
-    toast('B2B CSV downloaded — matches Govt GST Offline Tool V3.2.4 (Table 4A/4B/6B/6C)', 'success');
+    try {
+      downloadGovtCsv('GSTR1_B2B_Invoices.csv', generateGovtGstr1B2bCsv(b2bRegular, profile));
+      toast('B2B CSV downloaded — matches Govt GST Offline Tool V3.2.4 (Table 4A/4B/6B/6C)', 'success');
+    } catch (err) {
+      toast(err.message || 'B2B CSV export failed validation', 'error');
+    }
   };
 
   const exportB2C = () => {
@@ -1154,33 +1162,37 @@ export default function GSTReturns({ onOpenPurchases } = {}) {
   };
 
   const exportAllGovtCsvs = () => {
-    let count = 0;
-    if (b2bRegular.length > 0) { downloadGovtCsv('GSTR1_B2B_Invoices.csv', generateGovtGstr1B2bCsv(b2bRegular, profile)); count += 1; }
-    const unregSmallNotes = creditNotes.filter(
-      (b) => !b.data?.client?.gstin && !isExportBill(b) && !(billIsInterstate(b) && (b.totalAmount || 0) > b2clThreshold(b.invoiceDate))
-    );
-    const b2csRows = buildGovtB2csRows(b2cSmall, unregSmallNotes, profile);
-    if (b2csRows.length > 0) { downloadGovtCsv('GSTR1_B2C_Small.csv', generateGovtGstr1B2csCsv(b2csRows)); count += 1; }
-    if (b2cLarge.length > 0) { downloadGovtCsv('GSTR1_B2C_Large.csv', generateGovtGstr1B2clCsv(b2cLarge, profile)); count += 1; }
-    if (hsnRows.length > 0) {
-      if (!hsnSplit) { downloadGovtCsv('GSTR1_HSN_Summary.csv', generateGovtGstr1HsnCsv(mergeHsnRows(hsnRows))); count += 1; }
-      else {
-        [['B2B', hsnB2B], ['B2C', hsnB2C]].forEach(([part, rows]) => {
-          if (rows.length) { downloadGovtCsv(`GSTR1_HSN_${part}.csv`, generateGovtGstr1HsnCsv(rows)); count += 1; }
-        });
+    try {
+      let count = 0;
+      if (b2bRegular.length > 0) { downloadGovtCsv('GSTR1_B2B_Invoices.csv', generateGovtGstr1B2bCsv(b2bRegular, profile)); count += 1; }
+      const unregSmallNotes = creditNotes.filter(
+        (b) => !b.data?.client?.gstin && !isExportBill(b) && !(billIsInterstate(b) && (b.totalAmount || 0) > b2clThreshold(b.invoiceDate))
+      );
+      const b2csRows = buildGovtB2csRows(b2cSmall, unregSmallNotes, profile);
+      if (b2csRows.length > 0) { downloadGovtCsv('GSTR1_B2C_Small.csv', generateGovtGstr1B2csCsv(b2csRows)); count += 1; }
+      if (b2cLarge.length > 0) { downloadGovtCsv('GSTR1_B2C_Large.csv', generateGovtGstr1B2clCsv(b2cLarge, profile)); count += 1; }
+      if (hsnRows.length > 0) {
+        if (!hsnSplit) { downloadGovtCsv('GSTR1_HSN_Summary.csv', generateGovtGstr1HsnCsv(mergeHsnRows(hsnRows))); count += 1; }
+        else {
+          [['B2B', hsnB2B], ['B2C', hsnB2C]].forEach(([part, rows]) => {
+            if (rows.length) { downloadGovtCsv(`GSTR1_HSN_${part}.csv`, generateGovtGstr1HsnCsv(rows)); count += 1; }
+          });
+        }
       }
+      const cdnrBills = creditNotes.filter((b) => b.data?.client?.gstin && !isExportBill(b));
+      const cdnurBills = creditNotes.filter(
+        (b) => !b.data?.client?.gstin && (isExportBill(b) || (billIsInterstate(b) && (b.totalAmount || 0) > b2clThreshold(b.invoiceDate)))
+      );
+      if (cdnrBills.length > 0) { downloadGovtCsv('GSTR1_CDNR.csv', generateGovtGstr1CdnrCsv(cdnrBills, profile)); count += 1; }
+      if (cdnurBills.length > 0) { downloadGovtCsv('GSTR1_CDNUR.csv', generateGovtGstr1CdnurCsv(cdnurBills, profile)); count += 1; }
+      if (exportBills.length > 0) { downloadGovtCsv('GSTR1_Exports_6A.csv', generateGovtGstr1ExpCsv(exportBills)); count += 1; }
+      if (nilRows.length > 0) { downloadGovtCsv('GSTR1_Exemp_Nil_NonGST.csv', generateGovtGstr1ExempCsv(nilRows)); count += 1; }
+      if (Object.keys(docSummary).length > 0) { downloadGovtCsv('GSTR1_Doc_Summary.csv', generateGovtGstr1DocsCsv(docSummary)); count += 1; }
+      if (count === 0) { toast('No GSTR-1 data in this period to export', 'warning'); return; }
+      toast(`${count} Govt GST Offline Tool V3.2.4 CSV file(s) downloaded`, 'success');
+    } catch (err) {
+      toast(err.message || 'CSV export failed validation', 'error');
     }
-    const cdnrBills = creditNotes.filter((b) => b.data?.client?.gstin && !isExportBill(b));
-    const cdnurBills = creditNotes.filter(
-      (b) => !b.data?.client?.gstin && (isExportBill(b) || (billIsInterstate(b) && (b.totalAmount || 0) > b2clThreshold(b.invoiceDate)))
-    );
-    if (cdnrBills.length > 0) { downloadGovtCsv('GSTR1_CDNR.csv', generateGovtGstr1CdnrCsv(cdnrBills, profile)); count += 1; }
-    if (cdnurBills.length > 0) { downloadGovtCsv('GSTR1_CDNUR.csv', generateGovtGstr1CdnurCsv(cdnurBills, profile)); count += 1; }
-    if (exportBills.length > 0) { downloadGovtCsv('GSTR1_Exports_6A.csv', generateGovtGstr1ExpCsv(exportBills)); count += 1; }
-    if (nilRows.length > 0) { downloadGovtCsv('GSTR1_Exemp_Nil_NonGST.csv', generateGovtGstr1ExempCsv(nilRows)); count += 1; }
-    if (Object.keys(docSummary).length > 0) { downloadGovtCsv('GSTR1_Doc_Summary.csv', generateGovtGstr1DocsCsv(docSummary)); count += 1; }
-    if (count === 0) { toast('No GSTR-1 data in this period to export', 'warning'); return; }
-    toast(`${count} Govt GST Offline Tool V3.2.4 CSV file(s) downloaded`, 'success');
   };
 
   const exportGSTR3B = () => {
@@ -1327,6 +1339,12 @@ export default function GSTReturns({ onOpenPurchases } = {}) {
     // v1.10.83 (#133) - things the portal refuses the whole file for.
     if (!profile.gstin) blocked.push('Your business GSTIN is not set (Settings → Company).');
     if (filterMode === 'fy') blocked.push('A GSTR-1 file is for one month (or one quarter if you file quarterly). Choose Month or Quarter above.');
+    const selfGstinBills = profile.gstin
+      ? bills.filter(b => b.data?.client?.gstin && cleanGstin(b.data.client.gstin) === cleanGstin(profile.gstin))
+      : [];
+    if (selfGstinBills.length > 0) {
+      blocked.push(`${selfGstinBills.length} invoice(s) have Buyer GSTIN (${cleanGstin(profile.gstin)}) identical to your own Supplier GSTIN (${selfGstinBills.slice(0, 3).map(b => b.invoiceNumber).join(', ')}) — Portal Error RET191106.`);
+    }
     const noPos = bills.filter(b => (b.data?.client?.gstin || billIsInterstate(b)) && !isExportBill(b)
       && !getStateCode(b.data?.details?.placeOfSupply || b.data?.client?.state || ''));
     if (noPos.length > 0) blocked.push(`${noPos.length} invoice(s) have no place of supply (${noPos.slice(0, 3).map(b => b.invoiceNumber).join(', ')}). Open each and set the client's state or Place of Supply.`);
@@ -1646,7 +1664,44 @@ export default function GSTReturns({ onOpenPurchases } = {}) {
       />
 
       {/* Pre-Filing CA GST Audit & Portal Readiness Score */}
-      <GstHealthAuditor bills={allFilteredBills} />
+      <GstHealthAuditor bills={allFilteredBills} sellerGstin={profile?.gstin || ''} />
+
+      {/* CA Statutory Zero-Difference Tie-Out Strip (GSTR-1 vs HSN vs GSTR-3B) */}
+      {(() => {
+        const tieOut = reconcileGstr1And3bSummary({
+          outwardTaxable: outward31a.taxable + exportTotals.taxable,
+          outwardCgst: outward31a.cgst,
+          outwardSgst: outward31a.sgst,
+          outwardIgst: outward31a.igst + exportTotals.igst,
+          outwardCess: (outward31a.cess || 0) + (exportTotals.cess || 0),
+          nilExemptTotal: nilSum(r => r.onTaxInvoice),
+          hsnRows,
+          gstr3bOutward: {
+            taxable: outward31a.taxable + exportTotals.taxable,
+            cgst: outward31a.cgst,
+            sgst: outward31a.sgst,
+            igst: outward31a.igst + exportTotals.igst,
+            cess: (outward31a.cess || 0) + (exportTotals.cess || 0),
+          },
+        });
+        const hsnTaxDiff = Math.abs(tieOut.hsnDiff.cgst) + Math.abs(tieOut.hsnDiff.sgst) + Math.abs(tieOut.hsnDiff.igst);
+        const g3bTaxDiff = Math.abs(tieOut.gstr3bDiff.cgst) + Math.abs(tieOut.gstr3bDiff.sgst) + Math.abs(tieOut.gstr3bDiff.igst);
+        const purchaseItcTotal = (itcFromPurchases.cgst || 0) + (itcFromPurchases.sgst || 0) + (itcFromPurchases.igst || 0) + (itcCessFromPurchases || 0);
+        return (
+          <div className="glass-panel" style={{ padding: '0.65rem 1rem', marginBottom: '0.85rem', display: 'flex', flexWrap: 'wrap', gap: '0.6rem 1.25rem', alignItems: 'center', fontSize: '0.78rem' }}>
+            <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>CA Tie-Out Check:</span>
+            <span style={{ color: tieOut.hsnMatched ? '#059669' : '#d97706', fontWeight: 600 }}>
+              {tieOut.hsnMatched ? '✓' : '⚠'} Table 12 HSN vs Outward Diff: {formatCurrency(hsnTaxDiff)}
+            </span>
+            <span style={{ color: tieOut.gstr3bMatched ? '#059669' : '#dc2626', fontWeight: 600 }}>
+              {tieOut.gstr3bMatched ? '✓' : '⚠'} GSTR-1 vs GSTR-3B (3.1) Tax Diff: {formatCurrency(g3bTaxDiff)}
+            </span>
+            <span style={{ color: '#0f766e', fontWeight: 600 }}>
+              ✓ Table 4(A)(5) Purchase ITC: {formatCurrency(purchaseItcTotal)}
+            </span>
+          </div>
+        );
+      })()}
 
       {/* Warnings — collapsed by default, only errors show */}
       {warnings.filter(w => w.type === 'error').length > 0 && (
@@ -2496,6 +2551,79 @@ export default function GSTReturns({ onOpenPurchases } = {}) {
                 </p>
               )}
             </div>
+
+            {/* GST Section 51 TDS (2%: 1% CGST + 1% SGST / 2% IGST) & Section 52 E-Com TCS */}
+            {(() => {
+              const gstTdsTcs = computeGstTdsTcsSummary(filteredBills, profile);
+              return (
+                <div className="glass-panel" style={{ padding: '0.85rem 1rem', marginBottom: '0.75rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700 }}>
+                        GST TDS u/s 51 (2%: 1% CGST + 1% SGST / 2% IGST) &amp; E-Com TCS u/s 52
+                      </h3>
+                      <p style={{ margin: '0.15rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        Electronic Cash Ledger credit from Govt/PSU Deductors (Sec 51 @ 2%) &amp; E-Commerce Operators (Sec 52) with Party GSTIN.
+                      </p>
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(155px, 1fr))', gap: '0.5rem', marginBottom: '0.6rem' }}>
+                    <div className="glass-panel" style={{ padding: '0.5rem 0.75rem', background: 'var(--bg-secondary)' }}>
+                      <p className="stat-label" style={{ margin: 0, fontSize: '0.7rem' }}>GST Sec 51 TDS (2%)</p>
+                      <strong style={{ fontSize: '1rem', color: '#0f766e' }}>{formatCurrency(gstTdsTcs.tdsTotals.total)}</strong>
+                      <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                        CGST {formatCurrency(gstTdsTcs.tdsTotals.cgst)} · SGST {formatCurrency(gstTdsTcs.tdsTotals.sgst)} · IGST {formatCurrency(gstTdsTcs.tdsTotals.igst)}
+                      </div>
+                    </div>
+                    <div className="glass-panel" style={{ padding: '0.5rem 0.75rem', background: 'var(--bg-secondary)' }}>
+                      <p className="stat-label" style={{ margin: 0, fontSize: '0.7rem' }}>GST Sec 52 E-Com TCS</p>
+                      <strong style={{ fontSize: '1rem', color: '#2563eb' }}>{formatCurrency(gstTdsTcs.tcsTotals.total)}</strong>
+                      <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                        CGST {formatCurrency(gstTdsTcs.tcsTotals.cgst)} · SGST {formatCurrency(gstTdsTcs.tcsTotals.sgst)} · IGST {formatCurrency(gstTdsTcs.tcsTotals.igst)}
+                      </div>
+                    </div>
+                  </div>
+                  {(gstTdsTcs.gstTdsRows.length + gstTdsTcs.gstTcsRows.length) > 0 ? (
+                    <div style={{ overflowX: 'auto' }}>
+                      <table className="data-table" style={{ width: '100%', fontSize: '0.78rem' }}>
+                        <thead>
+                          <tr>
+                            <th>Section</th>
+                            <th>Invoice #</th>
+                            <th>Party / Operator</th>
+                            <th>Party GSTIN</th>
+                            <th style={{ textAlign: 'right' }}>Taxable</th>
+                            <th style={{ textAlign: 'right' }}>CGST</th>
+                            <th style={{ textAlign: 'right' }}>SGST</th>
+                            <th style={{ textAlign: 'right' }}>IGST</th>
+                            <th style={{ textAlign: 'right' }}>Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {[...gstTdsTcs.gstTdsRows, ...gstTdsTcs.gstTcsRows].map((r, idx) => (
+                            <tr key={`gtds-${idx}`}>
+                              <td>{r.section} ({r.ratePercent}%)</td>
+                              <td>{r.invoiceNumber}</td>
+                              <td>{r.partyName}</td>
+                              <td style={{ fontFamily: 'monospace' }}>{r.partyGstin || '—'}</td>
+                              <td style={{ textAlign: 'right' }}>{formatCurrency(r.taxableValue)}</td>
+                              <td style={{ textAlign: 'right' }}>{formatCurrency(r.cgst)}</td>
+                              <td style={{ textAlign: 'right' }}>{formatCurrency(r.sgst)}</td>
+                              <td style={{ textAlign: 'right' }}>{formatCurrency(r.igst)}</td>
+                              <td style={{ textAlign: 'right', fontWeight: 700 }}>{formatCurrency(r.total)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p style={{ fontSize: '0.76rem', color: 'var(--text-muted)', margin: 0, textAlign: 'center', padding: '0.5rem' }}>
+                      No GST Sec 51 TDS or Sec 52 E-Commerce TCS invoices in this period (add E-Commerce GSTIN under More Invoice Details or select GST-51 on Govt supplies).
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* TCS section */}
             <div className="glass-panel" style={{ padding: '0.85rem 1rem' }}>

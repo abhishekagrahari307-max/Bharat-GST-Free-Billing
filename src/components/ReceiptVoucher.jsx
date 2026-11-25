@@ -9,6 +9,7 @@ import HelpButton from './HelpButton';
 import PageHeader from './PageHeader';
 import ComboInput from './ComboInput';
 import { isReceiptsPayment, withReceiptPayment } from '../utils/bankMatch';
+import { checkSingleCashReceipt269ST } from '../utils/itrAndTaxEngine';
 
 const PAYMENT_MODES = ['Bank Transfer', 'UPI', 'Cash', 'Cheque', 'Card', 'Other'];
 const MODE_NAMES = { 'bank-transfer': 'Bank Transfer', upi: 'UPI', cash: 'Cash', cheque: 'Cheque', card: 'Card', other: 'Other' };
@@ -417,6 +418,14 @@ export default function ReceiptVoucher() {
                 <select className="form-input" value={form.paymentMode} onChange={e => updateField('paymentMode', e.target.value)}>
                   {PAYMENT_MODES.map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
+                {(() => {
+                  const s269 = checkSingleCashReceipt269ST({ amount: form.amount, mode: form.paymentMode });
+                  return s269.violated ? (
+                    <div style={{ marginTop: 6, padding: '0.4rem 0.6rem', borderRadius: 6, background: 'rgba(220,38,38,0.1)', color: '#dc2626', fontSize: '0.73rem', fontWeight: 600 }}>
+                      ⚠ {s269.message}
+                    </div>
+                  ) : null;
+                })()}
               </div>
               <div className="form-group">
                 <label className="form-label">Reference / Transaction No</label>
