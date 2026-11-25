@@ -256,6 +256,14 @@ export const hsnSign = (bill) => ((bill.invoiceType || 'tax-invoice') === 'credi
 // portal has no separate field for it.
 // Returns { rows: [{ b2b, hsn_sc, desc, uqc, qty, rt, txval, iamt, camt, samt,
 // csamt }], missingHsn, customUnit }.
+const VALID_GSTN_UQCS = new Set([
+  'BAG', 'BAL', 'BDL', 'BKL', 'BOU', 'BOX', 'BTL', 'BUN', 'CAN', 'CBM',
+  'CCM', 'CMS', 'CTN', 'DOZ', 'DRM', 'GGK', 'GMS', 'GRS', 'GYD', 'KGS',
+  'KLR', 'KME', 'LTR', 'MLT', 'MTR', 'MTS', 'NOS', 'OTH', 'PAC', 'PCS',
+  'PRS', 'QTL', 'ROL', 'SET', 'SQF', 'SQM', 'SQY', 'TBS', 'TGM', 'THD',
+  'TON', 'TUB', 'UGS', 'UNT', 'YDS', 'NA',
+]);
+
 export function hsnSummary(bills) {
   const map = {};
   let missingHsn = 0, customUnit = 0;
@@ -264,9 +272,12 @@ export function hsnSummary(bills) {
     const b2b = hsnIsB2B(bill);
     const sign = hsnSign(bill);
     for (const item of bill.data?.items || []) {
-      const hsn = String(item.hsn || '').trim();
-      if (!hsn || hsn === 'N/A') { missingHsn += 1; continue; }
-      const uqc = hsnUqc(item);
+      const rawHsn = String(item.hsn || '').trim();
+      if (!rawHsn || rawHsn === 'N/A') { missingHsn += 1; continue; }
+      const digitsOnly = rawHsn.replace(/\D/g, '');
+      const hsn = digitsOnly.length >= 4 ? digitsOnly : rawHsn;
+      const rawUqc = hsnUqc(item);
+      const uqc = VALID_GSTN_UQCS.has(rawUqc) ? rawUqc : 'OTH';
       if (uqc === 'OTH' && item.unit) customUnit += 1;
       const rt = Number(item.taxPercent) || 0;
       const key = `${b2b ? 'B2B' : 'B2C'}_${hsn}_${rt}_${uqc}`;
