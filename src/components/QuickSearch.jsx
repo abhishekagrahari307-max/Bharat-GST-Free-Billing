@@ -78,7 +78,7 @@ const SETTINGS_JUMPS = [
 
 export default function QuickSearch({
   onClose, navItems, topIds, updateInfo,
-  onNewInvoice, onEditInvoice, onView, onSettings, onDarkMode, onShortcuts, onUpdate, onOpenDocs,
+  onNewInvoice, onEditInvoice, onView, onSettings, onDarkMode, onShortcuts, onUpdate, onOpenDocs, onOpenHelpDesk,
 }) {
   const [query, setQuery] = useState('');
   const [idx, setIdx] = useState(0);
@@ -97,7 +97,12 @@ export default function QuickSearch({
 
   // A screen switched off in Settings -> Features is not opened (App would
   // send it back to the Dashboard): Features opens instead, with a word why.
-  const canOpen = (view) => view === 'settings' || view === 'support' || navItems.some((i) => i.id === view);
+  const canOpen = (view) =>
+    view === 'settings' ||
+    view === 'support' ||
+    view === 'connect-sync' ||
+    view === 'newfeatures' ||
+    navItems.some((i) => i.id === view);
   const takeMeThere = ({ view, section, find, click, action }) => {
     if (action === 'customise-menu') openCustomiseMenu();
     else if (action === 'dark-mode') onDarkMode();
@@ -116,10 +121,38 @@ export default function QuickSearch({
   };
 
   const actions = useMemo(() => {
-    const acts = [{ label: 'New Invoice', hint: 'Ctrl+N', run: onNewInvoice }];
+    const acts = [{ label: 'New Invoice / Express POS Bill', hint: 'F2 · Ctrl+N', searchText: 'new invoice bill pos counter walkin', run: onNewInvoice }];
     navItems.forEach((item) => {
       if (item.id !== 'new') acts.push({ label: `Go to ${item.label}`, run: item.onClick || (() => onView(item.id)) });
     });
+    acts.push({
+      label: 'Go to Connect & Multi-Device Sync (5G Mobile ↔ PC & Storefront)',
+      searchText: 'connect sync p2p mobile laptop qr whatsapp b2b catalog mirror backup tally vyapar',
+      run: () => onView('connect-sync'),
+    });
+    acts.push({
+      label: 'Go to All New Functions Hub (14 Enterprise & AI Modules)',
+      searchText: 'all new functions features hub ai rollover ca bharatca fuzzy 2b notice itr munim',
+      run: () => onView('newfeatures'),
+    });
+    if (onOpenHelpDesk) {
+      acts.push({
+        label: '🆘 Open SOS Help, Zero-Login Error Support & Review',
+        hint: 'Alt+S',
+        searchText: 'sos help support error bug report review feedback star rating',
+        run: () => onOpenHelpDesk('REVIEW'),
+      });
+      acts.push({
+        label: '📖 Open Hinglish GST & Income Tax Dictionary',
+        searchText: 'dictionary glossary hsn itc gstr 43b 44ad 87a meaning hindi hinglish',
+        run: () => onOpenHelpDesk('DICTIONARY'),
+      });
+      acts.push({
+        label: '🏪 Load 1-Click Sample Kirana / Demo Store & Staff Lock',
+        searchText: 'demo sample store kirana sandbox staff pin lock',
+        run: () => onOpenHelpDesk('TOOLS'),
+      });
+    }
     acts.push({ label: 'Go to Settings', run: () => onView('settings') });
     // v1.10.86 - 'Go to Control Panel' went: its jobs are Settings jumps (SETTINGS_JUMPS).
     acts.push({ label: 'Go to Support & About', run: () => onView('support') });
@@ -128,7 +161,7 @@ export default function QuickSearch({
     acts.push({ label: 'Show keyboard shortcuts', hint: 'Ctrl+/', run: onShortcuts });
     if (updateInfo?.updateAvailable) acts.push({ label: `View update — v${updateInfo.latest}`, run: onUpdate });
     return acts;
-  }, [navItems, topIds, updateInfo, onNewInvoice, onView, onOpenDocs, onDarkMode, onShortcuts, onUpdate]);
+  }, [navItems, topIds, updateInfo, onNewInvoice, onView, onOpenDocs, onDarkMode, onShortcuts, onUpdate, onOpenHelpDesk]);
 
   const records = useMemo(() => ({
     // v1.10.5 - an invoice opens for editing, as a Dashboard row click does.

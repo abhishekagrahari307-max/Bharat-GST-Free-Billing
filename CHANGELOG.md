@@ -5,6 +5,21 @@ Bharat GST Free Billing follows a **Daily Continuous Release & Safe Auto-Update*
 
 ---
 
+## [5.5.0] - 2026-11-21
+
+**Express POS Counter, Live Dynamic UPI QR & Cash Tender Calculator, Party Khata & Stock Valuation Command Strips & Unified `Ctrl+K` Command Palette.**
+
+### Added & Fixed
+- **Express POS Counter Bar & Checkout Engine (`src/components/ExpressPosCounterBar.jsx`, `src/utils/expressPosEngine.js`)**: Adds 1-click **Walk-In Cash Customer**, **AI Voice Dictation**, **Cash Tender & Indian Currency Note Change Calculator** (`₹500`/`₹200`/`₹100`/`₹50`/`₹20`/`₹10`/`₹5`/`₹2`/`₹1` breakup), and **Live Counter Dynamic UPI QR** (`upi://pay` with exact invoice balance) inside `InvoiceGenerator.jsx`.
+- **Party Khata & Smart Stock Executive Command Strips (`src/components/ClientsView.jsx`, `src/components/InventoryView.jsx`)**: Adds interactive `.pro-card` strips for **Market Udhaari** (click to filter owing parties), **Total Collected**, **Credit Limit Watch**, and 1-tap **WhatsApp + UPI Payment Link** on Clients; plus **Stock Cost Value**, **Selling Value & Gross Margin %**, **Low/Out-of-Stock SKU Filter**, and **GSTR-1 HSN Hygiene Check** (4/6/8-digit numeric HSN filter) on Products.
+- **Unified `Ctrl+K` Command Palette & Mobile Navigation Fix (`src/components/QuickSearch.jsx`, `src/App.jsx`)**: Adds `Connect & Multi-Device Sync`, `All New Functions Hub`, `SOS Help & Review (Alt+S)`, `Hinglish GST Dictionary`, and `1-Click Demo Store` to `Ctrl+K`, documents `F2` and `Alt+S` in Keyboard Shortcuts, and fixes `isModuleEnabled('inventory', enabledModules)` argument order for `MobileBottomBar`.
+
+### How to update
+- **Web & Installable PWA**: Refresh the page or click **Update** in **Settings → About & Updates** (`v5.4.0` → `v5.5.0`).
+- **Desktop / Portable (`Free-GST-Billing.zip`)**: Click **Update** in **Settings**, or download `Free-GST-Billing-v5.5.0.zip` and copy all files except your `data/` folder over your existing installation.
+
+---
+
 ## [5.4.0] - 2026-11-21
 
 **Commercial SaaS & POS Design Overhaul — Glass Sticky Command Bar, 4-Section Executive Navigation, Dedicated Connect & Sync Hub, All New Functions Hub, Dynamic Executive KPI Grid, 4-Pillar Segmented Reports & Always-Accessible SOS Button.**

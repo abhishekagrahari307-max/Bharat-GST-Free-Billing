@@ -1563,7 +1563,8 @@ function App() {
             navItems={navItems} topIds={topIds} updateInfo={updateInfo}
             onNewInvoice={handleNewInvoice} onEditInvoice={handleEditInvoice} onView={setCurrentView}
             onSettings={openSettingsSection} onDarkMode={() => setDarkMode(d => !d)}
-            onShortcuts={() => setShowShortcutsHelp(true)} onUpdate={() => setShowUpdateModal(true)} onOpenDocs={openDocs} />
+            onShortcuts={() => setShowShortcutsHelp(true)} onUpdate={() => setShowUpdateModal(true)}
+            onOpenDocs={openDocs} onOpenHelpDesk={openHelpDesk} />
         </Suspense>
       )}
 
@@ -1577,10 +1578,11 @@ function App() {
             </div>
             <table className="kv-list">
               <tbody>
-                {/* v1.10.86 - each one checked in the code: App.jsx (K, /, N, Shift+L)
-                    and InvoiceGenerator.jsx (S, P, Enter, Shift+D, Shift+F). */}
+                {/* v5.5.0 - includes F2 Express POS New Bill and Alt+S SOS Help & Review */}
+                <tr><td><kbd>F2</kbd></td><td>New Bill / Express POS Counter (from anywhere)</td></tr>
                 <tr><td><kbd>Ctrl</kbd>&nbsp;+&nbsp;<kbd>K</kbd></td><td>Search or jump to a page (the search box at the top)</td></tr>
                 <tr><td><kbd>Ctrl</kbd>&nbsp;+&nbsp;<kbd>N</kbd></td><td>New invoice (when not typing in a box)</td></tr>
+                <tr><td><kbd>Alt</kbd>&nbsp;+&nbsp;<kbd>S</kbd></td><td>Open SOS Help, Zero-Login Support, Dictionary &amp; Review</td></tr>
                 <tr><td><kbd>Ctrl</kbd>&nbsp;+&nbsp;<kbd>S</kbd></td><td>Save the invoice (on New Invoice)</td></tr>
                 <tr><td><kbd>Ctrl</kbd>&nbsp;+&nbsp;<kbd>P</kbd></td><td>Download the PDF (on New Invoice)</td></tr>
                 <tr><td><kbd>Ctrl</kbd>&nbsp;+&nbsp;<kbd>Enter</kbd></td><td>Add an item row (on New Invoice)</td></tr>
@@ -1704,7 +1706,7 @@ function App() {
           handleNewInvoice();
         }}
         onOpenMenu={() => setNavOpen((v) => !v)}
-        hasInventory={isModuleEnabled(enabledModules, 'inventory')}
+        hasInventory={isModuleEnabled('inventory', enabledModules)}
         anyDot={anyDot}
       />
 

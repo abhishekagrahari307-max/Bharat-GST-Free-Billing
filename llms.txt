@@ -1,11 +1,11 @@
-# Bharat GST Free Billing (v5.4.0 — Commercial SaaS & POS Business OS)
+# Bharat GST Free Billing (v5.5.0 — Commercial SaaS & Express POS Business OS)
 
-> 100% Free, Open-Source (MIT), Serverless Browser-Native Commercial SaaS & POS Business OS: Glass Sticky Command Bar + 4-Section Navigation + Dedicated Connect & Sync Hub (5G Mobile ↔ Laptop Sync + WhatsApp B2B Storefront + PC Folder Mirror) + All New Functions Hub + 4-Pillar Segmented Reports + Year-End 31-March FY Rollover + CA Multi-Client `.bharatca` Hub + GSTR-2B ITC Action Sheet + SOS Zero-Login Direct Support. Created & maintained by Abhishek Agrahari.
+> 100% Free, Open-Source (MIT), Serverless Browser-Native Commercial SaaS & POS Business OS: Express POS Counter (Walk-in Cash, Indian Note Change Calculator & Live Dynamic UPI QR) + Khata & Stock Valuation Command Strips + Glass Sticky Command Bar + Dedicated Connect & Sync Hub (5G Mobile ↔ Laptop Sync + WhatsApp B2B Storefront + PC Folder Mirror) + All New Functions Hub + 4-Pillar Segmented Reports + Year-End 31-March FY Rollover + CA Multi-Client `.bharatca` Hub + GSTR-2B ITC Action Sheet + SOS Zero-Login Direct Support. Created & maintained by Abhishek Agrahari.
 
 - Live Application (Instant Offline PWA & Web): https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/
 - Complete Self-Hosted Documentation (35 Pages): https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/user-guide/
 - Public Open-Source Repository & Multi-OS Releases (MIT License): https://github.com/abhishekagrahari307-max/Bharat-GST-Free-Billing
-- Latest Release: v5.4.0 (2026-11-21) — Commercial SaaS & POS UI Overhaul, Dedicated 5G Connect & Sync Hub, All New Functions Hub, 4-Pillar Segmented Reports & SOS Help/Review Button
+- Latest Release: v5.5.0 (2026-11-21) — Express POS Counter, Live Dynamic UPI QR & Cash Tender Calculator, Khata & Stock Valuation Command Strips & Unified Ctrl+K Palette
 
 ---
 

@@ -284,7 +284,15 @@ function extractApiPath(input) {
   }
 }
 
-const BHARAT_CHANGELOG_MD = `## [5.4.0] - 2026-11-21
+const BHARAT_CHANGELOG_MD = `## [5.5.0] - 2026-11-21
+**Express POS Counter, Live UPI QR & Cash Tender Calculator + Khata & Stock Executive Command Strips + Unified Command Palette.**
+
+### Added & Fixed
+- **Express POS Counter Bar (\`src/components/ExpressPosCounterBar.jsx\`, \`src/utils/expressPosEngine.js\`)**: Adds 1-click **Walk-In Cash Bill**, **AI Voice Bill**, **Cash Tender & Indian Note Change Return Calculator**, and **Live Counter Screen Dynamic UPI QR** (\`upi://pay\` with pre-locked exact amount) right inside New Invoice.
+- **Party Khata & Smart Stock Executive Command Strips (\`ClientsView.jsx\`, \`InventoryView.jsx\`)**: Adds \`.pro-card\` Market Udhaari / Owing Filter / Credit-Limit Watch + 1-tap **WhatsApp + UPI Link** on Clients, and Stock Cost / Selling Margin / Low-Stock / 4-6-8-digit **GSTR-1 HSN Hygiene** filter cards on Products.
+- **Unified Ctrl+K Command Palette & Mobile Stock Tab Fix (\`QuickSearch.jsx\`, \`App.jsx\`)**: Routes \`connect-sync\`, \`newfeatures\`, SOS Help/Review (\`Alt+S\`), Hinglish GST Dictionary & Demo Store directly from \`Ctrl+K\`, and fixes \`isModuleEnabled('inventory', enabledModules)\` argument order on \`MobileBottomBar\`.
+
+## [5.4.0] - 2026-11-21
 **Commercial SaaS & POS Design Overhaul — Glass Sticky Command Bar, 4-Section Executive Sidebar, Dedicated Connect & Sync Hub, All New Functions Hub, Dynamic Executive KPI Grid, 4-Pillar Segmented Reports & Always-Accessible SOS Button.**
 
 ### Added & Upgraded
