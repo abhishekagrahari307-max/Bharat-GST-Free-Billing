@@ -238,3 +238,129 @@ export function decodeServerlessCatalogLink(hashString = '') {
     return null;
   }
 }
+
+/**
+ * 4. Compact B2B Order Token (BGST-ORD:<token>) Encoder & Decoder
+ * Allows 1-Click conversion of a retailer's WhatsApp order into a Sales Order / Tax Invoice.
+ */
+export function encodeB2BOrderToken(orderToken = {}) {
+  return `BGST-ORD:${utf8ToUrlBase64(JSON.stringify(orderToken))}`;
+}
+
+export function decodeB2BOrderToken(rawText = '') {
+  const match = String(rawText || '').match(/BGST-ORD:([A-Za-z0-9\-_=+/]+)/);
+  if (!match) return null;
+  try {
+    return JSON.parse(urlBase64ToUtf8(match[1]));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 5. Multi-Firm Group Consolidated P&L & Balance Sheet Summary
+ * Aggregates sales, purchases, expenses, receivables & payables across all business GSTIN workspaces
+ * while automatically eliminating inter-firm transactions within the same group!
+ */
+export function computeMultiFirmConsolidation({
+  profiles = [],
+  bills = [],
+  purchases = [],
+  expenses = [],
+} = {}) {
+  const groupGstins = new Set(
+    (Array.isArray(profiles) ? profiles : [])
+      .map((p) => String(p?.gstin || '').trim().toUpperCase())
+      .filter(Boolean)
+  );
+
+  let grossGroupSales = 0;
+  let interFirmSalesEliminated = 0;
+  let totalReceivables = 0;
+
+  const byFirm = new Map();
+  const ensureFirm = (key, label) => {
+    const k = key || 'DEFAULT_FIRM';
+    if (!byFirm.has(k)) {
+      byFirm.set(k, { firmKey: k, firmName: label || k, sales: 0, purchases: 0, expenses: 0 });
+    }
+    return byFirm.get(k);
+  };
+
+  for (const p of (Array.isArray(profiles) ? profiles : [])) {
+    ensureFirm(String(p?.gstin || p?.businessName || 'MAIN').toUpperCase(), p?.businessName || 'Main Firm');
+  }
+
+  for (const b of (Array.isArray(bills) ? bills : [])) {
+    if (!b || b.status === 'cancelled') continue;
+    const docType = String(b?.data?.invoiceType || b?.invoiceType || 'Tax Invoice');
+    if (/proforma|quotation|challan|estimate|purchase order/i.test(docType)) continue;
+
+    const amt = Number(b?.data?.subtotal || b?.totalAmount || 0) || 0;
+    const sign = /credit note/i.test(docType) ? -1 : 1;
+    const ownerKey = String(b.ownerGstin || b.ownerName || 'MAIN').toUpperCase();
+    const firm = ensureFirm(ownerKey, b.ownerName || ownerKey);
+    firm.sales = r2(firm.sales + sign * amt);
+    grossGroupSales = r2(grossGroupSales + sign * amt);
+
+    const buyerGstin = String(b.clientGstin || b?.data?.client?.gstin || '').trim().toUpperCase();
+    if (buyerGstin && groupGstins.has(buyerGstin) && buyerGstin !== String(b.ownerGstin || '').trim().toUpperCase()) {
+      interFirmSalesEliminated = r2(interFirmSalesEliminated + sign * amt);
+    }
+
+    if (b.status !== 'paid') {
+      const due = Math.max(0, (Number(b.totalAmount) || 0) - (Number(b.amountPaid) || 0));
+      totalReceivables = r2(totalReceivables + due);
+    }
+  }
+
+  let grossGroupPurchases = 0;
+  let interFirmPurchasesEliminated = 0;
+  let totalPayables = 0;
+
+  for (const pur of (Array.isArray(purchases) ? purchases : [])) {
+    if (!pur) continue;
+    const amt = Number(pur.taxableAmount ?? pur.subtotal ?? pur.totalAmount ?? 0) || 0;
+    const ownerKey = String(pur.ownerGstin || pur.ownerName || 'MAIN').toUpperCase();
+    const firm = ensureFirm(ownerKey, pur.ownerName || ownerKey);
+    firm.purchases = r2(firm.purchases + amt);
+    grossGroupPurchases = r2(grossGroupPurchases + amt);
+
+    const supGstin = String(pur.supplierGstin || pur.vendorGstin || '').trim().toUpperCase();
+    if (supGstin && groupGstins.has(supGstin) && supGstin !== String(pur.ownerGstin || '').trim().toUpperCase()) {
+      interFirmPurchasesEliminated = r2(interFirmPurchasesEliminated + amt);
+    }
+
+    const paid = Number(pur.paidAmount ?? pur.amountPaid ?? 0) || 0;
+    const due = Math.max(0, (Number(pur.totalAmount) || 0) - paid);
+    if (String(pur.paymentStatus || '').toUpperCase() !== 'PAID') {
+      totalPayables = r2(totalPayables + due);
+    }
+  }
+
+  let totalGroupExpenses = 0;
+  for (const ex of (Array.isArray(expenses) ? expenses : [])) {
+    const amt = Number(ex?.amount || 0) || 0;
+    const ownerKey = String(ex?.ownerGstin || ex?.ownerName || 'MAIN').toUpperCase();
+    const firm = ensureFirm(ownerKey, ex?.ownerName || ownerKey);
+    firm.expenses = r2(firm.expenses + amt);
+    totalGroupExpenses = r2(totalGroupExpenses + amt);
+  }
+
+  const netConsolidatedSales = r2(Math.max(0, grossGroupSales - interFirmSalesEliminated));
+  const netConsolidatedPurchases = r2(Math.max(0, grossGroupPurchases - interFirmPurchasesEliminated));
+  const consolidatedNetProfit = r2(netConsolidatedSales - netConsolidatedPurchases - totalGroupExpenses);
+
+  return {
+    firmCount: byFirm.size,
+    firms: [...byFirm.values()],
+    grossGroupSales,
+    interFirmEliminated: r2(Math.max(interFirmSalesEliminated, interFirmPurchasesEliminated)),
+    netConsolidatedSales,
+    netConsolidatedPurchases,
+    totalGroupExpenses,
+    consolidatedNetProfit,
+    totalReceivables,
+    totalPayables,
+  };
+}

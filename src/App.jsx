@@ -52,7 +52,8 @@ import { releaseNoteTitles } from './utils/changelog';
 import ErrorBoundary from './components/ErrorBoundary';
 import ConfirmModalContainer, { promptAction } from './components/ConfirmModal';
 import WelcomeGuide from './components/WelcomeGuide';
-import ServerlessCatalogModal from './components/ServerlessCatalogModal';
+import ServerlessB2BStorefront from './components/ServerlessB2BStorefront';
+import { decodeServerlessCatalogLink } from './utils/autonomousMunimAnd43B';
 import { playWelcomeVoice, armSessionWelcomeGreeting } from './utils/welcomeSound';
 import { WhatsNewAfterUpdate, SEEN_KEY as WHATS_NEW_SEEN_KEY } from './components/WhatsNewSlides';
 const InvoiceGenerator = lazy(() => import('./components/InvoiceGenerator'));
@@ -539,6 +540,17 @@ function App() {
   // Free GST Billing icon starts the server and opens the app.
 
   const [awaitingWelcomeTap, setAwaitingWelcomeTap] = useState(false);
+  const [storefrontCatalog, setStorefrontCatalog] = useState(() =>
+    typeof window !== 'undefined' ? decodeServerlessCatalogLink(window.location.hash) : null
+  );
+
+  useEffect(() => {
+    const syncStorefrontHash = () => {
+      setStorefrontCatalog(decodeServerlessCatalogLink(window.location.hash));
+    };
+    window.addEventListener('hashchange', syncStorefrontHash);
+    return () => window.removeEventListener('hashchange', syncStorefrontHash);
+  }, []);
 
   useEffect(() => {
     return armSessionWelcomeGreeting(
@@ -962,6 +974,18 @@ function App() {
   // the window starts the app again by itself, and an update stops it for a
   // moment. No instructions there: the start screen's look until it answers
   // (the check below every 5 s brings the app back by itself). A browser or
+  if (storefrontCatalog) {
+    return (
+      <ServerlessB2BStorefront
+        catalogData={storefrontCatalog}
+        onExitStorefront={() => {
+          window.history.replaceState(null, '', window.location.pathname + window.location.search);
+          setStorefrontCatalog(null);
+        }}
+      />
+    );
+  }
+
   // the ZIP's launcher still gets the Quick Start help.
   if (serverDown && typeof window !== 'undefined' && window.chrome?.webview) {
     return (
@@ -1056,7 +1080,6 @@ function App() {
       {/* v1.10.86 - "What's new" slides, once after an update (never during the
           first-run welcome, which renders above instead of this layout). */}
       <WhatsNewAfterUpdate blocked={showWelcome} />
-      <ServerlessCatalogModal />
       {welcomeTapBanner}
       {/* v1.10.66 (#59) — phone-only top bar with the menu button. CSS hides it
           on wider screens, where the sidebar is always shown. */}

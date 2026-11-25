@@ -3,7 +3,7 @@ import {
   Upload, Download, Zap, Warehouse, Factory, Brain, ShieldAlert,
   Share2, Copy, CheckCircle2, Truck, FileSpreadsheet,
 } from 'lucide-react';
-import { saveProduct, getAllClients } from '../store';
+import { saveProduct, getAllClients, getAllProfiles } from '../store';
 import { formatCurrency } from '../utils';
 import {
   parseAISJson,
@@ -21,6 +21,7 @@ import {
   checkSection43BCompliance,
   runAutonomousMunimAdvisor,
   generateServerlessCatalogLink,
+  computeMultiFirmConsolidation,
 } from '../utils/autonomousMunimAnd43B';
 import { toast } from './Toast';
 
@@ -34,8 +35,10 @@ export default function AutonomousOsPanels({
   onProductsUpdated,
 }) {
   const [clients, setClients] = useState([]);
+  const [profiles, setProfiles] = useState([]);
   useEffect(() => {
     getAllClients().then((c) => setClients(Array.isArray(c) ? c : [])).catch(() => {});
+    getAllProfiles().then((p) => setProfiles(Array.isArray(p) ? p : [])).catch(() => {});
   }, []);
 
   // --- Module A: ITR-3/4, AIS & TDS 26Q + Portal Bridge state ---
@@ -123,6 +126,11 @@ export default function AutonomousOsPanels({
     const originUrl = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : 'https://abhishekagrahari307-max.github.io/Bharat-GST-Free-Billing/';
     return generateServerlessCatalogLink(originUrl, ownerProfile || {}, products);
   }, [ownerProfile, products]);
+
+  const groupConsolidated = useMemo(
+    () => computeMultiFirmConsolidation({ profiles, bills, purchases, expenses }),
+    [profiles, bills, purchases, expenses]
+  );
 
   const handleAisUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -541,6 +549,36 @@ export default function AutonomousOsPanels({
               >
                 <Share2 size={14} /> Share Storefront on WhatsApp
               </a>
+            </div>
+          </div>
+        </div>
+
+        <div className="glass-panel" style={{ padding: '1.15rem' }}>
+          <h4 style={{ margin: '0 0 0.35rem' }}>
+            🏢 Multi-Firm Group Consolidated P&amp;L &amp; Balance Sheet ({groupConsolidated.firmCount} Firm Workspace{groupConsolidated.firmCount === 1 ? '' : 's'})
+          </h4>
+          <p className="text-muted" style={{ fontSize: '0.8rem', margin: '0 0 0.8rem' }}>
+            Automatically sums all GSTIN workspaces and eliminates inter-firm sales/purchases within your business group.
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(175px, 1fr))', gap: '0.7rem', fontSize: '0.82rem' }}>
+            <div style={{ padding: '0.75rem', borderRadius: 8, background: 'var(--bg-secondary)' }}>
+              <div className="text-muted" style={{ fontSize: '0.73rem' }}>Net Consolidated Revenue</div>
+              <div style={{ fontWeight: 800, fontSize: '1.02rem' }}>{formatCurrency(groupConsolidated.netConsolidatedSales)}</div>
+              <div className="text-muted" style={{ fontSize: '0.7rem' }}>Inter-Firm Eliminated: {formatCurrency(groupConsolidated.interFirmEliminated)}</div>
+            </div>
+            <div style={{ padding: '0.75rem', borderRadius: 8, background: 'var(--bg-secondary)' }}>
+              <div className="text-muted" style={{ fontSize: '0.73rem' }}>Net Consolidated Purchases</div>
+              <div style={{ fontWeight: 800, fontSize: '1.02rem' }}>{formatCurrency(groupConsolidated.netConsolidatedPurchases)}</div>
+            </div>
+            <div style={{ padding: '0.75rem', borderRadius: 8, background: 'var(--bg-secondary)' }}>
+              <div className="text-muted" style={{ fontSize: '0.73rem' }}>Group Net Profit</div>
+              <div style={{ fontWeight: 800, fontSize: '1.02rem', color: '#16a34a' }}>{formatCurrency(groupConsolidated.consolidatedNetProfit)}</div>
+            </div>
+            <div style={{ padding: '0.75rem', borderRadius: 8, background: 'var(--bg-secondary)' }}>
+              <div className="text-muted" style={{ fontSize: '0.73rem' }}>Group Receivables / Payables</div>
+              <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>
+                Dr {formatCurrency(groupConsolidated.totalReceivables)} · Cr {formatCurrency(groupConsolidated.totalPayables)}
+              </div>
             </div>
           </div>
         </div>
